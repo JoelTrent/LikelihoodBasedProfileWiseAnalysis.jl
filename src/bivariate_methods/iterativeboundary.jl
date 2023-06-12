@@ -299,11 +299,11 @@ function newboundarypoint!(p::NamedTuple,
 
         else # external - push inwards
             
-            candidate_line = Meshes.Line(Point(candidate_midpoint), Point(candidate_midpoint .+ dir_vector)) 
+            candidate_line = Meshes.Line(Point(candidate_midpoint...), Point((candidate_midpoint .+ dir_vector)...)) 
             # find edge that the line normal vector intersects 
             current_vertex = ve2 * 1
             while current_vertex != ve1
-                edge_segment = Segment(Point(boundary[:,current_vertex]), Point(boundary[:, edge_anti[current_vertex]]))
+                edge_segment = Segment(Point(boundary[:,current_vertex]...), Point(boundary[:, edge_anti[current_vertex]]...))
 
                 if intersection(candidate_line, edge_segment).type != IntersectionType(0)
                     break
@@ -666,19 +666,3 @@ function bivariate_confidenceprofile_iterativeboundary(bivariate_optimiser::Func
 
     return boundary_all, PointsAndLogLikelihood(internal_all, ll_values)
 end
-
-
-# polygon = [0 3 2 2 -1; 0 1 2 4 2]*1.0
-
-# edges = [1 2 3 4 5; 2 3 4 5 1]
-
-# edge_vectors = polygon[:, edges[2,:]] .- polygon[:, edges[1,:]]
-
-
-# @time angles = rad2deg.([AngleBetweenVectors.angle(edge_vectors[:, i], edge_vectors[:,j]) for (i,j) in [(1,2),(2,3),(3,4),(4,5),(5,1)]])
-
-# @time rad2deg.([(abs(∠(Point(polygon[:,i]), Point(polygon[:,i+1]), Point(polygon[:,i+2])))) for i in 1:3])
-
-# @time ∠(Point(polygon[:,1]), Point(polygon[:,2]), Point(polygon[:,3]))
-# @time AngleBetweenVectors.angle(edge_vectors[:,1], edge_vectors[:,2])
-# @time ∠(Vec(edge_vectors[:,1]), Vec(edge_vectors[:,2]))

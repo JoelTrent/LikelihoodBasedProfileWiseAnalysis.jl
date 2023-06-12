@@ -1,4 +1,6 @@
+using Revise
 using PlaceholderLikelihood
+using Plots
 using Documenter
 
 DocMeta.setdocmeta!(PlaceholderLikelihood, :DocTestSetup, :(using PlaceholderLikelihood); recursive=true)
@@ -16,7 +18,10 @@ makedocs(;
     ),
     pages=[
         "Home" => "index.md",
-    ],
+        "Quick Start" => "quick_start.md",
+        "User Interface" => "user_interface.md",
+        "Internal Library" => "internal_library.md"
+    ]
 )
 
 deploydocs(;

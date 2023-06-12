@@ -13,7 +13,7 @@ function star_obj(centers, points)
         for vi in 1:n
             intersects_polygon=false
             
-            internal_segment = Segment(Point(c_point), Point(points[:,vi]))
+            internal_segment = Segment(Point(c_point...), Point(points[:,vi]...))
             # println()
             # println("Vi=", vi)
             # println(internal_segment)
@@ -25,7 +25,7 @@ function star_obj(centers, points)
             # println("v2s:", v2s)
 
             for ei in eachindex(v1s)
-                edge_segment = Segment(Point(points[:,v1s[ei]]), Point(points[:,v2s[ei]])) 
+                edge_segment = Segment(Point(points[:,v1s[ei]]...), Point(points[:,v2s[ei]]...)) 
                 # println(edge_segment)
                 # segment_plot(internal_segment, edge_segment, xlim=[-0.1,4.1], ylim=[-0.1, 6.1])
                 if intersection(internal_segment, edge_segment).type != IntersectionType(0) 

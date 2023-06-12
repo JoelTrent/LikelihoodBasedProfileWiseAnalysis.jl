@@ -42,7 +42,7 @@ function bivariate_concave_hull(points::AbstractArray{Float64}, ll::Vector{<:Flo
     return hull_points
 end
 
-function bivariate_concave_hull(sampled_struct::AbstractSampledConfidenceStruct, θindices::Vector{Int},
+function bivariate_concave_hull(sampled_struct::SampledConfidenceStruct, θindices::Vector{Int},
     min_proportion_to_keep::Real, min_scaling_from_desired_ll::Real, target_ll::Float64, sample_type::AbstractSampleType)
 
     length(θindices) == 2 || throw(ArgumentError("θindices must have length 2; this function estimates the concave hull of a 2D point cloud"))

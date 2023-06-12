@@ -25,31 +25,13 @@ Supertype for confidence boundary storage structs.
 
 # Subtypes
 
-[`SampledConfidenceStruct`](@ref)
-
 [`UnivariateConfidenceStruct`](@ref)
 
 [`BivariateConfidenceStruct`](@ref)
+
+[`SampledConfidenceStruct`](@ref)
 """
 abstract type AbstractConfidenceStruct end
-
-"""
-    SampledConfidenceStruct(points::Array{Float64}, ll::Vector{<:Float64})
-
-Struct that stores samples produced by an [`AbstractSampleType`](@ref) that are within the confidence boundary at a given confidence level, with their corresponding loglikelihood values.
-
-# Fields
-- `points`: an array of points stored in columns, with each row corresponding to the respective index of each model parameter. 
-- `ll`: a vector of loglikelihood function values corresponding to the point in each column of `points`. This number is standardised so that regardless of whether the true loglikelihood function or an ellipse approximation of the function is evaluated, the value of the MLE point is 0.0. 
-
-# Supertype Hiearachy
-
-SampledConfidenceStruct <: AbstractConfidenceStruct <: Any
-"""
-struct SampledConfidenceStruct <: AbstractConfidenceStruct
-    points::Array{Float64}
-    ll::Vector{<:Float64}
-end
 
 """
     UnivariateConfidenceStruct(confidence_interval::Vector{<:Float64}, interval_points::PointsAndLogLikelihood)
@@ -64,7 +46,7 @@ Struct that stores the confidence interval of a given interest parameter as well
 
 UnivariateConfidenceStruct <: AbstractConfidenceStruct <: Any
 """
-struct UnivariateConfidenceStruct <: AbstractUnivariateConfidenceStruct
+struct UnivariateConfidenceStruct <: AbstractConfidenceStruct
     confidence_interval::Vector{<:Float64}
     interval_points::PointsAndLogLikelihood
 end
@@ -72,7 +54,7 @@ end
 """
     BivariateConfidenceStruct(confidence_boundary::Matrix{Float64}, internal_points::PointsAndLogLikelihood=PointsAndLogLikelihood(zeros(size(x, 1), 0), zeros(0)))
 
-Struct that stores samples produced by an [`AbstractBivariateMethod`](@ref) that are on the bivariate confidence boundary at a given confidence level and, if `save_internal_points=true`, any internal points found during the method with their corresponding loglikelihood values. Use `bivariate_methods()` for a list of available methods (see [`bivariate_methods`](@ref)).
+Struct that stores samples produced by an [`AbstractBivariateMethod`](@ref) that are on the bivariate confidence boundary of two interest parameters at a given confidence level and, if `save_internal_points=true`, any internal points found during the method with their corresponding loglikelihood values. Use `bivariate_methods()` for a list of available methods (see [`bivariate_methods`](@ref)).
 
 # Fields
 - `confidence_boundary`: an array of boundary points stored in columns, with each row corresponding to the respective index of each model parameter. This array can contain points that are inside the bivariate confidence boundary if the method being used brackets between an internal point and a point on the user-provided bounds: these points will be on a user-provided parameter bound.
@@ -82,7 +64,7 @@ Struct that stores samples produced by an [`AbstractBivariateMethod`](@ref) that
 
 BivariateConfidenceStruct <: AbstractConfidenceStruct <: Any
 """
-struct BivariateConfidenceStruct <: AbstractBivariateConfidenceStruct
+struct BivariateConfidenceStruct <: AbstractConfidenceStruct
     confidence_boundary::Matrix{Float64}
     internal_points::PointsAndLogLikelihood
 
@@ -101,3 +83,20 @@ function Base.merge(a::BivariateConfidenceStruct, b::BivariateConfidenceStruct)
         PointsAndLogLikelihood(hcat(a.internal_points.points, b.internal_points.points), vcat(a.internal_points.ll, b.internal_points.ll)))
 end
 
+"""
+    SampledConfidenceStruct(points::Array{Float64}, ll::Vector{<:Float64})
+
+Struct that stores samples produced by an [`AbstractSampleType`](@ref) that are within the confidence boundary of `sample_dimension` interest parameters at a given confidence level, with their corresponding loglikelihood values.
+
+# Fields
+- `points`: an array of points stored in columns, with each row corresponding to the respective index of each model parameter. 
+- `ll`: a vector of loglikelihood function values corresponding to the point in each column of `points`. This number is standardised so that regardless of whether the true loglikelihood function or an ellipse approximation of the function is evaluated, the value of the MLE point is 0.0. 
+
+# Supertype Hiearachy
+
+SampledConfidenceStruct <: AbstractConfidenceStruct <: Any
+"""
+struct SampledConfidenceStruct <: AbstractConfidenceStruct
+    points::Array{Float64}
+    ll::Vector{<:Float64}
+end

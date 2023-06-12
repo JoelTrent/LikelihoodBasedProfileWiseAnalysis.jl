@@ -94,6 +94,32 @@ function calculate_θmagnitudes(θlb::Vector{<:Float64},
 end
 
 """
+    initialiseLikelihoodModel(loglikefunction::Function,
+        predictfunction::Union{Function, Missing},
+        data::Union{Tuple, NamedTuple},
+        θnames::Vector{<:Symbol},
+        θinitialGuess::AbstractVector{<:Real},
+        θlb::AbstractVector{<:Real},
+        θub::AbstractVector{<:Real},
+        θmagnitudes::AbstractVector{<:Real}=Float64[];
+        uni_row_prealloaction_size=NaN,
+        biv_row_preallocation_size=NaN,
+        dim_row_preallocation_size=NaN,
+        show_progress=true)
+
+Initialises a [`LikelihoodModel`](@ref) struct, which contains all model information, profiles, samples and predictions.
+
+# Arguments
+- `loglikefunction`: a loglikelihood function which takes two arguments, `θ` and `data`, in that order, where θ is a vector containing the values of each parameter in `θnames` and `data` is a Tuple or NamedTuple - see `data` below.
+- `predictfunction`: a prediction function to generate model predictions from that is paired with the `loglikefunction`. Takes three arguments, `θ`, `data` and `t`, in that order, where `θ` and `data` are the same as for `loglikefunction` and `t` needs to be an optional third argument. When `t` is not specified, the prediction function should be evaluated for the same time points/independent variable as the data. When `t` is specified, the prediction function should be evaluated for those specified time points/independent variable. It can also be `missing` if no function is provided during model initialisation, because predictions are not required when evaluating parameter profiles. The function can be added at a later point using [`add_prediction_function!`](@ref).
+- `data`: a Tuple or a NamedTuple containing any additional information required by the loglikelihood function, such as the time points to be evaluated at.
+- `θnames`: a vector of symbols containing the names of each parameter, e.g. `[:λ, :K, :C0]`.
+- `θinitialguess`: a vector containing the initial guess for the values of each parameter. Used to find the MLE point.
+- `θlb`: a vector of lower bounds on parameters. 
+- `θub`: a vector of upper bounds on parameters. 
+- `θmagnitudes`: a vector of the relative magnitude of each parameter. If not provided, it will be estimated using the difference of `θlb` and `θub` using [`PlaceholderLikelihood.calculate_θmagnitudes`](@ref). Can be updated after initialisation using [`setθmagnitudes!`](@ref).
+
+TO DO OTHER ARGUMENTS
 """
 function initialiseLikelihoodModel(loglikefunction::Function,
     predictfunction::Union{Function, Missing},
@@ -113,7 +139,7 @@ function initialiseLikelihoodModel(loglikefunction::Function,
     num_pars = length(θnames)
 
     function funmle(θ); return loglikefunction(θ, data) end
-    (θmle, maximisedmle) = optimise(funmle, θinitialGuess, θlb, θub)
+    (θmle, maximisedmle) = optimise(funmle, θinitialguess, θlb, θub)
 
     ymle=zeros(0,0)
     if !ismissing(predictfunction)
@@ -141,17 +167,17 @@ function initialiseLikelihoodModel(loglikefunction::Function,
     # if zero, is invalid row
     uni_profile_row_exists = Dict{Tuple{Int, AbstractProfileType}, DefaultDict{Float64, Int}}()    
     # uni_profile_row_exists = DefaultDict{Tuple{Int, Float64, AbstractProfileType}, Int}(0)
-    uni_profiles_dict = Dict{Int, AbstractUnivariateConfidenceStruct}()
+    uni_profiles_dict = Dict{Int, UnivariateConfidenceStruct}()
 
     num_combinations = binomial(num_pars, 2)
     biv_profiles_df = isnan(biv_row_preallocation_size) ? init_biv_profiles_df(num_combinations) : init_biv_profiles_df(biv_row_preallocation_size)
     # if zero, is invalid row
     biv_profile_row_exists = Dict{Tuple{Tuple{Int, Int}, AbstractProfileType, AbstractBivariateMethod}, DefaultDict{Float64, Int}}()
-    biv_profiles_dict = Dict{Int, AbstractBivariateConfidenceStruct}()
+    biv_profiles_dict = Dict{Int, BivariateConfidenceStruct}()
 
     dim_samples_row_exists = Dict{Union{AbstractSampleType, Tuple{Vector{Int}, AbstractSampleType}}, DefaultDict{Float64, Int}}()
     dim_samples_df = isnan(dim_row_preallocation_size) ? init_dim_samples_df(1) : init_dim_samples_df(dim_row_preallocation_size)
-    dim_samples_dict = Dict{Int, AbstractSampledConfidenceStruct}()
+    dim_samples_dict = Dict{Int, SampledConfidenceStruct}()
 
     uni_predictions_dict = Dict{Int, AbstractPredictionStruct}()
     biv_predictions_dict = Dict{Int, AbstractPredictionStruct}()
@@ -172,7 +198,18 @@ function initialiseLikelihoodModel(loglikefunction::Function,
 end
 
 """
-Can be called without a prediction function
+    initialiseLikelihoodModel(loglikefunction::Function,
+        data::Union{Tuple, NamedTuple},
+        θnames::Vector{<:Symbol},
+        θinitialGuess::Vector{<:Float64},
+        θlb::Vector{<:Float64},
+        θub::Vector{<:Float64},
+        θmagnitudes::Vector{<:Real}=zeros(0);
+        uni_row_prealloaction_size=NaN,
+        biv_row_preallocation_size=NaN,
+        dim_row_preallocation_size=NaN)
+
+Alternate version of [`initialiseLikelihoodModel`](@ref) that can be called without a prediction function. The function can be added at a later point using [`add_prediction_function!`](@ref).
 """
 function initialiseLikelihoodModel(loglikefunction::Function,
     data::Union{Tuple, NamedTuple},

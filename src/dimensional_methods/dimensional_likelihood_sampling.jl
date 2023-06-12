@@ -305,6 +305,19 @@ function dimensional_likelihood_sample(model::LikelihoodModel,
     return sample_struct
 end
 
+"""
+    dimensional_likelihood_sample!(model::LikelihoodModel,
+        θindices::Vector{Vector{Int}},
+        num_points_to_sample::Union{Int, Vector{Int}};
+        confidence_level::Float64=0.95,
+        sample_type::AbstractSampleType=LatinHypercubeSamples(),
+        lb::AbstractVector{<:Real}=Float64[],
+        ub::AbstractVector{<:Real}=Float64[],
+        θs_is_unique::Bool=false,
+        use_threads::Bool=true,
+        existing_profiles::Symbol=:overwrite,
+        show_progress::Bool=model.show_progress)
+"""
 function dimensional_likelihood_sample!(model::LikelihoodModel,
                                         θindices::Vector{Vector{Int}},
                                         num_points_to_sample::Union{Int, Vector{Int}};

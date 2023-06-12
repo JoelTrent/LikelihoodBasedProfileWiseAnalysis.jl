@@ -1,4 +1,9 @@
-# Numerical optimisation 
+"""
+    optimise(fun, θ₀, lb, ub;
+        dv = false, method = dv ? :LD_LBFGS : :LN_BOBYQA)
+
+NLopt optimiser used for calculating the values of nuisance parameters.
+"""
 function optimise(fun, θ₀, lb, ub;
     dv = false,
     method = dv ? :LD_LBFGS : :LN_BOBYQA,
@@ -19,6 +24,12 @@ function optimise(fun, θ₀, lb, ub;
     return res[[2,1]]
 end
 
+"""
+    optimise_unbounded(fun, θ₀;
+        dv = false, method = dv ? :LD_LBFGS : :LN_BOBYQA)
+
+Alternative version of [`optimise`](@ref) without nuisance parameter bounds. Used for computing the nuisance parameters of [`EllipseApproxAnalytical`](@ref) profiles.
+"""
 function optimise_unbounded(fun, θ₀;
     dv = false,
     method = dv ? :LD_LBFGS : :LN_BOBYQA,

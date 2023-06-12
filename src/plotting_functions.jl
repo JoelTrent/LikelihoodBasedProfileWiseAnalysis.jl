@@ -378,7 +378,7 @@ function plot_bivariate_profiles_iterativeboundary_gif(model::LikelihoodModel,
                                     save_folder=nothing,
                                     kwargs...)
 
-    methods = [BracketingMethodIterativeBoundary(1,1,1)]
+    methods = [IterativeBoundaryMethod(1,1,1)]
 
     θcombinations_to_plot = θcombinations_to_plot_typeconversion(model, θcombinations_to_plot)
                                     
