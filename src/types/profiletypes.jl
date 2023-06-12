@@ -24,7 +24,7 @@ Supertype for ellipse approximation profile types.
 
 # Supertype Hiearachy
 
-AbstractProfileType <: AbstractProfileType <: Any
+`AbstractProfileType <: AbstractProfileType <: Any`
 """
 abstract type AbstractEllipseProfileType <: AbstractProfileType end
 
@@ -35,7 +35,7 @@ Use the true loglikelihood function for confidence profile evaluation. The metho
 
 # Supertype Hiearachy
 
-LogLikelihood <: AbstractProfileType <: Any
+`LogLikelihood <: AbstractProfileType <: Any`
 """
 struct LogLikelihood <: AbstractProfileType end
 
@@ -46,7 +46,7 @@ Use an ellipse approximation of the loglikelihood function centred at the MLE wi
 
 # Supertype Hiearachy
 
-EllipseApprox <: AbstractEllipseProfileType <: AbstractProfileType <: Any
+`EllipseApprox <: AbstractEllipseProfileType <: AbstractProfileType <: Any`
 """
 struct EllipseApprox <: AbstractEllipseProfileType end
 
@@ -57,6 +57,6 @@ Use an ellipse approximation of the loglikelihood function centred at the MLE wi
 
 # Supertype Hiearachy
 
-EllipseApproxAnalytical <: AbstractEllipseProfileType <: AbstractProfileType <: Any
+`EllipseApproxAnalytical <: AbstractEllipseProfileType <: AbstractProfileType <: Any`
 """
 struct EllipseApproxAnalytical <: AbstractEllipseProfileType end

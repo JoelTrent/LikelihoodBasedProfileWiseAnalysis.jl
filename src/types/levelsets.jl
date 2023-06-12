@@ -44,7 +44,7 @@ Struct that stores the confidence interval of a given interest parameter as well
 
 # Supertype Hiearachy
 
-UnivariateConfidenceStruct <: AbstractConfidenceStruct <: Any
+`UnivariateConfidenceStruct <: AbstractConfidenceStruct <: Any`
 """
 struct UnivariateConfidenceStruct <: AbstractConfidenceStruct
     confidence_interval::Vector{<:Float64}
@@ -62,7 +62,7 @@ Struct that stores samples produced by an [`AbstractBivariateMethod`](@ref) that
 
 # Supertype Hiearachy
 
-BivariateConfidenceStruct <: AbstractConfidenceStruct <: Any
+`BivariateConfidenceStruct <: AbstractConfidenceStruct <: Any`
 """
 struct BivariateConfidenceStruct <: AbstractConfidenceStruct
     confidence_boundary::Matrix{Float64}
@@ -94,7 +94,7 @@ Struct that stores samples produced by an [`AbstractSampleType`](@ref) that are 
 
 # Supertype Hiearachy
 
-SampledConfidenceStruct <: AbstractConfidenceStruct <: Any
+`SampledConfidenceStruct <: AbstractConfidenceStruct <: Any`
 """
 struct SampledConfidenceStruct <: AbstractConfidenceStruct
     points::Array{Float64}

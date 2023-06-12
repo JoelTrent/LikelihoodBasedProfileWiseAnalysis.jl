@@ -9,7 +9,7 @@ Struct containing two n*n arrays representing the ellipse approximation of the l
 
 # Supertype Hiearachy
 
-EllipseMLEApprox <: Any
+`EllipseMLEApprox <: Any`
 """
 struct EllipseMLEApprox
     Hmle::Matrix{<:Float64}
@@ -40,7 +40,7 @@ Struct containing the core information required to define a [`LikelihoodModel`](
 
 # Supertype Hiearachy
 
-CoreLikelihoodModel <: Any
+`CoreLikelihoodModel <: Any`
 """
 struct CoreLikelihoodModel
     loglikefunction::Function
@@ -92,7 +92,7 @@ Struct containing all the information required to compute profiles, samples and 
 
 # Supertype Hiearachy
 
-LikelihoodModel <: Any
+`LikelihoodModel <: Any`
 """
 mutable struct LikelihoodModel
     core::CoreLikelihoodModel

@@ -19,7 +19,15 @@ makedocs(;
     pages=[
         "Home" => "index.md",
         "Quick Start" => "quick_start.md",
-        "User Interface" => "user_interface.md",
+        "User Interface" => 
+            ["Initialisation" => "user_interface/initialisation.md",
+            "Parameter Profiles and Samples" => 
+                ["Structs and Profile Types" => "user_interface/profiles_and_samples/profile_structs.md",
+                "Univariate Profiles" => "user_interface/profiles_and_samples/univariate.md",
+                "Bivariate Profiles" => "user_interface/profiles_and_samples/bivariate.md",
+                "Dimensional Samples" => "user_interface/profiles_and_samples/dimensional.md"],
+            "Predictions" => "user_interface/predictions.md",
+            "Plots" => "user_interface/plots.md"],
         "Internal Library" => "internal_library.md"
     ]
 )

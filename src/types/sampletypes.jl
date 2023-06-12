@@ -20,7 +20,7 @@ Evaluate the parameter bounds space on a uniform grid and keep samples that are 
 
 # Supertype Hiearachy
 
-UniformGridSamples <: AbstractSampleType <: Any
+`UniformGridSamples <: AbstractSampleType <: Any`
 """
 struct UniformGridSamples <: AbstractSampleType end
 
@@ -31,7 +31,7 @@ Take uniform random samples of parameter bounds space and keep samples that are 
 
 # Supertype Hiearachy
 
-UniformRandomSamples <: AbstractSampleType <: Any
+`UniformRandomSamples <: AbstractSampleType <: Any`
 """
 struct UniformRandomSamples <: AbstractSampleType end
 
@@ -42,6 +42,6 @@ Create a Latin Hypercube sampling plan in parameter bounds space and keep sample
 
 # Supertype Hiearachy
 
-LatinHypercubeSamples <: AbstractSampleType <: Any
+`LatinHypercubeSamples <: AbstractSampleType <: Any`
 """
 struct LatinHypercubeSamples <: AbstractSampleType end

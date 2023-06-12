@@ -20,7 +20,7 @@ Struct for containing evaluated predictions corresponding to confidence profiles
 
 # Supertype Hiearachy
 
-PredictionStruct <: AbstractPredictionStruct <: Any
+`PredictionStruct <: AbstractPredictionStruct <: Any`
 """
 struct PredictionStruct <: AbstractPredictionStruct
     predictions::Array{Real}

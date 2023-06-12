@@ -34,7 +34,7 @@ Supertype for bivariate boundary finding methods that search between two distinc
 
 # Supertype Hiearachy
 
-AbstractBivariateVectorMethod <: AbstractBivariateMethod <: Any
+`AbstractBivariateVectorMethod <: AbstractBivariateMethod <: Any`
 """
 abstract type AbstractBivariateVectorMethod <: AbstractBivariateMethod end
 
@@ -114,7 +114,7 @@ Finds between 0 and `num_points - initial_num_points` internal points - internal
 
 # Supertype Hiearachy
 
-IterativeBoundaryMethod <: AbstractBivariateVectorMethod <: AbstractBivariateMethod <: Any
+`IterativeBoundaryMethod <: AbstractBivariateVectorMethod <: AbstractBivariateMethod <: Any`
 """
 struct IterativeBoundaryMethod <: AbstractBivariateVectorMethod
     initial_num_points::Int
@@ -169,7 +169,7 @@ Finds no internal points.
 
 # Supertype Hiearachy
 
-RadialMLEMethod <: AbstractBivariateVectorMethod <: AbstractBivariateMethod <: Any
+`RadialMLEMethod <: AbstractBivariateVectorMethod <: AbstractBivariateMethod <: Any`
 """
 struct RadialMLEMethod <: AbstractBivariateVectorMethod
     ellipse_start_point_shift::Float64
@@ -216,7 +216,7 @@ Finds a minimum of `div(num_points, num_radial_directions, RoundUp)` internal po
 
 # Supertype Hiearachy
 
-RadialRandomMethod <: AbstractBivariateVectorMethod <: AbstractBivariateMethod <: Any
+`RadialRandomMethod <: AbstractBivariateVectorMethod <: AbstractBivariateMethod <: Any`
 """
 struct RadialRandomMethod <: AbstractBivariateVectorMethod
     num_radial_directions::Int
@@ -255,7 +255,7 @@ Finds `num_points` internal points.
 
 # Supertype Hiearachy
 
-SimultaneousMethod <: AbstractBivariateVectorMethod <: AbstractBivariateMethod <: Any
+`SimultaneousMethod <: AbstractBivariateVectorMethod <: AbstractBivariateMethod <: Any`
 """
 struct SimultaneousMethod <: AbstractBivariateVectorMethod end
 
@@ -289,7 +289,7 @@ Finds `num_points` internal points.
 
 # Supertype Hiearachy
 
-Fix1AxisMethod <: AbstractBivariateMethod <: Any
+`Fix1AxisMethod <: AbstractBivariateMethod <: Any`
 """
 struct Fix1AxisMethod <: AbstractBivariateMethod end
 
@@ -318,7 +318,7 @@ Finds no internal points.
 
 # Supertype Hiearachy
 
-AnalyticalEllipseMethod <: AbstractBivariateMethod <: Any
+`AnalyticalEllipseMethod <: AbstractBivariateMethod <: Any`
 """
 struct AnalyticalEllipseMethod <: AbstractBivariateMethod 
     ellipse_start_point_shift::Float64
@@ -360,7 +360,7 @@ Finds `num_points * num_level_sets` internal points at distinct level sets.
 
 # Supertype Hiearachy
 
-ContinuationMethod <: AbstractBivariateMethod <: Any
+`ContinuationMethod <: AbstractBivariateMethod <: Any`
 """
 struct ContinuationMethod <: AbstractBivariateMethod
     num_level_sets::Int
