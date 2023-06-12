@@ -174,7 +174,7 @@ function iterativeboundary_init(bivariate_optimiser::Function,
     edge_anti[num_vertices] = 1
 
     edge_anti_on_bounds = falses(num_points)
-    edge_anti_on_bounds[1:num_vertices] .= @view(point_is_on_bounds[1:num_vertices]) .&& @view(point_is_on_bounds[@view(edge_anti[1:num_vertices])])
+    edge_anti_on_bounds[1:num_vertices] .= @view(point_is_on_bounds[1:num_vertices]) .& @view(point_is_on_bounds[@view(edge_anti[1:num_vertices])])
     
     # tracked heap for length of edges (anticlockwise)
     edge_lengths = zeros(num_points)

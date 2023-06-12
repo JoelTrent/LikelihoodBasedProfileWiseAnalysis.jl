@@ -136,13 +136,13 @@ function get_points_in_interval!(model::LikelihoodModel,
     df = model.uni_profiles_df
     row_subset = df.num_points .> 0
 
-    row_subset .= row_subset .&& (df.num_points .!= (num_points_in_interval+2) .|| 
+    row_subset .= row_subset .& (df.num_points .!= (num_points_in_interval+2) .| 
                                     (df.additional_width .!= additional_width))
     if !isempty(confidence_levels)
-        row_subset .= row_subset .&& (df.conf_level .∈ Ref(confidence_levels))
+        row_subset .= row_subset .& (df.conf_level .∈ Ref(confidence_levels))
     end
     if !isempty(profile_types)
-        row_subset .= row_subset .&& (df.profile_type .∈ Ref(profile_types))
+        row_subset .= row_subset .& (df.profile_type .∈ Ref(profile_types))
     end
 
     sub_df = @view(df[row_subset, :])

@@ -217,7 +217,7 @@ function plot_univariate_profiles_comparison(model::LikelihoodModel,
     for θi in 1:model.core.num_pars
         for confidence_level in confidence_levels
 
-            row_subset .= (sub_df.θindex .== θi) .&& (sub_df.conf_level .== confidence_level)
+            row_subset .= (sub_df.θindex .== θi) .& (sub_df.conf_level .== confidence_level)
             conf_df = @view(sub_df[row_subset, :])
 
             if nrow(conf_df) > 1
@@ -541,8 +541,8 @@ function plot_bivariate_profiles_comparison(model::LikelihoodModel,
         for confidence_level in confidence_levels
             if compare_within_methods
                 for method in methods
-                    row_subset .= (sub_df.θindices .== Ref(θindices_tuple)) .&& 
-                                    (sub_df.conf_level .== confidence_level) .&&
+                    row_subset .= (sub_df.θindices .== Ref(θindices_tuple)) .& 
+                                    (sub_df.conf_level .== confidence_level) .&
                                     (sub_df.method .== Ref(method))
 
                     conf_df = @view(sub_df[row_subset, :])
@@ -597,14 +597,14 @@ function plot_bivariate_profiles_comparison(model::LikelihoodModel,
                     plot_i+=1
                 end
             else
-                row_subset .= (sub_df.θindices .== Ref(θindices_tuple)) .&& 
+                row_subset .= (sub_df.θindices .== Ref(θindices_tuple)) .& 
                                     (sub_df.conf_level .== confidence_level)
 
                 conf_df = @view(sub_df[row_subset, :])
                 nrow_conf_df = nrow(conf_df)
 
                 if include_dim_samples
-                    row_subset_samples .= (sub_df_samples.θindices .== Ref(θindices)) .&&
+                    row_subset_samples .= (sub_df_samples.θindices .== Ref(θindices)) .&
                                         (sub_df_samples.conf_level .== confidence_level)
                     conf_df_samples = @view(sub_df_samples[row_subset_samples, :])
                     nrow_conf_df_samples = nrow(conf_df_samples)
