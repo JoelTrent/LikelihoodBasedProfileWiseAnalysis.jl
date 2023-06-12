@@ -107,24 +107,24 @@ function desired_df_subset(df::DataFrame,
     df_sub = @view(df[1:num_used_rows, :])    
     row_subset = df_sub.num_points .> 0
     if for_prediction_generation
-        row_subset .= row_subset .&& df_sub.not_evaluated_predictions
+        row_subset .= row_subset .& df_sub.not_evaluated_predictions
     end
     if for_prediction_plots
-        row_subset .= row_subset .&& .!(df_sub.not_evaluated_predictions)
+        row_subset .= row_subset .& .!(df_sub.not_evaluated_predictions)
     end
     if sample_dimension > 0
-        row_subset .= row_subset .&& df_sub.dimension .== sample_dimension
+        row_subset .= row_subset .& df_sub.dimension .== sample_dimension
     end
 
     if !isempty(confidence_levels)
         if include_higher_confidence_levels
-            row_subset .= row_subset .&& (df_sub.conf_level .>= confidence_levels::Float64)
+            row_subset .= row_subset .& (df_sub.conf_level .>= confidence_levels::Float64)
         else
-            row_subset .= row_subset .&& (df_sub.conf_level .∈ Ref(confidence_levels))
+            row_subset .= row_subset .& (df_sub.conf_level .∈ Ref(confidence_levels))
         end
     end
     if !isempty(sample_types)
-        row_subset .= row_subset .&& (df_sub.sample_type .∈ Ref(sample_types))
+        row_subset .= row_subset .& (df_sub.sample_type .∈ Ref(sample_types))
     end
 
     return @view(df_sub[row_subset, :])
@@ -141,20 +141,20 @@ function desired_df_subset(df::DataFrame,
     df_sub = @view(df[1:num_used_rows, :])    
     row_subset = df_sub.num_points .> 0
     if for_prediction_generation
-        row_subset .= row_subset .&& df_sub.not_evaluated_predictions
+        row_subset .= row_subset .& df_sub.not_evaluated_predictions
     end
     if for_prediction_plots
-        row_subset .= row_subset .&& .!(df_sub.not_evaluated_predictions)
+        row_subset .= row_subset .& .!(df_sub.not_evaluated_predictions)
     end
 
     if !isempty(θs_of_interest) 
-        row_subset .= row_subset .&& (df_sub.θindex .∈ Ref(θs_of_interest))
+        row_subset .= row_subset .& (df_sub.θindex .∈ Ref(θs_of_interest))
     end
     if !isempty(confidence_levels)
-        row_subset .= row_subset .&& (df_sub.conf_level .∈ Ref(confidence_levels))
+        row_subset .= row_subset .& (df_sub.conf_level .∈ Ref(confidence_levels))
     end
     if !isempty(profile_types)
-        row_subset .= row_subset .&& (df_sub.profile_type .∈ Ref(profile_types))
+        row_subset .= row_subset .& (df_sub.profile_type .∈ Ref(profile_types))
     end
 
     return @view(df_sub[row_subset, :])
@@ -173,27 +173,27 @@ function desired_df_subset(df::DataFrame,
     df_sub = @view(df[1:num_used_rows, :])    
     row_subset = df_sub.num_points .> 0
     if for_prediction_generation
-        row_subset .= row_subset .&& df_sub.not_evaluated_predictions
+        row_subset .= row_subset .& df_sub.not_evaluated_predictions
     end
     if for_prediction_plots
-        row_subset .= row_subset .&& .!(df_sub.not_evaluated_predictions)
+        row_subset .= row_subset .& .!(df_sub.not_evaluated_predictions)
     end
 
     if !isempty(θs_of_interest) 
-        row_subset .= row_subset .&& (df_sub.θindices .∈ Ref(θs_of_interest))
+        row_subset .= row_subset .& (df_sub.θindices .∈ Ref(θs_of_interest))
     end
     if !isempty(confidence_levels)
         if include_lower_confidence_levels
-            row_subset .= row_subset .&& (df_sub.conf_level .<= confidence_levels::Float64)
+            row_subset .= row_subset .& (df_sub.conf_level .<= confidence_levels::Float64)
         else
-            row_subset .= row_subset .&& (df_sub.conf_level .∈ Ref(confidence_levels))
+            row_subset .= row_subset .& (df_sub.conf_level .∈ Ref(confidence_levels))
         end
     end
     if !isempty(profile_types)
-        row_subset .= row_subset .&& (df_sub.profile_type .∈ Ref(profile_types))
+        row_subset .= row_subset .& (df_sub.profile_type .∈ Ref(profile_types))
     end
     if !isempty(methods)
-        row_subset .= row_subset .&& (typeof.(df_sub.method) .∈ Ref(typeof.(methods)))
+        row_subset .= row_subset .& (typeof.(df_sub.method) .∈ Ref(typeof.(methods)))
     end
 
     return @view(df_sub[row_subset, :])
