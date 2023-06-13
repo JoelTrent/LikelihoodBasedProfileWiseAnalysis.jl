@@ -154,7 +154,6 @@ function uniform_random(model::LikelihoodModel,
     return SampledConfidenceStruct(pnts, lls)
 end
 
-
 # LatinHypercubeSampling
 function LHS(model::LikelihoodModel,
             num_points::Int,

@@ -1,4 +1,4 @@
-# functions for the BracketingMethodRadialRandom, BracketingMethodRadialMLE and BracketingMethodSimultaneous methods
+# functions for the RadialRandomMethod, RadialMLEMethod and SimultaneousMethod methods
 
 function generatepoint(model::LikelihoodModel, ind1::Int, ind2::Int)
     return rand(Uniform(model.core.θlb[ind1], model.core.θub[ind1])), rand(Uniform(model.core.θlb[ind2], model.core.θub[ind2]))

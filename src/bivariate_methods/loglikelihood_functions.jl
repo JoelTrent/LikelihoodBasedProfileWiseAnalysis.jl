@@ -79,9 +79,5 @@ function bivariateΨ_ellipse_unbounded(Ψ::Vector, p)
     end
 
     (xopt,_)=optimise_unbounded(fun, p.initGuess)
-    # (xopt,fopt)=optimise_unbounded(fun, p.initGuess)
-    # llb=fopt-p.consistent.targetll
-    # p.λ_opt .= xopt
-    # return llb
     return xopt
 end

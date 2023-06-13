@@ -154,7 +154,7 @@ function plot_univariate_profiles(model::LikelihoodModel,
     for i in 1:nrow(sub_df)
 
         row = @view(sub_df[i,:])
-        interval = model.uni_profiles_dict[row.row_ind].interval_points
+        interval = get_uni_confidenceinterval(model, row.row_ind)
         boundary_col_indices = model.uni_profiles_dict[row.row_ind].interval_points.boundary_col_indices
 
         llstar = get_target_loglikelihood(model, row.conf_level, EllipseApprox(), 1)
@@ -233,7 +233,7 @@ function plot_univariate_profiles_comparison(model::LikelihoodModel,
                 for i in 1:nrow(conf_df)
 
                     row = @view(conf_df[i,:])
-                    interval = model.uni_profiles_dict[row.row_ind].interval_points
+                    interval = get_uni_confidenceinterval(model, row.row_ind)
                     boundary_col_indices = model.uni_profiles_dict[row.row_ind].interval_points.boundary_col_indices
                     
                     x_range = interval.points[row.θindex, boundary_col_indices[2]] - interval.points[row.θindex, boundary_col_indices[1]]

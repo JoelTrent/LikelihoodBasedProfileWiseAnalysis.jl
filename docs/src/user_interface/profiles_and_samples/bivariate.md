@@ -2,7 +2,6 @@
 Pages = ["bivariate.md"]
 ```
 
-
 # Bivariate Profiles
 
 ```@docs

@@ -1,5 +1,9 @@
-function get_uni_confidenceinterval(model::LikelihoodModel,
-                                    uni_row_number::Int)
+"""
+    get_uni_confidenceinterval(model::LikelihoodModel, uni_row_number::Int)
+
+Returns the confidence interval corresponding to the profile in row `uni_row_number` of `model.uni_profiles_df`.
+"""
+function get_uni_confidenceinterval(model::LikelihoodModel, uni_row_number::Int)
     return model.uni_profiles_dict[uni_row_number].confidence_interval
 end
 

@@ -5,10 +5,10 @@ Pages = ["initialisation.md"]
 # Initialisation
 
 ```@docs
+initialiseLikelihoodModel
 LikelihoodModel
 CoreLikelihoodModel
 EllipseMLEApprox
-initialiseLikelihoodModel
 ```
 
 # Parameter Transformations

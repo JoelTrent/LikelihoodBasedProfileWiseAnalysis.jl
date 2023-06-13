@@ -41,7 +41,7 @@ export initialiseLikelihoodModel,
 
     transformbounds, transformbounds_NLopt,
 
-    univariate_confidenceintervals!, get_points_in_interval!,
+    univariate_confidenceintervals!, get_points_in_interval!, get_uni_confidenceinterval,
     bivariate_confidenceprofiles!,
     dimensional_likelihood_sample!, bivariate_concave_hull,
     full_likelihood_sample!,
