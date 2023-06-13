@@ -175,7 +175,7 @@ struct RadialMLEMethod <: AbstractBivariateVectorMethod
     ellipse_start_point_shift::Float64
     ellipse_sqrt_distortion::Float64
 
-    function RadialMLEMethod(ellipse_start_point_shift=rand(), ellipse_sqrt_distortion=0.01) 
+    function RadialMLEMethod(ellipse_start_point_shift::Float64=rand(), ellipse_sqrt_distortion::Float64=0.01) 
         (0.0 <= ellipse_start_point_shift && ellipse_start_point_shift <= 1.0) || throw(DomainError("ellipse_start_point_shift must be in the closed interval [0.0,1.0]"))
         (0.0 <= ellipse_sqrt_distortion && ellipse_sqrt_distortion <= 1.0) || throw(DomainError("ellipse_sqrt_distortion must be in the closed interval [0.0,1.0]"))
         return new(ellipse_start_point_shift, ellipse_sqrt_distortion)
@@ -220,7 +220,7 @@ Finds a minimum of `div(num_points, num_radial_directions, RoundUp)` internal po
 """
 struct RadialRandomMethod <: AbstractBivariateVectorMethod
     num_radial_directions::Int
-    function RadialRandomMethod(num_radial_directions) 
+    function RadialRandomMethod(num_radial_directions::Int) 
         num_radial_directions > 0 ||  throw(DomainError("num_radial_directions must be greater than zero")) 
         return new(num_radial_directions)
     end
@@ -323,7 +323,7 @@ Finds no internal points.
 struct AnalyticalEllipseMethod <: AbstractBivariateMethod 
     ellipse_start_point_shift::Float64
     ellipse_sqrt_distortion::Float64
-    function AnalyticalEllipseMethod(ellipse_start_point_shift::Float64=rand(), ellipse_sqrt_distortion=1.0)
+    function AnalyticalEllipseMethod(ellipse_start_point_shift::Float64=rand(), ellipse_sqrt_distortion::Float64=1.0)
         (0.0 <= ellipse_start_point_shift && ellipse_start_point_shift <= 1.0) || throw(DomainError("ellipse_start_point_shift must be in the closed interval [0.0,1.0]"))
         (0.0 <= ellipse_sqrt_distortion && ellipse_sqrt_distortion <= 1.0) || throw(DomainError("ellipse_sqrt_distortion must be in the closed interval [0.0,1.0]"))
         return new(ellipse_start_point_shift, ellipse_sqrt_distortion)
@@ -336,7 +336,7 @@ end
 Kept available for completeness but not recommended for use. A previous implementation of search directions from the MLE point was moved to [`RadialMLEMethod`].
     
 # Arguments
-- `num_level_sets`: the number of level sets used to get to the highest confidence level set specified in target_confidence_levels. `num_level_sets` ≥ length(target_confidence_levels)
+- `num_level_sets`: the number of level sets used to get to the desired confidence level set.
 - `ellipse_confidence_level`: a number ∈ (0.0, 1.0). the confidence level at which to construct the initial ellipse and find the initial level set boundary. Recommended to be around 0.1.
 - `ellipse_start_point_shift`: a number ∈ [0.0,1.0]. Default is `rand()` (defined on [0.0,1.0]), meaning that by default a different set of points will be found each time.
 - `ellipse_sqrt_distortion`: a number ∈ [0.0,1.0]. Default is `1.0`, meaning that by default points on the ellipse approximation are equally spaced with respect to arc length. 
@@ -344,7 +344,13 @@ Kept available for completeness but not recommended for use. A previous implemen
 
 # Details
 
-The method finds an initial boundary at a low confidence level close to the `ellipse_confidence_level` (see [`initial_continuation_solution!`](@ref)). Then it 'continues' this initial boundary sequentially to `num_level_sets` higher confidence level boundaries until the desired confidence level is reached. Presently this continuation is done by finding a point inside the boundary that is as close as possible to being a point that makes the boundary a [star domain](https://en.wikipedia.org/wiki/Star_domain) and is close to the centre of the area of the boundary in the x and y axes. We refer to this point as a 'star point', or a point that can see all the points on the boundary, without being blocked by an edge. We use a heuristic to estimate this, sampling points within the boundary and using these to produce kmeans, of which one is hopefully a star point and at the centre of the boundary. If we find a star point we then, for every point on the current boundary, push out in the direction defined by the line segment connecting the star point and the boundary to find the next confidence level boundary. If we do not find a star point, we assign each of the boundary points to the Kmeans point they are closest to (using a Euclidean distance metric), and use the direction defined by the line segments between a boundary point and it's associated Kmeans point to find the next confidence level boundary. This direction heuristic is carried out by [`refine_search_directions!`](@ref). A traveling salesman heuristic is used to reorder the boundary points into a new minimum perimeter polygon, [`PlaceholderLikelihood.minimum_perimeter_polygon!`](@ref), if the continuation of one boundary to the next causes the mapping of adjacent vertices to change (expected if a star point is not found). 
+The method finds an initial boundary at a low confidence level close to the `ellipse_confidence_level` (see [`initial_continuation_solution!`](@ref)). Then it 'continues' this initial boundary sequentially to `num_level_sets` higher confidence level boundaries until the desired confidence level is reached. 
+
+Presently this continuation is done by finding a point inside the boundary that is as close as possible to being a point that makes the boundary a [star domain](https://en.wikipedia.org/wiki/Star_domain) and is close to the centre of the area of the boundary in the x and y axes. We refer to this point as a 'star point', or a point that can see all the points on the boundary, without being blocked by an edge. We use a heuristic to estimate this, sampling points within the boundary and using these to produce kmeans, of which one is hopefully a star point and at the centre of the boundary. 
+
+If we find a star point we then, for every point on the current boundary, push out in the direction defined by the line segment connecting the star point and the boundary to find the next confidence level boundary. If we do not find a star point, we assign each of the boundary points to the Kmeans point they are closest to (using a Euclidean distance metric), and use the direction defined by the line segments between a boundary point and it's associated Kmeans point to find the next confidence level boundary. This direction heuristic is carried out by [`refine_search_directions!`](@ref). 
+
+A traveling salesman heuristic is used to reorder the boundary points into a new minimum perimeter polygon, [`PlaceholderLikelihood.minimum_perimeter_polygon!`](@ref), if the continuation of one boundary to the next causes the mapping of adjacent vertices to change (expected if a star point is not found). 
 
 For additional information on the `ellipse_start_point_shift` and `ellipse_sqrt_distortion` arguments see the keyword arguments for [`generate_N_clustered_points`](https://joeltrent.github.io/EllipseSampling.jl/stable/user_interface/#EllipseSampling.generate_N_clustered_points) in [EllipseSampling.jl](https://github.com/JoelTrent/EllipseSampling.jl).
 
@@ -370,7 +376,7 @@ struct ContinuationMethod <: AbstractBivariateMethod
     ellipse_start_point_shift::Float64
     level_set_spacing::Symbol
 
-    function ContinuationMethod(num_level_sets, ellipse_confidence_level, ellipse_start_point_shift=rand(), level_set_spacing=:loglikelihood)
+    function ContinuationMethod(num_level_sets::Int, ellipse_confidence_level::Float64, ellipse_start_point_shift::Float64=rand(), level_set_spacing::Symbol=:loglikelihood)
         num_level_sets > 0 || throw(DomainError("num_level_sets must be greater than zero"))
 
         (0.0 < ellipse_confidence_level && ellipse_confidence_level < 1.0) || throw(DomainError("ellipse_confidence_level must be in the open interval (0.0,1.0)"))
@@ -391,7 +397,7 @@ end
 Prints a list of available bivariate methods. Available bivariate methods include [`IterativeBoundaryMethod`](@ref), [`RadialRandomMethod`](@ref), [`RadialMLEMethod`](@ref), [`SimultaneousMethod`](@ref), [`Fix1AxisMethod`](@ref), [`ContinuationMethod`](@ref) and [`AnalyticalEllipseMethod`](@ref).
 """
 function bivariate_methods()
-    methods = [IterativeBoundaryMethod, RadialRandomMethod, RadialRandomMethod, RadialMLEMethod, SimultaneousMethod, Fix1AxisMethod, ContinuationMethod, AnalyticalEllipseMethod]
+    methods = [IterativeBoundaryMethod, RadialRandomMethod, RadialMLEMethod, SimultaneousMethod, Fix1AxisMethod, ContinuationMethod, AnalyticalEllipseMethod]
     println(string("Available bivariate methods are: ", [i != length(methods) ? string(method, ", ") : string(method) for (i,method) in enumerate(methods)]...))
     return nothing
 end

@@ -232,9 +232,9 @@ end
 - `show_progress`: boolean variable specifying whether to display progress bars on the percentage of `θcombinations` completed and estimated time of completion. Default is `model.show_progress`.
 
 !!! note existing_profiles meanings
-    * :ignore means profiles that already exist will not be recomputed even if they contain fewer `num_points` boundary points. 
-    * :merge means profiles that already exist will be merged with profiles from the current algorithm run to reach `num_points`. If the existing profile already has at least `num_points` boundary points then that profile will not be recomputed. Otherwise, the specified method will be run starting from the difference between `num_points` and the number of points in the existing profile. The result of that method run will be merged with the existing profile.  
-    * :overwrite means profiles that already exist will be overwritten, regardless of how many points they contain.
+    - :ignore means profiles that already exist will not be recomputed even if they contain fewer `num_points` boundary points. 
+    - :merge means profiles that already exist will be merged with profiles from the current algorithm run to reach `num_points`. If the existing profile already has at least `num_points` boundary points then that profile will not be recomputed. Otherwise, the specified method will be run starting from the difference between `num_points` and the number of points in the existing profile. The result of that method run will be merged with the existing profile.  
+    - :overwrite means profiles that already exist will be overwritten, regardless of how many points they contain.
 
 # Details
 
@@ -393,7 +393,8 @@ end
 
 Profiles m random two-way combinations of model parameters (sampling without replacement), where 0 < m ≤ binomial(model.core.num_pars,2).
 
-`θcombinations_is_unique` is not a valid keyword argument for this function method as it internally produces the parameter combinations which are guaranteed to be unique.
+!!! warn θcombinations_is_unique keyword argument
+    `θcombinations_is_unique` is not a valid keyword argument for this function method as it internally produces the parameter combinations which are guaranteed to be unique.
 """
 function bivariate_confidenceprofiles!(model::LikelihoodModel, 
                                         profile_m_random_combinations::Int, 
@@ -425,7 +426,8 @@ end
 
 Profiles all two-way combinations of model parameters.
 
-`θcombinations_is_unique` is not a valid keyword argument for this function method as it internally produces the parameter combinations which are guaranteed to be unique.
+!!! warn θcombinations_is_unique keyword argument
+    `θcombinations_is_unique` is not a valid keyword argument for this function method as it internally produces the parameter combinations which are guaranteed to be unique.
 """
 function bivariate_confidenceprofiles!(model::LikelihoodModel, 
                                         num_points::Int; 

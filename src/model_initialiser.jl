@@ -125,7 +125,7 @@ function initialiseLikelihoodModel(loglikefunction::Function,
     predictfunction::Union{Function, Missing},
     data::Union{Tuple, NamedTuple},
     θnames::Vector{<:Symbol},
-    θinitialGuess::AbstractVector{<:Real},
+    θinitialguess::AbstractVector{<:Real},
     θlb::AbstractVector{<:Real},
     θub::AbstractVector{<:Real},
     θmagnitudes::AbstractVector{<:Real}=Float64[];
