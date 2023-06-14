@@ -151,7 +151,7 @@ function initialiseLikelihoodModel(loglikefunction::Function,
     end
 
     corelikelihoodmodel = CoreLikelihoodModel(loglikefunction, predictfunction, data, θnames, θnameToIndex,
-                                        θlb, θub, θmagnitudes, θmle, ymle, maximisedmle, num_pars)
+                                        θlb.*1.0, θub.*1.0, θmagnitudes.*1.0, θmle, ymle, maximisedmle, num_pars)
 
 
     # conf_levels_evaluated = DefaultDict{Float64, Bool}(false)

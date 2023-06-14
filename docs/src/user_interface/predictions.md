@@ -17,3 +17,10 @@ generate_predictions_univariate!
 generate_predictions_bivariate! 
 generate_predictions_dim_samples!
 ```
+
+## Structs
+
+```@docs
+AbstractPredictionStruct
+PredictionStruct
+```

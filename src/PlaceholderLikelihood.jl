@@ -35,7 +35,7 @@ export EllipseMLEApprox, CoreLikelihoodModel, LikelihoodModel,
 # FUNCTIONS ###############################################################################
 export initialiseLikelihoodModel,
     getMLE_ellipse_approximation!, check_ellipse_approx_exists!,
-    setθmagnitudes!, setbounds!,
+    setmagnitudes!, setbounds!,
 
     optimise, optimise_unbounded,
 
@@ -115,7 +115,51 @@ end
 import SnoopPrecompile
 
 SnoopPrecompile.@precompile_all_calls begin
-    1==2
+    
+    a, b = 2.0, 1.0
+    α = 0.2 * π
+    Cx, Cy = 2.0, 2.0
+
+    Hw11 = (cos(α)^2 / a^2 + sin(α)^2 / b^2)
+    Hw22 = (sin(α)^2 / a^2 + cos(α)^2 / b^2)
+    Hw12 = cos(α) * sin(α) * (1 / a^2 - 1 / b^2)
+    Hw_norm = [Hw11 Hw12; Hw12 Hw22]
+
+    confidence_level = 0.95
+    Hw = Hw_norm ./ (0.5 ./ (quantile(Chisq(2), confidence_level) * 0.5))
+
+    data = (θmle=[Cx, Cy], Hmle=Hw)
+
+    θnames = [:x, :y]
+    θG = [2.0, 2.0]
+    lb = [0.0, 0.0]
+    ub = [4.0, 4.0]
+    par_magnitudes = [1, 1]
+    function loglike(θ::AbstractVector, data); ellipse_loglike(θ, data); end
+    function loglike(θ::Tuple, data); ellipse_loglike([θ...], data); end
+
+    m = initialiseLikelihoodModel(loglike, data, θnames, θG, lb, ub, par_magnitudes)
+    getMLE_ellipse_approximation!(m)
+
+    N=8
+    for profile_type in [LogLikelihood(), EllipseApprox(), EllipseApproxAnalytical()]
+        univariate_confidenceintervals!(m, profile_type=profile_type)
+        for method in [IterativeBoundaryMethod(4, 2, 2), RadialRandomMethod(3), SimultaneousMethod(), Fix1AxisMethod(), ContinuationMethod(2, 0.1, 0.0)]
+            bivariate_confidenceprofiles!(m, N, method=method, profile_type=profile_type)
+        end
+    end
+
+    univariate_confidenceintervals!(m, use_existing_profiles=true, confidence_level=0.9, num_points_in_interval=10)
+
+    dimensional_likelihood_sample!(m, 1, 100, sample_type=UniformGridSamples())
+    dimensional_likelihood_sample!(m, 1, 100, sample_type=UniformRandomSamples())
+    dimensional_likelihood_sample!(m, 1, 100, sample_type=LatinHypercubeSamples())
+
+    dimensional_likelihood_sample!(m, 2, 10, sample_type=UniformGridSamples())
+    dimensional_likelihood_sample!(m, 2, 100, sample_type=UniformRandomSamples())
+    dimensional_likelihood_sample!(m, 2, 100, sample_type=LatinHypercubeSamples())
+
+
 end
 
 end

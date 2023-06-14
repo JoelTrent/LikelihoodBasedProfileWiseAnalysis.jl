@@ -133,19 +133,10 @@ function get_points_in_interval!(model::LikelihoodModel,
 
     0 < num_points_in_interval || throw(DomainError("num_points_in_interval must be a strictly positive integer"))
     additional_width >= 0 || throw(DomainError("additional_width must be greater than or equal to zero"))
-    df = model.uni_profiles_df
-    row_subset = df.num_points .> 0
-
-    row_subset .= row_subset .& (df.num_points .!= (num_points_in_interval+2) .| 
-                                    (df.additional_width .!= additional_width))
-    if !isempty(confidence_levels)
-        row_subset .= row_subset .& (df.conf_level .∈ Ref(confidence_levels))
-    end
-    if !isempty(profile_types)
-        row_subset .= row_subset .& (df.profile_type .∈ Ref(profile_types))
-    end
-
-    sub_df = @view(df[row_subset, :])
+    
+    sub_df = desired_df_subset(model.uni_profiles_df, model.num_uni_profiles, Int[], 
+                confidence_levels, profile_types, 
+                for_points_in_interval=(true, num_points_in_interval, additional_width))
 
     if nrow(sub_df) < 1
         return nothing

@@ -6,8 +6,6 @@ Pages = ["ellipse_likelihood.md"]
 
 ```@docs
 PlaceholderLikelihood.getMLE_hessian_and_covariance
-PlaceholderLikelihood.getMLE_ellipse_approximation!
-PlaceholderLikelihood.check_ellipse_approx_exists!
 ```
 
 ## Likelihood

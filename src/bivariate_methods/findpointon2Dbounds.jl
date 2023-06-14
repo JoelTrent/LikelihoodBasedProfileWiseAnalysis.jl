@@ -62,15 +62,15 @@ function findpointonbounds(model::LikelihoodModel,
     return findpointonbounds(model, internalpoint, direction_πradians, direction2D[1], direction2D[2], ind1, ind2, returnboundindex)
 end
 
-function findpointonbounds(model::LikelihoodModel, 
-                            internalpoint::Vector{<:Float64}, 
-                            direction_πradians::Float64, 
-                            ind1::Int, 
-                            ind2::Int,
-                            returnboundindex::Bool=false)
+# function findpointonbounds(model::LikelihoodModel, 
+#                             internalpoint::Vector{<:Float64}, 
+#                             direction_πradians::Float64, 
+#                             ind1::Int, 
+#                             ind2::Int,
+#                             returnboundindex::Bool=false)
 
-    cosDir = cospi(direction_πradians)
-    sinDir = sinpi(direction_πradians)
+#     cosDir = cospi(direction_πradians)
+#     sinDir = sinpi(direction_πradians)
 
-    return findpointonbounds(model, internalpoint, direction_πradians, cosDir, sinDir, ind1, ind2, returnboundindex)
-end
+#     return findpointonbounds(model, internalpoint, direction_πradians, cosDir, sinDir, ind1, ind2, returnboundindex)
+# end

@@ -87,7 +87,7 @@ using EllipseSampling
 
             targetll = PlaceholderLikelihood.get_target_loglikelihood(m, 0.95, EllipseApprox(), 1)
 
-            for i in 1:3
+            for i in 1:6
                 lls = [PlaceholderLikelihood.ellipse_loglike(m.uni_profiles_dict[i].interval_points.points[:, j], m.core.data) for j in 1:2]
                 @test isapprox(lls .- targetll, zeros(2), atol=1e-14)
 
@@ -137,6 +137,139 @@ using EllipseSampling
             for i in 7:9
                 @test all(m.dim_samples_dict[i].ll .≥ targetll_standardised)
             end            
+        end
+
+        @testset "BoundaryIsAZeroMethodExtensions_EllipseLikelihood" begin        
+            N = 50
+    
+            m = initialiseLikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes)
+
+            # UNIVARIATE
+            targetll = PlaceholderLikelihood.get_target_loglikelihood(m, 0.95, EllipseApprox(), 1)
+            univariate_confidenceintervals!(m, [:x])
+
+            for i in 1:1
+                lls = [PlaceholderLikelihood.ellipse_loglike(m.uni_profiles_dict[i].interval_points.points[:, j], m.core.data) for j in 1:2]
+                @test isapprox(lls .- targetll, zeros(2), atol=1e-14)
+                @test isapprox(m.uni_profiles_dict[i].interval_points.ll .- targetll, zeros(2), atol=1e-14)
+                @test m.num_uni_profiles == 1
+            end
+
+            m = initialiseLikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes)
+            univariate_confidenceintervals!(m, 1)
+
+            for i in 1:1
+                lls = [PlaceholderLikelihood.ellipse_loglike(m.uni_profiles_dict[i].interval_points.points[:, j], m.core.data) for j in 1:2]
+                @test isapprox(lls .- targetll, zeros(2), atol=1e-14)
+                @test isapprox(m.uni_profiles_dict[i].interval_points.ll .- targetll, zeros(2), atol=1e-14)
+                @test m.num_uni_profiles == 1
+            end
+    
+            # BIVARIATE
+            targetll = PlaceholderLikelihood.get_target_loglikelihood(m, 0.95, EllipseApprox(), 2)
+            bivariate_confidenceprofiles!(m, [[:x, :y]], N)
+    
+            for i in 1:1
+                lls = [PlaceholderLikelihood.ellipse_loglike(m.biv_profiles_dict[i].confidence_boundary[:,j], m.core.data) for j in 1:N] 
+                @test isapprox(lls .- targetll, zeros(N), atol=1e-14)
+                @test m.num_biv_profiles == 1
+            end
+
+            m = initialiseLikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes)
+            bivariate_confidenceprofiles!(m, 2, N) # will get set to 1
+
+            for i in 1:1
+                lls = [PlaceholderLikelihood.ellipse_loglike(m.biv_profiles_dict[i].confidence_boundary[:, j], m.core.data) for j in 1:N]
+                @test isapprox(lls .- targetll, zeros(N), atol=1e-14)
+                @test m.num_biv_profiles == 1
+            end
+        end
+
+        @testset "UseExistingProfilesBehaviour_EllipseLikelihood" begin
+            m = initialiseLikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes)
+
+            setbounds!(m, lb=[-10000000.0, -10000000.0], ub=[10000000.0, 10000000.0])
+
+            univariate_confidenceintervals!(m, [:x], confidence_level=0.90)
+            t1 = @elapsed univariate_confidenceintervals!(m, [:x], confidence_level=0.90, existing_profiles=:overwrite)
+
+            univariate_confidenceintervals!(m, [:x], confidence_level=0.95)
+            univariate_confidenceintervals!(m, [:x], confidence_level=0.70)
+
+            univariate_confidenceintervals!(m, [:x], confidence_level=0.90, use_existing_profiles=true, existing_profiles=:overwrite)
+            t2 = @elapsed univariate_confidenceintervals!(m, [:x], confidence_level=0.90, use_existing_profiles=true, existing_profiles=:overwrite)
+
+            @test t2 < t1
+        end
+
+        @testset "ExistingProfilesBehaviour_EllipseLikelihood" begin 
+            m = initialiseLikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes)
+
+            # UNIVARIATE
+            univariate_confidenceintervals!(m, [:x])
+            get_points_in_interval!(m, 10; confidence_levels=[0.95], profile_types=[LogLikelihood()])
+
+            @test m.uni_profiles_df[1, :num_points] == 12
+
+            univariate_confidenceintervals!(m, [:x], existing_profiles=:ignore)
+            @test m.uni_profiles_df[1, :num_points] == 12
+            @test length(m.uni_profiles_dict[1].interval_points.ll) == 12
+            
+            univariate_confidenceintervals!(m, [:x], existing_profiles=:overwrite)
+            @test m.uni_profiles_df[1, :num_points] == 2
+            @test length(m.uni_profiles_dict[1].interval_points.ll) == 2
+
+            # BIVARIATE
+            bivariate_confidenceprofiles!(m, 10)
+            bivariate_confidenceprofiles!(m, 20, existing_profiles=:ignore)
+            @test m.biv_profiles_df[1, :num_points] == 10
+            @test size(m.biv_profiles_dict[1].confidence_boundary, 2) == 10
+
+            existing_points = m.biv_profiles_dict[1].confidence_boundary .* 1.0
+
+            bivariate_confidenceprofiles!(m, 20, existing_profiles=:merge)
+            @test m.biv_profiles_df[1, :num_points] == 20
+            @test size(m.biv_profiles_dict[1].confidence_boundary, 2) == 20
+            @test isapprox(m.biv_profiles_dict[1].confidence_boundary[:, 1:10], existing_points)
+
+            existing_points = m.biv_profiles_dict[1].confidence_boundary .* 1.0
+
+            bivariate_confidenceprofiles!(m, 20, existing_profiles=:overwrite)
+            @test m.biv_profiles_df[1, :num_points] == 20
+            @test size(m.biv_profiles_dict[1].confidence_boundary, 2) == 20
+            @test !isapprox(m.biv_profiles_dict[1].confidence_boundary, existing_points)
+
+            # DIMENSIONAL
+            dimensional_likelihood_sample!(m, 2, 1000)
+            existing_points = m.dim_samples_dict[1].points[:,1] .* 1.0
+            num_points = m.dim_samples_df[1, :num_points] .* 1
+
+            dimensional_likelihood_sample!(m, 2, 1000, existing_profiles=:ignore)
+            @test m.dim_samples_df[1, :num_points] == num_points
+            @test isapprox(m.dim_samples_dict[1].points[:, 1], existing_points)
+
+            dimensional_likelihood_sample!(m, 2, 100, existing_profiles=:overwrite)
+            @test m.dim_samples_df[1, :num_points] != num_points
+            @test (m.dim_samples_df[1, :num_points] == 0) || !isapprox(m.dim_samples_dict[1].points[:, 1], existing_points)
+        end
+
+        @testset "SetMagnitudes_EllipseLikelihood" begin
+            m = initialiseLikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes)
+
+            @test isapprox(m.core.θmagnitudes, par_magnitudes)
+
+            new_par_magnitudes = [20.0, 20.0]
+            setmagnitudes!(m, [20.0, 20.0])
+            @test isapprox(m.core.θmagnitudes, new_par_magnitudes)
+        end
+        
+        @testset "SetBounds_EllipseLikelihood" begin
+            m = initialiseLikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes)
+
+            setbounds!(m, lb=[-100.0, -50.0], ub=[2.0, 4.0])
+
+            @test isapprox(m.core.θlb, [-100.0, -50.0])
+            @test isapprox(m.core.θub, [2.0, 4.0])
         end
     end
     

@@ -253,7 +253,7 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
                                     
     existing_profiles ∈ [:ignore, :merge, :overwrite] || throw(ArgumentError("existing_profiles can only take value :ignore, :merge or :overwrite"))
 
-    # need at least 3 boundary points some algorithms to work
+    # need at least 3 boundary points for some algorithms to work
     num_points = max(3, num_points)
 
     if profile_type isa AbstractEllipseProfileType
@@ -329,10 +329,10 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
 
     # p = Progress(length(θcombinations); desc="Computing bivariate profiles: ",
     #             dt=PROGRESS__METER__DT, enabled=show_progress, showspeed=true)
-    profiles_to_add = @showprogress PROGRESS__METER__DT "Computing bivariate profiles: " @distributed (vcat) for (ind1, ind2) in θcombinations
-        [((ind1, ind2), bivariate_confidenceprofile(bivariate_optimiser, model, num_points, 
+    profiles_to_add = @showprogress PROGRESS__METER__DT "Computing bivariate profiles: " @distributed (vcat) for i in 1:len_θcombinations
+        [((θcombinations[i][1], θcombinations[i][2]), bivariate_confidenceprofile(bivariate_optimiser, model, num_new_points[i],
                                                         confidence_level, consistent, 
-                                                        ind1, ind2, profile_type,
+                                                        θcombinations[i][1], θcombinations[i][2], profile_type,
                                                         method, mle_targetll,
                                                         save_internal_points))]
         # next!(p)

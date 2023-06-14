@@ -8,7 +8,21 @@ Pages = ["initialisation.md"]
 initialiseLikelihoodModel
 LikelihoodModel
 CoreLikelihoodModel
+```
+
+# Ellipse Approximation
+
+```@docs
+getMLE_ellipse_approximation!
+check_ellipse_approx_exists!
 EllipseMLEApprox
+```
+
+# Modifying Parameter Magnitudes and Bounds
+
+```@docs
+setmagnitudes!
+setbounds!
 ```
 
 # Parameter Transformations

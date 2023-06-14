@@ -1,4 +1,4 @@
-function setθmagnitudes!(model::LikelihoodModel,
+function setmagnitudes!(model::LikelihoodModel,
                             θmagnitudes::AbstractVector{<:Real})
 
     length(θmagnitudes) == model.core.num_pars || throw(ArgumentError(string("θmagnitudes must have the same length as the number of model parameters (", model.core.num_pars, ")")))
@@ -13,11 +13,11 @@ function setbounds!(model::LikelihoodModel;
 
     if !isempty(lb)
         length(lb) == model.core.num_pars || throw(ArgumentError(string("lb must have the same length as the number of model parameters (", model.core.num_pars, ")")))
-        model.core.θlb .= lb
+        model.core.θlb .= lb .* 1.0
     end
     if !isempty(ub)
         length(ub) == model.core.num_pars || throw(ArgumentError(string("ub must have the same length as the number of model parameters (", model.core.num_pars, ")")))
-        model.core.θub .= ub
+        model.core.θub .= ub .* 1.0
     end
     return nothing
 end
@@ -113,7 +113,7 @@ function desired_df_subset(df::DataFrame,
         row_subset .= row_subset .& .!(df_sub.not_evaluated_predictions)
     end
     if sample_dimension > 0
-        row_subset .= row_subset .& df_sub.dimension .== sample_dimension
+        row_subset .= row_subset .& (df_sub.dimension .== sample_dimension)
     end
 
     if !isempty(confidence_levels)
@@ -127,6 +127,7 @@ function desired_df_subset(df::DataFrame,
         row_subset .= row_subset .& (df_sub.sample_type .∈ Ref(sample_types))
     end
 
+
     return @view(df_sub[row_subset, :])
 end
 
@@ -135,11 +136,19 @@ function desired_df_subset(df::DataFrame,
                             θs_of_interest::Vector{<:Int},
                             confidence_levels::Union{Float64, Vector{<:Float64}},
                             profile_types::Vector{<:AbstractProfileType};
+                            for_points_in_interval::Tuple{Bool,Int,Real}=(false,0,0),
                             for_prediction_generation::Bool=false,
                             for_prediction_plots::Bool=false)
 
     df_sub = @view(df[1:num_used_rows, :])    
     row_subset = df_sub.num_points .> 0
+
+    if for_points_in_interval[1]
+        num_points_in_interval, additional_width = for_points_in_interval[2:3]
+        row_subset .= row_subset .& ((df_sub.num_points .!= (num_points_in_interval+2)) .| 
+                        (df_sub.additional_width .!= additional_width))
+    end
+
     if for_prediction_generation
         row_subset .= row_subset .& df_sub.not_evaluated_predictions
     end
