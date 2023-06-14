@@ -1,3 +1,10 @@
+"""
+    add_prediction_function!(model::LikelihoodModel, predictfunction::Function)
+
+Adds a prediction function, `predictfunction`, to `model`.
+    
+Requirements for `predictfunction`: a function to generate model predictions from that is paired with the `loglikefunction`. Takes three arguments, `θ`, `data` and `t`, in that order, where `θ` and `data` are the same as for `loglikefunction` and `t` needs to be an optional third argument. When `t` is not specified, the prediction function should be evaluated for the same time points/independent variable as the data. When `t` is specified, the prediction function should be evaluated for those specified time points/independent variable.
+"""
 function add_prediction_function!(model::LikelihoodModel,
                                     predictfunction::Function)
 
@@ -8,6 +15,11 @@ function add_prediction_function!(model::LikelihoodModel,
     return nothing
 end
 
+"""
+    check_prediction_function_exists(model::LikelihoodModel)
+
+Checks if a prediction function is stored in `model`.
+"""
 function check_prediction_function_exists(model::LikelihoodModel)
     if ismissing(model.core.predictfunction) 
         @warn "LikelihoodModel does not contain a function for evaluating predictions. Please add a prediction function using add_prediction_function!"

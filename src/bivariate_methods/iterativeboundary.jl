@@ -74,7 +74,10 @@ function edge_length(boundary, candidate_point, index::Int, relative_magnitude)
 end
 
 """
-internal_angle_from_pi!(vertex_internal_angle_objs, indexes, boundary, adjacent_vertices)
+    internal_angle_from_pi!(vertex_internal_angle_objs, 
+        indexes::UnitRange, 
+        boundary, 
+        adjacent_vertices)
 
 The magnitude the internal angle in radians between two adjacent edges is from pi radians - i.e. how far away the two edges are from representing a straight boundary. If a boundary is straight then the objective is 0.0 radians, whereas if the boundary has an internal angle of pi/4 radians (45 deg) the objective is pi*3/4 (135 deg). Computes this by considering the angle between the two vectors that can be used to represent the edges (using `AngleBetweenVectors.jl`).
 """
@@ -205,10 +208,26 @@ end
 
 
 """
-newboundarypoint!(p::NamedTuple, point_is_on_bounds::BitVector, edge_anti_on_bounds::BitVector, boundary::Matrix{Float64}, 
-    boundary_all::Matrix{Float64}, internal_all::Matrix{Float64}, ll_values::Vector{Float64}, internal_count::Int,
-    bivariate_optimiser::Function, model::LikelihoodModel, edge_anti::Vector{Int}, num_vertices::Int, ind1::Int, ind2::Int,
-    biv_opt_is_ellipse_analytical::Bool, ve1::Int, ve2::Int, relative_magnitude::Float64, bound_warning::Bool, save_internal_points::Bool)
+    newboundarypoint!(p::NamedTuple, 
+        point_is_on_bounds::BitVector, 
+        edge_anti_on_bounds::BitVector, 
+        boundary::Matrix{Float64}, 
+        boundary_all::Matrix{Float64}, 
+        internal_all::Matrix{Float64}, 
+        ll_values::Vector{Float64}, 
+        internal_count::Int,
+        bivariate_optimiser::Function, 
+        model::LikelihoodModel, 
+        edge_anti::Vector{Int}, 
+        num_vertices::Int, 
+        ind1::Int, 
+        ind2::Int,
+        biv_opt_is_ellipse_analytical::Bool, 
+        ve1::Int, 
+        ve2::Int, 
+        relative_magnitude::Float64, 
+        bound_warning::Bool, 
+        save_internal_points::Bool)
 
 
     

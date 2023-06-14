@@ -39,7 +39,12 @@ Supertype for bivariate boundary finding methods that search between two distinc
 abstract type AbstractBivariateVectorMethod <: AbstractBivariateMethod end
 
 """
-    IterativeBoundaryMethod(initial_num_points::Int, angle_points_per_iter::Int, edge_points_per_iter::Int, radial_start_point_shift::Float64=rand(), ellipse_sqrt_distortion::Float64=1.0, use_ellipse::Bool=false)
+    IterativeBoundaryMethod(initial_num_points::Int, 
+        angle_points_per_iter::Int, 
+        edge_points_per_iter::Int, 
+        radial_start_point_shift::Float64=rand(), 
+        ellipse_sqrt_distortion::Float64=1.0, 
+        use_ellipse::Bool=false)
 
 Method for iteratively improving an initial boundary of `initial_num_points`, found by pushing out from the MLE point in directions defined by either [`RadialMLEMethod`](@ref), `use_ellipse=true`, or [`RadialRandomMethod`], `use_ellipse=false` (see [`PlaceholderLikelihood.findNpointpairs_radialMLE!`](@ref), [`PlaceholderLikelihood.iterativeboundary_init`](@ref) and [`PlaceholderLikelihood.bivariate_confidenceprofile_iterativeboundary`](@ref)).
 
@@ -63,8 +68,8 @@ Once an initial boundary is found by pushing out from the MLE point in direction
 
 Regions we define as needing improvement are those with:
 
-1. Internal angles between adjacent edges that are far from being straight (180 degrees or π radians). The region defined by these edges is not well explored as the real boundary edge in this region likely has some degree of smooth curvature. It may also indicate that one of these edges cuts our boundary into a enclosed region and an unexplored region on the other side of the edge. In the event that a vertex is on a user-provided bound for a parameter, this objective is set to zero, as this angle region is a byproduct of user input and not the actual loglikelihood region. This objective is defined in [`PlaceholderLikelihood.internal_angle_from_pi!`](@ref).
-2. Edges between adjacent vertices that have a large euclidean distance. The regions between these vertices is not well explored as it is unknown whether the boundary actually is straight between these vertices. On average the closer two vertices are, the more likely the edge between the two points is well approximated by a straight line, and thus our mesh is a good representation of the true loglikelihood boundary. This objective is defined in [`PlaceholderLikelihood.edge_length`](@ref).
+1. Internal angles between adjacent edges that are far from being straight (180 degrees or π radians). The region defined by these edges is not well explored as the real boundary edge in this region likely has some degree of smooth curvature. It may also indicate that one of these edges cuts our boundary into a enclosed region and an unexplored region on the other side of the edge. In the event that a vertex is on a user-provided bound for a parameter, this objective is set to zero, as this angle region is a byproduct of user input and not the actual log-likelihood region. This objective is defined in [`PlaceholderLikelihood.internal_angle_from_pi!`](@ref).
+2. Edges between adjacent vertices that have a large euclidean distance. The regions between these vertices is not well explored as it is unknown whether the boundary actually is straight between these vertices. On average the closer two vertices are, the more likely the edge between the two points is well approximated by a straight line, and thus our mesh is a good representation of the true log-likelihood boundary. This objective is defined in [`PlaceholderLikelihood.edge_length`](@ref).
 
 The method is implemented as follows:
 1. Create edges between adjacent vertices on the intial boundary. Calculate angle and edge length objectives for these edges and vertices and place them into tracked heaps.
@@ -80,21 +85,21 @@ The method is implemented as follows:
     3. Same as for step 3.3.
     4. Same as for step 3.4.
 
-!!! note angle_points_per_iter and edge_points_per_iter
+!!! note "angle_points_per_iter and edge_points_per_iter"
 
     At least one of `angle_points_per_iter` and `edge_points_per_iter` must be non-zero.
 
-!!! note Using a candidate point to find a new boundary point
+!!! note "Using a candidate point to find a new boundary point"
 
     Uses [`PlaceholderLikelihood.newboundarypoint!`](@ref).
 
-    If a candidate point is on the loglikelihood threshold boundary, we accept the point.
+    If a candidate point is on the log-likelihood threshold boundary, we accept the point.
 
     If a candidate point is inside the boundary, then we search in the normal direction to the edge until we find a boundary point or hit the parameter bound, accepting either.
 	
     If a candidate point is outside the boundary we find the edge, `e_intersect` of our boundary polygon that is intersected by the line in the normal direction of the candidate edge, which passes through the candidate point. Once this edge is found, we find the vertex on `e_intersect` that is closest to our candidate point. We setup a 1D line search/bracketing method between these two points. In the event that no boundary points are found between these two points it is likely that multiple boundaries exist. If so, we break the candidate point's edge and `e_intersect` and reconnect the vertexes such that we now have multiple boundary polygons.
 
-!!! warn Largest boundary polygon at any iteration must have at least three points.
+!!! warning "Largest boundary polygon at any iteration must have at least three points"
 
     If the largest polygon has less than two points the method will display a warning message and terminate, returning the boundary found up until then. 
 
@@ -106,7 +111,7 @@ This method is unlikely to find boundaries that do not contain the MLE point (if
 
 ## Impact of parameter bounds
 
-If a parameter bound is in the way of reaching the boundary in a given search direction, the point on that bound will be returned as the boundary point. For the bracketing method to work, parameter values on the bounds need to be legal and return a non `Inf` value from the loglikelihood function. Interest parameter bounds that have ranges magnitudes larger than the range of the boundary may prevent the true boundary from being found. Additionally, the bracketing method will be less efficient if the interest parameter bounds are far from the true boundary. 
+If a parameter bound is in the way of reaching the boundary in a given search direction, the point on that bound will be returned as the boundary point. For the bracketing method to work, parameter values on the bounds need to be legal and return a non `Inf` value from the log-likelihood function. Interest parameter bounds that have ranges magnitudes larger than the range of the boundary may prevent the true boundary from being found. Additionally, the bracketing method will be less efficient if the interest parameter bounds are far from the true boundary. 
 
 # Internal Points
 
@@ -139,9 +144,10 @@ end
 
 
 """
-    RadialMLEMethod(ellipse_start_point_shift::Float64=rand(), ellipse_sqrt_distortion::Float64=0.01)
+    RadialMLEMethod(ellipse_start_point_shift::Float64=rand(), 
+        ellipse_sqrt_distortion::Float64=0.01)
 
-Method for finding the bivariate boundary of a confidence profile by bracketing between the MLE point and points on the provided bounds in directions given by points found on the boundary of a ellipse approximation of the loglikelihood function around the MLE, `e`, using [EllipseSampling.jl](https://github.com/JoelTrent/EllipseSampling.jl) (see [`PlaceholderLikelihood.findNpointpairs_radialMLE!`](@ref) and [`PlaceholderLikelihood.bivariate_confidenceprofile_vectorsearch`](@ref))..
+Method for finding the bivariate boundary of a confidence profile by bracketing between the MLE point and points on the provided bounds in directions given by points found on the boundary of a ellipse approximation of the log-likelihood function around the MLE, `e`, using [EllipseSampling.jl](https://github.com/JoelTrent/EllipseSampling.jl) (see [`PlaceholderLikelihood.findNpointpairs_radialMLE!`](@ref) and [`PlaceholderLikelihood.bivariate_confidenceprofile_vectorsearch`](@ref))..
 
 # Arguments
 - `ellipse_start_point_shift`: a number ∈ [0.0,1.0]. Default is `rand()` (defined on [0.0,1.0]), meaning that by default a different set of points will be found each time.
@@ -161,7 +167,7 @@ This method is unlikely to find boundaries that do not contain the MLE point (if
 
 ## Impact of parameter bounds
 
-If a parameter bound is in the way of reaching the boundary in a given search direction, the point on that bound will be returned as the boundary point. For the bracketing method to work, parameter values on the bounds need to be legal and return a non `Inf` value from the loglikelihood function. Interest parameter bounds that have ranges magnitudes larger than the range of the boundary may prevent the true boundary from being found. Additionally, the bracketing method will be less efficient if the interest parameter bounds are far from the true boundary. 
+If a parameter bound is in the way of reaching the boundary in a given search direction, the point on that bound will be returned as the boundary point. For the bracketing method to work, parameter values on the bounds need to be legal and return a non `Inf` value from the log-likelihood function. Interest parameter bounds that have ranges magnitudes larger than the range of the boundary may prevent the true boundary from being found. Additionally, the bracketing method will be less efficient if the interest parameter bounds are far from the true boundary. 
 
 # Internal Points
 
@@ -198,7 +204,7 @@ The method first uniformly samples the region specified by the bounds for the tw
     
 Given a fixed number of desired boundary points, we can decrease the cost of finding internal points by increasing the number of radial directions to explore, `num_radial_directions`, at each internal point. However, it is important to balance `num_radial_directions` with the desired number of boundary points. If `num_radial_directions` is large relative to the number of boundary points, then the boundary the method finds may constitute a local search around the found internal points. Resultantly, there may be regions were the boundary is not well explored. This will be less of an issue for more 'circular' boundary regions.   
 
-[`IterativeBoundaryMethod`](@ref) may be preferred over this method if evaluating the loglikelihood function is expensive or the bounds provided for the interest parameters are much larger than the boundary, as the uniform random sampling for internal points will become very expensive. 
+[`IterativeBoundaryMethod`](@ref) may be preferred over this method if evaluating the log-likelihood function is expensive or the bounds provided for the interest parameters are much larger than the boundary, as the uniform random sampling for internal points will become very expensive. 
 
 # Boundary finding method
 
@@ -208,7 +214,7 @@ This method can find multiple boundaries (if they exist).
 
 ## Impact of parameter bounds
 
-If a parameter bound is in the way of reaching the boundary in a given search direction, in contrast to [`RadialMLEMethod`](@ref), the point on that bound will not be returned as the boundary point. For the bracketing method to work, parameter values on the bounds need to be legal and return a non `Inf` value from the loglikelihood function. Interest parameter bounds that have ranges magnitudes larger than the range of the boundary may prevent the true boundary from being found. Additionally, the bracketing method will be less efficient if the interest parameter bounds are far from the true boundary. The method will fail if the interest parameter bounds are fully contained by the boundary.
+If a parameter bound is in the way of reaching the boundary in a given search direction, in contrast to [`RadialMLEMethod`](@ref), the point on that bound will not be returned as the boundary point. For the bracketing method to work, parameter values on the bounds need to be legal and return a non `Inf` value from the log-likelihood function. Interest parameter bounds that have ranges magnitudes larger than the range of the boundary may prevent the true boundary from being found. Additionally, the bracketing method will be less efficient if the interest parameter bounds are far from the true boundary. The method will fail if the interest parameter bounds are fully contained by the boundary.
 
 # Internal Points
 
@@ -237,7 +243,7 @@ Recommended for use with the [`LogLikelihood`](@ref) profile type.
 
 The method uniformly samples the region specified by the bounds for the two interest parameters until as many internal and external boundary points as the desired number of boundary points are found. These points are paired in the order they are found. A bracketing method is then used to find a boundary point between the point pair (the external point and the internal point).
 
-[`RadialRandomMethod`](@ref) and [`IterativeBoundaryMethod`](@ref) are preferred over this method from a computational performance standpoint as they require fewer loglikelihood evalutions (when [`RadialRandomMethod`](@ref) has parameter `num_radial_directions` > 1). 
+[`RadialRandomMethod`](@ref) and [`IterativeBoundaryMethod`](@ref) are preferred over this method from a computational performance standpoint as they require fewer log-likelihood evalutions (when [`RadialRandomMethod`](@ref) has parameter `num_radial_directions` > 1). 
 
 # Boundary finding method
 
@@ -271,7 +277,7 @@ Recommended for use with the [`LogLikelihood`](@ref) profile type.
 
 The method finds the desired number of boundary points by fixing the first and second interest parameters for half of these points each. It first draws a value for the fixed parameter using a uniform random distribution on provided bounds (e.g. Ψ_x). Then it draws two values for the unfixed parameter in the same fashion (e.g. Ψ_y1 and Ψ_y2]). If one of these points ([Ψ_x, Ψ_y1] and [Ψ_x, Ψ_y2]) is an internal point and the other an external point, the point pair is accepted as they are a valid bracket. A bracketing method is then used to find a boundary point between the point pair (the internal and external point). The method continues searching for valid point pairs until the desired number of boundary points is found.
 
-[`RadialRandomMethod`](@ref) and [`IterativeBoundaryMethod`](@ref) are preferred over this method from a computational performance standpoint as they require fewer loglikelihood evalutions (when [`RadialRandomMethod`](@ref) has parameter `num_radial_directions` > 1). [`SimultaneousMethod`](@ref) will also likely be more efficient, even though it uses four random numbers vs three, as it doesn't unneccesarily throw away points.  
+[`RadialRandomMethod`](@ref) and [`IterativeBoundaryMethod`](@ref) are preferred over this method from a computational performance standpoint as they require fewer log-likelihood evalutions (when [`RadialRandomMethod`](@ref) has parameter `num_radial_directions` > 1). [`SimultaneousMethod`](@ref) will also likely be more efficient, even though it uses four random numbers vs three, as it doesn't unneccesarily throw away points.  
 
 # Boundary finding method
 
@@ -294,9 +300,10 @@ Finds `num_points` internal points.
 struct Fix1AxisMethod <: AbstractBivariateMethod end
 
 """
-    AnalyticalEllipseMethod(ellipse_start_point_shift::Float64, ellipse_sqrt_distortion::Float64)
+    AnalyticalEllipseMethod(ellipse_start_point_shift::Float64, 
+        ellipse_sqrt_distortion::Float64)
 
-Method for sampling the desired number of boundary points on a ellipse approximation of the loglikelihood function centred at the maximum likelihood estimate point using [EllipseSampling.jl](https://github.com/JoelTrent/EllipseSampling.jl).
+Method for sampling the desired number of boundary points on a ellipse approximation of the log-likelihood function centred at the maximum likelihood estimate point using [EllipseSampling.jl](https://github.com/JoelTrent/EllipseSampling.jl).
 
 # Arguments
 - `ellipse_start_point_shift`: a number ∈ [0.0,1.0]. Default is `rand()` (defined on [0.0,1.0]), meaning that by default a different set of points will be found each time.
@@ -331,7 +338,10 @@ struct AnalyticalEllipseMethod <: AbstractBivariateMethod
 end
 
 """
-    ContinuationMethod(num_level_sets::Int, ellipse_confidence_level::Float64, ellipse_start_point_shift::Float64=rand(), level_set_spacing::Symbol=:loglikelihood)
+    ContinuationMethod(num_level_sets::Int, 
+        ellipse_confidence_level::Float64, 
+        ellipse_start_point_shift::Float64=rand(), 
+        level_set_spacing::Symbol=:loglikelihood)
 
 Kept available for completeness but not recommended for use. A previous implementation of search directions from the MLE point was moved to [`RadialMLEMethod`].
     
@@ -340,7 +350,7 @@ Kept available for completeness but not recommended for use. A previous implemen
 - `ellipse_confidence_level`: a number ∈ (0.0, 1.0). the confidence level at which to construct the initial ellipse and find the initial level set boundary. Recommended to be around 0.1.
 - `ellipse_start_point_shift`: a number ∈ [0.0,1.0]. Default is `rand()` (defined on [0.0,1.0]), meaning that by default a different set of points will be found each time.
 - `ellipse_sqrt_distortion`: a number ∈ [0.0,1.0]. Default is `1.0`, meaning that by default points on the ellipse approximation are equally spaced with respect to arc length. 
-- `level_set_spacing`: a Symbol ∈ [:loglikelihood, :confidence]. Whether to space level sets uniformly in confidence level space or loglikelihood space, between the first level set found and the level set of desired confidence level. Default is :loglikelihood.
+- `level_set_spacing`: a Symbol ∈ [:loglikelihood, :confidence]. Whether to space level sets uniformly in confidence level space or log-likelihood space, between the first level set found and the level set of desired confidence level. Default is :loglikelihood.
 
 # Details
 

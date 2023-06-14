@@ -1,3 +1,10 @@
+"""
+    init_uni_profile_row_exists!(model::LikelihoodModel, 
+        θs_to_profile::Vector{<:Int}, 
+        profile_type::AbstractProfileType)
+
+Initialises the dictionary entry in `model.uni_profile_row_exists` for the key `(θi, profile_type)`, where `θi` is an element of `θs_to_profile`, with a `DefaultDict` with key of type `Float64` (a confidence level) and default value of 0.
+"""
 function init_uni_profile_row_exists!(model::LikelihoodModel, 
                                         θs_to_profile::Vector{<:Int},
                                         profile_type::AbstractProfileType)
@@ -9,6 +16,14 @@ function init_uni_profile_row_exists!(model::LikelihoodModel,
     return nothing
 end
 
+"""
+    init_biv_profile_row_exists!(model::LikelihoodModel, 
+        θcombinations::Vector{Vector{Int}}, 
+        profile_type::AbstractProfileType, 
+        method::AbstractBivariateMethod)
+
+Initialises the dictionary entry in `model.biv_profile_row_exists` for the key `((ind1, ind2), profile_type, method)`, where `(ind1, ind2)` is a combination in `θcombinations`, with a `DefaultDict` with key of type `Float64` (a confidence level) and default value of 0.
+"""
 function init_biv_profile_row_exists!(model::LikelihoodModel, 
                                         θcombinations::Vector{Vector{Int}},
                                         profile_type::AbstractProfileType,
@@ -21,6 +36,12 @@ function init_biv_profile_row_exists!(model::LikelihoodModel,
     return nothing
 end
 
+"""
+    init_dim_samples_row_exists!(model::LikelihoodModel, 
+        sample_type::AbstractSampleType)
+
+Initialises the dictionary entry in `model.dim_samples_row_exists` for the key `(sample_type)` with a `DefaultDict` with key of type `Float64` (a confidence level) and default value of 0. For a full likelihood sample (dimension equal to the number of model parameters).
+"""
 function init_dim_samples_row_exists!(model::LikelihoodModel, 
                                         sample_type::AbstractSampleType)
     if !haskey(model.dim_samples_row_exists, (sample_type))
@@ -28,6 +49,14 @@ function init_dim_samples_row_exists!(model::LikelihoodModel,
     end
     return nothing
 end
+
+"""
+    init_dim_samples_row_exists!(model::LikelihoodModel, 
+        θindices::Vector{Vector{Int}}, 
+        sample_type::AbstractSampleType)
+
+Initialises the dictionary entry in `model.dim_samples_row_exists` for the key `(θvec, sample_type)`, where `θvec` is a vector in `θindices`, with a `DefaultDict` with key of type `Float64` (a confidence level) and default value of 0. For a non-full likelihood sample (dimension less than the number of model parameters).
+"""
 function init_dim_samples_row_exists!(model::LikelihoodModel, 
                                         θindices::Vector{Vector{Int}},
                                         sample_type::AbstractSampleType)
@@ -39,7 +68,12 @@ function init_dim_samples_row_exists!(model::LikelihoodModel,
     return nothing
 end
 
-function init_uni_profiles_df(num_rows; existing_largest_row=0)
+"""
+    init_uni_profiles_df(num_rows::Int; existing_largest_row::Int=0)
+
+Initialises the DataFrame of `model.uni_profiles_df` with `num_rows` initial rows. In the event that the DataFrame already exists and more rows are being added, keyword argument, `existing_largest_row`, will be the number of rows in the existing dataframe, so that values of `row_ind` when concatenating the DataFrames will increase in steps of 1.
+"""
+function init_uni_profiles_df(num_rows::Int; existing_largest_row::Int=0)
    
     uni_profiles_df = DataFrame()
     uni_profiles_df.row_ind = collect(1:num_rows) .+ existing_largest_row
@@ -54,7 +88,12 @@ function init_uni_profiles_df(num_rows; existing_largest_row=0)
     return uni_profiles_df
 end
 
-function init_biv_profiles_df(num_rows; existing_largest_row=0)
+"""
+    init_biv_profiles_df(num_rows::Int; existing_largest_row::Int=0)
+
+Initialises the DataFrame of `model.biv_profiles_df` with `num_rows` initial rows. In the event that the DataFrame already exists and more rows are being added, keyword argument, `existing_largest_row`, will be the number of rows in the existing dataframe, so that values of `row_ind` when concatenating the DataFrames will increase in steps of 1.
+"""
+function init_biv_profiles_df(num_rows::Int; existing_largest_row::Int=0)
    
     biv_profiles_df = DataFrame()
     biv_profiles_df.row_ind = collect(1:num_rows) .+ existing_largest_row
@@ -69,7 +108,12 @@ function init_biv_profiles_df(num_rows; existing_largest_row=0)
     return biv_profiles_df
 end
 
-function init_dim_samples_df(num_rows; existing_largest_row=0)
+"""
+    init_dim_samples_df(num_rows::Int; existing_largest_row::Int=0)
+
+Initialises the DataFrame of `model.dim_samples_df` with `num_rows` initial rows. In the event that the DataFrame already exists and more rows are being added, keyword argument, `existing_largest_row`, will be the number of rows in the existing dataframe, so that values of `row_ind` when concatenating the DataFrames will increase in steps of 1.
+"""
+function init_dim_samples_df(num_rows::Int; existing_largest_row::Int=0)
    
     dim_samples_df = DataFrame()
     dim_samples_df.row_ind = collect(1:num_rows) .+ existing_largest_row
@@ -83,13 +127,24 @@ function init_dim_samples_df(num_rows; existing_largest_row=0)
     return dim_samples_df
 end
 
-function calculate_θmagnitudes(θlb::Vector{<:Float64},
-                                θub::Vector{<:Float64})
+"""
+    calculate_θmagnitudes(θlb::Vector{<:Float64}, θub::Vector{<:Float64})
+
+Estimates the magnitude for each parameter using the difference between parameter bounds. If a bound is an `Inf`, the value is set to `NaN`. Values are divided by the minimum estimated magnitude such that the returned magnitudes have a lowest value of 1.0.
+"""
+function calculate_θmagnitudes(θlb::Vector{<:Float64}, θub::Vector{<:Float64})
 
     θmagnitudes = zeros(length(θub))
     for i in eachindex(θmagnitudes)
         θmagnitudes[i] = isinf(θub[i]) || isinf(θlb[i]) ? NaN : θub[i] - θlb[i]
     end
+
+    NaN_θmagnitudes = isnan.(θmagnitudes)
+
+    if sum(NaN_θmagnitudes) < length(NaN_θmagnitudes)
+        θmagnitudes .= θmagnitudes ./ min(θmagnitudes[.!NaN_θmagnitudes])
+    end
+
     return θmagnitudes
 end
 
@@ -111,15 +166,19 @@ Initialises a [`LikelihoodModel`](@ref) struct, which contains all model informa
 
 # Arguments
 - `loglikefunction`: a loglikelihood function which takes two arguments, `θ` and `data`, in that order, where θ is a vector containing the values of each parameter in `θnames` and `data` is a Tuple or NamedTuple - see `data` below.
-- `predictfunction`: a prediction function to generate model predictions from that is paired with the `loglikefunction`. Takes three arguments, `θ`, `data` and `t`, in that order, where `θ` and `data` are the same as for `loglikefunction` and `t` needs to be an optional third argument. When `t` is not specified, the prediction function should be evaluated for the same time points/independent variable as the data. When `t` is specified, the prediction function should be evaluated for those specified time points/independent variable. It can also be `missing` if no function is provided during model initialisation, because predictions are not required when evaluating parameter profiles. The function can be added at a later point using [`add_prediction_function!`](@ref).
+- `predictfunction`: a prediction function to generate model predictions from that is paired with the `loglikefunction`. Takes three arguments, `θ`, `data` and `t`, in that order, where `θ` and `data` are the same as for `loglikefunction` and `t` needs to be an optional third argument. When `t` is not specified, the prediction function should be evaluated for the same time points/independent variable as the data. When `t` is specified, the prediction function should be evaluated for those specified time points/independent variable. It can also be `missing` if no function is provided to [`initialiseLikelihoodModel`](@ref), because predictions are not required when evaluating parameter profiles. The function can be added at a later point using [`add_prediction_function!`](@ref).
 - `data`: a Tuple or a NamedTuple containing any additional information required by the loglikelihood function, such as the time points to be evaluated at.
 - `θnames`: a vector of symbols containing the names of each parameter, e.g. `[:λ, :K, :C0]`.
 - `θinitialguess`: a vector containing the initial guess for the values of each parameter. Used to find the MLE point.
 - `θlb`: a vector of lower bounds on parameters. 
 - `θub`: a vector of upper bounds on parameters. 
-- `θmagnitudes`: a vector of the relative magnitude of each parameter. If not provided, it will be estimated using the difference of `θlb` and `θub` using [`PlaceholderLikelihood.calculate_θmagnitudes`](@ref). Can be updated after initialisation using [`setθmagnitudes!`](@ref).
+- `θmagnitudes`: a vector of the relative magnitude of each parameter. If not provided, it will be estimated using the difference of `θlb` and `θub` with [`PlaceholderLikelihood.calculate_θmagnitudes`](@ref). Can be updated after initialisation using [`setθmagnitudes!`](@ref).
 
-TO DO OTHER ARGUMENTS
+# Keyword Arguments
+- `uni_row_prealloaction_size`: number of rows of `uni_profiles_df` to preallocate. Default is NaN (a single row).
+- `biv_row_preallocation_size`:number of rows of `biv_profiles_df` to preallocate. Default is NaN (a single row).
+- `dim_row_preallocation_size`: number of rows of `dim_samples_df` to preallocate. Default is NaN (a single row).
+- `show_progress`: Whether to show the progress of profiling across sets of interest parameters. 
 """
 function initialiseLikelihoodModel(loglikefunction::Function,
     predictfunction::Union{Function, Missing},

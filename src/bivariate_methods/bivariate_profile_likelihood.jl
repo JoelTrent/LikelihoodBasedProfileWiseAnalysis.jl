@@ -12,10 +12,15 @@ function add_biv_profiles_rows!(model::LikelihoodModel, num_rows_to_add::Int)
 end
 
 """
-    set_biv_profiles_row!(model::LikelihoodModel, row_ind::Int, θcombination::Tuple{Int, Int},
-                            not_evaluated_internal_points::Bool, not_evaluated_predictions::Bool,
-                            confidence_level::Float64, profile_type::AbstractProfileType,
-                            method::AbstractBivariateMethod, num_points::Int)
+    set_biv_profiles_row!(model::LikelihoodModel, 
+        row_ind::Int, 
+        θcombination::Tuple{Int, Int},
+        not_evaluated_internal_points::Bool, 
+        not_evaluated_predictions::Bool,
+        confidence_level::Float64, 
+        profile_type::AbstractProfileType,
+        method::AbstractBivariateMethod, 
+        num_points::Int)
 
 Sets the columns of row `row_ind` of `model.biv_profiles_df` to contain the relevant info about a just conducted profile. `model.biv_profiles_dict` contains the profile for row `row_ind` at key `row_ind`.  
 """
@@ -41,7 +46,7 @@ end
 """
     get_bivariate_opt_func(profile_type::AbstractProfileType, method::AbstractBivariateMethod)
 
-Returns the correct bivariate optimisation function for finding the optimal nuisance parameters at a set of interest parameters for the `profile_type` loglikelihood function. The optimisation function returns the value of the `profile_type` loglikelihood function as well as finding the optimal nuisance parameters and saving these in one of it's inputs.
+Returns the correct bivariate optimisation function used to find the optimal values of nuisance parameters at a set of interest parameters for the `profile_type` log-likelihood function. The optimisation function returns the value of the `profile_type` log-likelihood function as well as finding the optimal nuisance parameters and saving these in one of it's inputs.
 """
 function get_bivariate_opt_func(profile_type::AbstractProfileType, method::AbstractBivariateMethod)
     if method isa AnalyticalEllipseMethod
@@ -72,17 +77,17 @@ end
 
 """
     get_λs_bivariate_ellipse_analytical!(boundary,
-                                            num_points::Int,
-                                            consistent::NamedTuple, 
-                                            ind1::Int, 
-                                            ind2::Int, 
-                                            num_pars::Int,
-                                            initGuess::Vector{<:Float64}, 
-                                            θranges::Tuple{T, T, T}, 
-                                            λranges::Tuple{T, T, T},
-                                            samples_all_pars::Union{Missing, Matrix{Float64}}=missing) where T<:UnitRange
+        num_points::Int,
+        consistent::NamedTuple, 
+        ind1::Int, 
+        ind2::Int, 
+        num_pars::Int,
+        initGuess::Vector{<:Float64}, 
+        θranges::Tuple{T, T, T}, 
+        λranges::Tuple{T, T, T},
+        samples_all_pars::Union{Missing, Matrix{Float64}}=missing) where T<:UnitRange
 
-Determines the nuisance parameters for a [`EllipseApproxAnalytical`](@ref) boundary profile by optimising over the unbounded ellipse approximation of the loglikelihood centred at the MLE. At higher confidence levels, where the ellipse approximation is less accurate, it is likely that predictions produced by running the model with these optimised nuisance parameters will be unrealistic and/or the parameters themselves may be infeasible for the model. 
+Determines the nuisance parameters for a [`EllipseApproxAnalytical`](@ref) boundary profile by optimising over the unbounded ellipse approximation of the log-likelihood centred at the MLE. At higher confidence levels, where the ellipse approximation is less accurate, it is likely that predictions produced by running the model with these optimised nuisance parameters will be unrealistic and/or the parameters themselves may be infeasible for the model. 
 """
 function get_λs_bivariate_ellipse_analytical!(boundary,
                                                 num_points::Int,
@@ -112,18 +117,18 @@ end
 
 """
     bivariate_confidenceprofile(bivariate_optimiser::Function,
-                                        model::LikelihoodModel, 
-                                        num_points::Int,
-                                        confidence_level::Float64,
-                                        consistent::NamedTuple,
-                                        ind1::Int,
-                                        ind2::Int,
-                                        profile_type::AbstractProfileType,
-                                        method::AbstractBivariateMethod,
-                                        mle_targetll::Float64,
-                                        save_internal_points::Bool)
+        model::LikelihoodModel, 
+        num_points::Int,
+        confidence_level::Float64,
+        consistent::NamedTuple,
+        ind1::Int,
+        ind2::Int,
+        profile_type::AbstractProfileType,
+        method::AbstractBivariateMethod,
+        mle_targetll::Float64,
+        save_internal_points::Bool)
 
-Returns a [`BivariateConfidenceStruct`] containing the `num_points` boundary points and internal points (if `save_internal_points=true`) for the specified combination of parameters `ind1` and `ind2`, and `profile_type` at `confidence_level` using `method`. Calls the desired method. Called by [`bivariate_confidenceprofiles!`](@ref).
+Returns a [`BivariateConfidenceStruct`](@ref) containing the `num_points` boundary points and internal points (if `save_internal_points=true`) for the specified combination of parameters `ind1` and `ind2`, and `profile_type` at `confidence_level` using `method`. Calls the desired method. Called by [`bivariate_confidenceprofiles!`](@ref).
 """
 function bivariate_confidenceprofile(bivariate_optimiser::Function,
                                         model::LikelihoodModel, 
@@ -213,9 +218,12 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
 end
 
 """
-    bivariate_confidenceprofiles!(model::LikelihoodModel, θcombinations::Vector{Vector{Int}}, num_points::Int; <keyword arguments>)
+    bivariate_confidenceprofiles!(model::LikelihoodModel, 
+        θcombinations::Vector{Vector{Int}}, 
+        num_points::Int; 
+        <keyword arguments>)
 
-    Finds `num_points` `profile_type` boundary points at a specified `confidence_level` for each combination of interest parameters using a specified `method`, optionally saving any found internal points. 
+Finds `num_points` `profile_type` boundary points at a specified `confidence_level` for each combination of two interest parameters using a specified `method`, optionally saving any found internal points. Saves these profiles by modifying `model` in place.
     
 # Arguments
 - `model`: a [`LikelihoodModel`](@ref) containing model information, saved profiles and predictions.
@@ -223,22 +231,23 @@ end
 - `num_points`: number of points to find on the boundary at the specified confidence level. Depending on the method, if a region of the user-provided bounds is inside the boundary some of these points will be on the bounds and inside the boundary. 
 
 # Keyword Arguments
-- `confidence_level`: a number ∈ (0.0, 1.0) for the confidence level to find the `profile_type` boundary at. Default is 0.95 (95%).
-- `profile_type`: whether to use the true loglikelihood function or an ellipse approximation of the loglikelihood function centred at the MLE (with optional use of parameter bounds). Available profile types are [`LogLikelihood`](@ref), [`EllipseApprox`](@ref) and [`EllipseApproxAnalytical`](@ref). Default is `LogLikelihood()` ([`LogLikelihood`](@ref)).
+- `confidence_level`: a number ∈ (0.0, 1.0) for the confidence level on which to find the `profile_type` boundary. Default is 0.95 (95%).
+- `profile_type`: whether to use the true log-likelihood function or an ellipse approximation of the log-likelihood function centred at the MLE (with optional use of parameter bounds). Available profile types are [`LogLikelihood`](@ref), [`EllipseApprox`](@ref) and [`EllipseApproxAnalytical`](@ref). Default is `LogLikelihood()` ([`LogLikelihood`](@ref)).
 - `method`: a method of type [`AbstractBivariateMethod`](@ref). For a list of available methods use `bivariate_methods()` ([`bivariate_methods`](@ref)). Default is `RadialRandomMethod(3)` ([`RadialRandomMethod`](@ref)).
-- `θcombinations_is_unique`: boolean variable specifying whether all parameter combinations in `θcombinations` are ordered by parameter index and are unique. Default is false.
-- `save_internal_points`: boolean variable specifying whether to save points found inside the boundary during boundary computation. Internal points can be plotted in bivariate profile plots and will be used to generate predictions from a given bivariate profile. Default is true.
-- `existing_profiles`: Symbol ∈ [:ignore, :merge, :overwrite] specifying what to do if profiles already exist for a given `θcombination`, `confidence_level`, `profile_type` and `method`. See below for each symbol's meanings. Default is :merge.
+- `θcombinations_is_unique`: boolean variable specifying whether all parameter combinations in `θcombinations` are ordered by parameter index and are unique. Default is `false`.
+- `save_internal_points`: boolean variable specifying whether to save points found inside the boundary during boundary computation. Internal points can be plotted in bivariate profile plots and will be used to generate predictions from a given bivariate profile. Default is `true`.
+- `existing_profiles`: `Symbol ∈ [:ignore, :merge, :overwrite]` specifying what to do if profiles already exist for a given `θcombination`, `confidence_level`, `profile_type` and `method`. See below for each symbol's meanings. Default is `:merge`.
 - `show_progress`: boolean variable specifying whether to display progress bars on the percentage of `θcombinations` completed and estimated time of completion. Default is `model.show_progress`.
 
-!!! note existing_profiles meanings
+!!! note "existing_profiles meanings"
+
     - :ignore means profiles that already exist will not be recomputed even if they contain fewer `num_points` boundary points. 
     - :merge means profiles that already exist will be merged with profiles from the current algorithm run to reach `num_points`. If the existing profile already has at least `num_points` boundary points then that profile will not be recomputed. Otherwise, the specified method will be run starting from the difference between `num_points` and the number of points in the existing profile. The result of that method run will be merged with the existing profile.  
     - :overwrite means profiles that already exist will be overwritten, regardless of how many points they contain.
 
 # Details
 
-Modifies model in place. Using [`bivariate_confidenceprofile`](@ref) this function calls the algorithm/method specified by `method` for each parameter combination in `θcombinations` (depending on the setting for `existing_profiles` and `num_points` if these profiles already exist). Updates `model.biv_profiles_df` for each successful profile and saves their results as a [`BivariateConfidenceStruct`](@ref) in `model.biv_profiles_dict`, where the keys for the dictionary is the row number in `model.biv_profiles_df` of the corresponding profile.
+Using [`bivariate_confidenceprofile`](@ref) this function calls the algorithm/method specified by `method` for each parameter combination in `θcombinations` (depending on the setting for `existing_profiles` and `num_points` if these profiles already exist). Updates `model.biv_profiles_df` for each successful profile and saves their results as a [`BivariateConfidenceStruct`](@ref) in `model.biv_profiles_dict`, where the keys for the dictionary is the row number in `model.biv_profiles_df` of the corresponding profile.
 """
 function bivariate_confidenceprofiles!(model::LikelihoodModel, 
                                         θcombinations::Vector{Vector{Int}}, 
@@ -362,7 +371,10 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
 end
 
 """
-    bivariate_confidenceprofiles!(model::LikelihoodModel, θcombinations_symbols::Union{Vector{Vector{Symbol}}, Vector{Tuple{Symbol, Symbol}}}, num_points::Int; <keyword arguments>)
+    bivariate_confidenceprofiles!(model::LikelihoodModel, 
+        θcombinations_symbols::Union{Vector{Vector{Symbol}}, Vector{Tuple{Symbol, Symbol}}}, 
+        num_points::Int; 
+        <keyword arguments>)
 
 Profiles just the provided `θcombinations_symbols` parameter pairs, provided as either a vector of vectors or a vector of tuples.
 """
@@ -389,11 +401,15 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
 end
 
 """
-    bivariate_confidenceprofiles!(model::LikelihoodModel, profile_m_random_combinations::Int, num_points::Int; <keyword arguments>)
+    bivariate_confidenceprofiles!(model::LikelihoodModel, 
+        profile_m_random_combinations::Int, 
+        num_points::Int; 
+        <keyword arguments>)
 
-Profiles m random two-way combinations of model parameters (sampling without replacement), where 0 < m ≤ binomial(model.core.num_pars,2).
+Profiles m random two-way combinations of model parameters (sampling without replacement), where `0 < m ≤ binomial(model.core.num_pars,2)`.
 
-!!! warn θcombinations_is_unique keyword argument
+!!! warning "θcombinations_is_unique keyword argument"
+
     `θcombinations_is_unique` is not a valid keyword argument for this function method as it internally produces the parameter combinations which are guaranteed to be unique.
 """
 function bivariate_confidenceprofiles!(model::LikelihoodModel, 
@@ -422,11 +438,14 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
 end
 
 """
-    bivariate_confidenceprofiles!(model::LikelihoodModel, num_points::Int; <keyword arguments>)
+    bivariate_confidenceprofiles!(model::LikelihoodModel, 
+        num_points::Int; 
+        <keyword arguments>)
 
 Profiles all two-way combinations of model parameters.
 
-!!! warn θcombinations_is_unique keyword argument
+!!! warning "θcombinations_is_unique keyword argument"
+
     `θcombinations_is_unique` is not a valid keyword argument for this function method as it internally produces the parameter combinations which are guaranteed to be unique.
 """
 function bivariate_confidenceprofiles!(model::LikelihoodModel, 

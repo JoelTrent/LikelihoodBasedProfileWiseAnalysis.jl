@@ -1,3 +1,10 @@
+"""
+    update_uni_dict_internal!(model::LikelihoodModel,
+        uni_row_number::Int,
+        points::PointsAndLogLikelihood)
+
+Updates the `interval_points` field of a [`UnivariateConfidenceStruct`](@ref), for the profile related to `uni_row_number` stored at `model.uni_profiles_dict[uni_row_number]`, with the interval points stored in `points`.
+"""
 function update_uni_dict_internal!(model::LikelihoodModel,
                                     uni_row_number::Int,
                                     points::PointsAndLogLikelihood)
@@ -18,9 +25,15 @@ end
 # end
 
 """
-Will get points in the interval and at the interval boundaries - current_interval_points has at least the boundary points. 
+    get_points_in_interval_single_row(univariate_optimiser::Function, 
+        model::LikelihoodModel,
+        num_points_in_interval::Int,
+        θi::Int,
+        profile_type::AbstractProfileType,
+        current_interval_points::PointsAndLogLikelihood,
+        additional_width::Real=0.0)
 
-additional_width is the additional width past the interval boundary to also evaluate points on.
+Method for getting `num_points_in_interval` points inside a confidence interval for parameter `θi`, directly called by [`PlaceholderLikelihood.univariate_confidenceinterval`](@ref) and called via it's other method for [`get_points_in_interval`](@ref). Optionally adds `additional_width` outside of the confidence interval, so long as a parameter bound is not reached. If a bound is reached, up until the bound will be considered instead.
 """
 function get_points_in_interval_single_row(univariate_optimiser::Function, 
                                 model::LikelihoodModel,
@@ -110,6 +123,14 @@ function get_points_in_interval_single_row(univariate_optimiser::Function,
     return PointsAndLogLikelihood(interval_points, ll, new_boundary_indices)
 end
 
+"""
+    get_points_in_interval_single_row(model::LikelihoodModel,
+        uni_row_number::Int,
+        num_points_in_interval::Int,
+        additional_width::Real)
+
+Alternate method called by [`get_points_in_interval`](@ref).
+"""
 function get_points_in_interval_single_row(model::LikelihoodModel,
                                 uni_row_number::Int,
                                 num_points_in_interval::Int,
@@ -124,6 +145,29 @@ function get_points_in_interval_single_row(model::LikelihoodModel,
                                                 θi, profile_type, current_interval_points, additional_width)
 end
 
+"""
+
+    get_points_in_interval!(model::LikelihoodModel, 
+        num_points_in_interval::Int; 
+        confidence_levels::Vector{<:Float64}=Float64[], 
+        profile_types::Vector{<:AbstractProfileType}=AbstractProfileType[], 
+        additional_width::Real=0.0)
+
+Evaluate and save `num_points_in_interval` linearly spaced points between the confidence intervals of existing univariate profiles that meet the requirements of [`PlaceholderLikelihood.desired_df_subset`](@ref) (see Keyword Arguments), as well as any additional width on the sides of the interval. Modifies `model` in place.
+
+# Arguments
+- `model`: a [`LikelihoodModel`](@ref) containing model information, saved profiles and predictions.
+- `num_points_in_interval`: an integer number of points to evaluate within the confidence interval. Points are linearly spaced in the interval and have their optimised log-likelihood value recorded. Useful for plots that visualise the confidence interval or for predictions from univariate profiles. 
+
+# Keyword Arguments
+- `confidence_levels`: a vector of confidence levels or a `Float64` of a single confidence level. If empty, all confidence levels of univariate profiles will be considered for finding interval points. Otherwise, only confidence levels of univariate profiles in `confidence_levels` will be considered.
+- `profile_types`: a vector of `AbstractProfileType` structs. If empty, all profile types of univariate profiles are considered. Otherwise, only univariate profiles with matching profile types will be considered.
+- `additional_width`: a `Real` number greater than or equal to zero. Specifies the additional width to optionally evaluate outside the confidence interval's width. Half of this additional width will be placed on either side of the confidence interval. If the additional width goes outside a bound on the parameter, only up to the bound will be considered. The spacing of points in the additional width will try to match the spacing of points evaluated inside the interval. Useful for plots that visualise the confidence interval as it shows the trend of the log-likelihood profile outside the interval range. Default is 0.0.
+
+# Details
+
+Interval points and their corresponding log-likelihood values are stored in the `interval_points` field of a [`UnivariateConfidenceStruct`](@ref). These are updated using [`PlaceholderLikelihood.update_uni_dict_internal!`](@ref).
+"""
 function get_points_in_interval!(model::LikelihoodModel,
                                     num_points_in_interval::Int;
                                     confidence_levels::Vector{<:Float64}=Float64[],

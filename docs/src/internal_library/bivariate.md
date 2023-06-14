@@ -43,6 +43,7 @@ PlaceholderLikelihood.set_biv_profiles_row!
 PlaceholderLikelihood.get_bivariate_opt_func
 PlaceholderLikelihood.get_λs_bivariate_ellipse_analytical!
 PlaceholderLikelihood.bivariate_confidenceprofile
+Base.merge(::BivariateConfidenceStruct, ::BivariateConfidenceStruct)
 ```
 
 ## Minimum Perimeter Polygon

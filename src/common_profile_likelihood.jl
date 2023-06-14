@@ -1,12 +1,23 @@
-function setmagnitudes!(model::LikelihoodModel,
-                            θmagnitudes::AbstractVector{<:Real})
+"""
+    setmagnitudes!(model::LikelihoodModel, θmagnitudes::AbstractVector{<:Real})
+
+Updates the magnitudes of each parameter in `model` from `model.core.θmagnitudes` to `θmagnitudes`.
+"""
+function setmagnitudes!(model::LikelihoodModel, θmagnitudes::AbstractVector{<:Real})
 
     length(θmagnitudes) == model.core.num_pars || throw(ArgumentError(string("θmagnitudes must have the same length as the number of model parameters (", model.core.num_pars, ")")))
 
-    model.core.θmagnitudes .= θmagnitudes
+    model.core.θmagnitudes .= θmagnitudes .* 1.0
     return nothing
 end
 
+"""
+    setbounds!(model::LikelihoodModel; 
+        lb::AbstractVector{<:Real}=Float64[], 
+        ub::AbstractVector{<:Real}=Float64[])
+
+Updates the parameter bounds in `model` from `model.core.θlb` to `lb` if specified and from `model.core.θub` to `ub` if specified. `lb` and `ub` are keyword arguments.
+"""
 function setbounds!(model::LikelihoodModel;
                     lb::AbstractVector{<:Real}=Float64[],
                     ub::AbstractVector{<:Real}=Float64[])
@@ -22,8 +33,13 @@ function setbounds!(model::LikelihoodModel;
     return nothing
 end
 
-function convertθnames_toindices(model::LikelihoodModel, 
-                                    θnames_to_convert::Vector{<:Symbol})
+"""
+    convertθnames_toindices(model::LikelihoodModel, 
+        θnames_to_convert::Vector{<:Symbol})
+
+Converts a vector of symbols representing parameters in `model` to a vector of each symbol's corresponding index in `model.core.θnames`.
+"""
+function convertθnames_toindices(model::LikelihoodModel, θnames_to_convert::Vector{<:Symbol})
 
     indices = zeros(Int, length(θnames_to_convert))
 
@@ -34,6 +50,12 @@ function convertθnames_toindices(model::LikelihoodModel,
     return indices
 end
 
+"""
+    convertθnames_toindices(model::LikelihoodModel, 
+        θnames_to_convert::Union{Vector{Vector{Symbol}}, Vector{Tuple{Symbol, Symbol}}})
+
+Converts a vector of vectors or tuples containing symbols representing parameters in `model` to a vector of vectors containing each symbol's corresponding index in `model.core.θnames`.
+"""
 function convertθnames_toindices(model::LikelihoodModel, 
                                     θnames_to_convert::Union{Vector{Vector{Symbol}}, Vector{Tuple{Symbol, Symbol}}})
 
@@ -47,7 +69,11 @@ function convertθnames_toindices(model::LikelihoodModel,
 end
 
 """
-If the `profile_type` is LogLikelihood, then corrects a log-likelihood such that an input log-likelihood (which has value of zero at the mle) will now have a value of model.core.maximisedmle at the mle. Otherwise, a copy of ll is returned.
+    ll_correction(model::LikelihoodModel, 
+        profile_type::AbstractProfileType, 
+        ll::Float64)
+
+If a `profile_type` is `LogLikelihood()`, it corrects `ll` such that an input log-likelihood value (which has value of zero at the MLE) will now have a value of `model.core.maximisedmle` at the MLE. Otherwise, a copy of `ll` is returned, as both ellipse approximation profile types have a log-likelihood value of 0.0 at the MLE.
 """
 function ll_correction(model::LikelihoodModel, profile_type::AbstractProfileType, ll::Float64)
     if profile_type isa LogLikelihood
@@ -56,31 +82,40 @@ function ll_correction(model::LikelihoodModel, profile_type::AbstractProfileType
     return ll * 1.0
 end
 
-
 """
     get_target_loglikelihood(model::LikelihoodModel, 
-                                confidence_level::Float64,
-                                profile_type::AbstractProfileType,
-                                df::Int)
+        confidence_level::Float64, 
+        profile_type::AbstractProfileType, 
+        dof::Int)
+
+Returns the target log-likelihood / threshold at a confidence level and degrees of freedom, `dof` (the number of interest parameters), required for a particular `profile_type` to be in the confidence set. Uses [`PlaceholderLikelihood.ll_correction`](@ref) 
 """
 function get_target_loglikelihood(model::LikelihoodModel, 
                                     confidence_level::Float64,
                                     profile_type::AbstractProfileType,
-                                    df::Int)
+                                    dof::Int)
 
     (0.0 ≤ confidence_level && confidence_level ≤ 1.0) || throw(DomainError("confidence_level must be in the interval [0,1]"))
 
-    llstar = -quantile(Chisq(df), confidence_level)/2.0
+    llstar = -quantile(Chisq(dof), confidence_level) / 2.0
 
     return ll_correction(model, profile_type, llstar)
 end
 
+"""
+    get_consistent_tuple(model::LikelihoodModel, 
+        confidence_level::Float64, 
+        profile_type::AbstractProfileType, 
+        dof::Int)
+
+Returns a tuple containing the values needed for log-likelihood evaluation and finding function zeros, including the target log-likelihood, number of model parameters, log-likelihood function to use and `data` tuple for evaluating the log-likelihood function.
+"""
 function get_consistent_tuple(model::LikelihoodModel, 
                                 confidence_level::Float64, 
                                 profile_type::AbstractProfileType, 
-                                df::Int)
+                                dof::Int)
 
-    targetll = get_target_loglikelihood(model, confidence_level, profile_type, df)
+    targetll = get_target_loglikelihood(model, confidence_level, profile_type, dof)
 
     if profile_type isa LogLikelihood 
         return (targetll=targetll, num_pars=model.core.num_pars,
@@ -95,6 +130,30 @@ function get_consistent_tuple(model::LikelihoodModel,
     return (missing)
 end
 
+"""
+    desired_df_subset(df::DataFrame, 
+        num_used_rows::Int, 
+        confidence_levels::Union{Float64, Vector{<:Float64}}, 
+        sample_types::Vector{<:AbstractSampleType}; 
+        sample_dimension::Int=0, 
+        for_prediction_generation::Bool=false, 
+        for_prediction_plots::Bool=false, 
+        include_higher_confidence_levels::Bool=false)
+
+Returns a view of `df` that includes only valid rows ∈ `1:num_used_rows`, and rows that contain all of the values specified within function arguments. For dimensional samples.
+
+# Arguments
+- `df`: a DataFrame - `model.dim_samples_df`.
+- `num_used_rows`: the number of valid rows in `df` - `model.num_dim_samples`.
+- `confidence_levels`: a vector of confidence levels or a `Float64` of a single confidence level. If empty, all confidence levels in `df` are allowed. Otherwise, if `include_higher_confidence_levels == true` and `confidence_levels` is a `Float64`, all confidence levels greater than or equal to `confidence_levels` are allowed. Else, only matching confidence levels in `df` are allowed.
+- `sample_types`: a vector of `AbstractSampleType` structs. If empty, all sample types in `df` are allowed. Otherwise, only matching sample types in `df` are allowed.
+
+# Keyword Arguments
+- `sample_dimension`: an integer greater than or equal to 0; if non-zero only matching dimensions of interest parameters in `df` are allowed, otherwise all are a allowed. Default is `0`.
+- `for_prediction_generation`: a boolean specifying whether only rows which have not had predictions evaluated are allowed. As predictions do not need to be generated for rows which already have them evaluated. 
+- `for_prediction_plots`: a boolean specifying whether only rows which have had predictions evaluated are allowed. As prediction plots can only include rows which have evaluated predictions. 
+- `include_higher_confidence_levels`: a boolean specifying whether all confidence levels greater than or equal to `confidence_levels` are allowed. Useful for prediction plots as a dimensional sample can be evaluated at a high confidence level (e.g. 0.95) and then used at a lower confidence level (e.g. 0.9), extracting only the sample points that are in the 0.9 confidence set.
+"""
 function desired_df_subset(df::DataFrame, 
                             num_used_rows::Int,
                             confidence_levels::Union{Float64, Vector{<:Float64}},
@@ -131,6 +190,29 @@ function desired_df_subset(df::DataFrame,
     return @view(df_sub[row_subset, :])
 end
 
+"""
+    desired_df_subset(df::DataFrame, 
+        num_used_rows::Int, 
+        θs_of_interest::Vector{<:Int}, 
+        confidence_levels::Union{Float64, Vector{<:Float64}}, 
+        profile_types::Vector{<:AbstractProfileType}; 
+        for_points_in_interval::Tuple{Bool,Int,Real}=(false,0,0), 
+        for_prediction_generation::Bool=false, 
+        for_prediction_plots::Bool=false)
+
+Returns a view of `df` that includes only valid rows ∈ `1:num_used_rows`, and rows that contain all of the values specified within function arguments. For univariate profiles.
+
+# Arguments
+- `df`: a DataFrame - `model.uni_profiles_df`.
+- `num_used_rows`: the number of valid rows in `df` - `model.num_uni_profiles`.
+- `confidence_levels`: a vector of confidence levels or a `Float64` of a single confidence level. If empty, all confidence levels in `df` are allowed. Otherwise, if `include_higher_confidence_levels == true` and `confidence_levels` is a `Float64`, all confidence levels greater than or equal to `confidence_levels` are allowed. Else, only matching confidence levels in `df` are allowed.
+- `profile_types`: a vector of `AbstractProfileType` structs. If empty, all profile types in `df` are allowed. Otherwise, only matching profile types in `df` are allowed.
+
+# Keyword Arguments
+- `for_points_in_interval`: a tuple used for only extracting the rows that need to have points in the confidence interval evaluated by [`get_points_in_interval!`](@ref). Default is `(false, 0, 0)`.
+- `for_prediction_generation`: a boolean specifying whether only rows which have not had predictions evaluated are allowed. As predictions do not need to be generated for rows which already have them evaluated. 
+- `for_prediction_plots`: a boolean specifying whether only rows which have had predictions evaluated are allowed. As prediction plots can only include rows which have evaluated predictions. 
+"""
 function desired_df_subset(df::DataFrame, 
                             num_used_rows::Int,
                             θs_of_interest::Vector{<:Int},
@@ -169,6 +251,32 @@ function desired_df_subset(df::DataFrame,
     return @view(df_sub[row_subset, :])
 end
 
+
+"""
+    desired_df_subset(df::DataFrame, 
+        num_used_rows::Int, 
+        θs_of_interest::Vector{Tuple{Int,Int}}, 
+        confidence_levels::Union{Float64, Vector{<:Float64}}, 
+        profile_types::Vector{<:AbstractProfileType}, 
+        methods::Vector{<:AbstractBivariateMethod}=AbstractBivariateMethod[]; 
+        for_prediction_generation::Bool=false, 
+        for_prediction_plots::Bool=false, 
+        include_lower_confidence_levels::Bool=false)
+
+Returns a view of `df` that includes only valid rows ∈ `1:num_used_rows`, and rows that contain all of the values specified within function arguments. For bivariate profiles.
+
+# Arguments
+- `df`: a DataFrame - `model.biv_profiles_df`.
+- `num_used_rows`: the number of valid rows in `df` - `model.num_biv_profiles`.
+- `confidence_levels`: a vector of confidence levels or a `Float64` of a single confidence level. If empty, all confidence levels in `df` are allowed. Otherwise, if `include_higher_confidence_levels == true` and `confidence_levels` is a `Float64`, all confidence levels greater than or equal to `confidence_levels` are allowed. Else, only matching confidence levels in `df` are allowed.
+- `profile_types`: a vector of `AbstractProfileType` structs. If empty, all profile types in `df` are allowed. Otherwise, only matching profile types in `df` are allowed.
+- `methods`: a vector of `AbstractBivariateMethod` structs. If empty, all methods in `df` are allowed. Otherwise, only methods of the same type in `df` are allowed.
+
+# Keyword Arguments
+- `for_prediction_generation`: a boolean specifying whether only rows which have not had predictions evaluated are allowed. As predictions do not need to be generated for rows which already have them evaluated. 
+- `for_prediction_plots`: a boolean specifying whether only rows which have had predictions evaluated are allowed. As prediction plots can only include rows which have evaluated predictions. 
+- `include_lower_confidence_levels`: a boolean specifying whether all confidence levels less than or equal to `confidence_levels` are allowed. Useful for prediction plots if a given set of bivariate profiles has few internal points evaluated, meaning some information about predictions may be missing. Bivariate profiles at lower confidence levels are by definition inside the desired confidence interval and may provide additional information on predictions.
+"""
 function desired_df_subset(df::DataFrame, 
                             num_used_rows::Int,
                             θs_of_interest::Vector{Tuple{Int,Int}},

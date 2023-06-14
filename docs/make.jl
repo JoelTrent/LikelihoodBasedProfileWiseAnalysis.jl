@@ -28,13 +28,15 @@ makedocs(;
                 "Dimensional Samples" => "user_interface/profiles_and_samples/dimensional.md"],
             "Predictions" => "user_interface/predictions.md",
             "Plots" => "user_interface/plots.md"],
-        "Internal Library" => ["Common Functions" => "internal_library/common.md",
-                "Ellipse Functions" => "internal_library/ellipse_likelihood.md",
-                "Univariate Functions" => "internal_library/univariate.md",
-                "Bivariate Functions" => "internal_library/bivariate.md",
-                "Dimensional Function" => "internal_library/dimensional.md",
-                "Prediction Functions" => "internal_library/predictions.md",
-                "Plotting Functions" => "internal_library/plots.md"]
+        "Internal Library" => 
+            ["Common Functions" => "internal_library/common.md",
+            "Initialisation" => "internal_library/initialisation.md",
+            "Ellipse Functions" => "internal_library/ellipse_likelihood.md",
+            "Univariate Functions" => "internal_library/univariate.md",
+            "Bivariate Functions" => "internal_library/bivariate.md",
+            "Dimensional Functions" => "internal_library/dimensional.md",
+            "Prediction Functions" => "internal_library/predictions.md",
+            "Plotting Functions" => "internal_library/plots.md"]
     ]
 )
 
