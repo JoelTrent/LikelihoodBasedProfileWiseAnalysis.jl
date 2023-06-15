@@ -1,8 +1,8 @@
+# Univariate Profiles
+
 ```@index
 Pages = ["univariate.md"]
 ```
-
-# Univariate Profiles
 
 ```@docs
 univariate_confidenceintervals!

@@ -1,8 +1,8 @@
+# Predictions
+
 ```@index
 Pages = ["predictions.md"]
 ```
-
-# Predictions
 
 In the event that a prediction function has not been added to the [`LikelihoodModel`](@ref) struct yet, we can add one using [`add_prediction_function!`](@ref)
 ```@docs

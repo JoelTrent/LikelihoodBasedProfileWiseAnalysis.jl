@@ -1,8 +1,8 @@
+# Dimensional Samples
+
 ```@index
 Pages = ["dimensional.md"]
 ```
-
-# Dimensional Samples
 
 We can generate samples within the loglikelihood boundary at any dimension of model interest parameters.
 

@@ -1,8 +1,8 @@
+# Structs and Profile Types
+
 ```@index
 Pages = ["profile_structs.md"]
 ```
-
-# Structs and Profile Types
 
 ## Structs
 

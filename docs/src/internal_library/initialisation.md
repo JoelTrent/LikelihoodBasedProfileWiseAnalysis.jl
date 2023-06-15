@@ -1,8 +1,8 @@
+# Initialisation
+
 ```@index
 Pages = ["initialisation.md"]
 ```
-
-# Initialisation
 
 ```@docs
 PlaceholderLikelihood.init_uni_profiles_df

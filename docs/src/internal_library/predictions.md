@@ -1,8 +1,8 @@
+# Prediction Functions
+
 ```@index
 Pages = ["predictions.md"]
 ```
-
-# Prediction Functions
 
 ```@docs
 PlaceholderLikelihood.generate_prediction

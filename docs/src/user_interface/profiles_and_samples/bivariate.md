@@ -1,8 +1,8 @@
+# Bivariate Profiles
+
 ```@index
 Pages = ["bivariate.md"]
 ```
-
-# Bivariate Profiles
 
 ```@docs
 bivariate_confidenceprofiles!

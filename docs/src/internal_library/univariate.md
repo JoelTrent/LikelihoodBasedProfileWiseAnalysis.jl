@@ -1,8 +1,8 @@
+# Univariate Functions
+
 ```@index
 Pages = ["univariate.md"]
 ```
-
-# Univariate Functions
 
 ## Initialisation and Array Mapping
 

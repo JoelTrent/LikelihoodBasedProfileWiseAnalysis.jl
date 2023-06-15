@@ -1,8 +1,8 @@
+# Dimensional Functions
+
 ```@index
 Pages = ["dimensional.md"]
 ```
-
-# Dimensional Functions
 
 ## Common Full and Dimensional Likelihood
 

@@ -1,8 +1,8 @@
+# Plotting Functions
+
 ```@index
 Pages = ["plots.md"]
 ```
-
-# Plotting Functions
 
 ## Helper Functions
 ```@docs

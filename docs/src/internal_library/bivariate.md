@@ -1,8 +1,8 @@
+# Bivariate Functions
+
 ```@index
 Pages = ["bivariate.md"]
 ```
-
-# Bivariate Functions
 
 ## Initialisation and Array Mapping
 

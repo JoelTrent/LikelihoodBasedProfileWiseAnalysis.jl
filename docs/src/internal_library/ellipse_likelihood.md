@@ -1,8 +1,8 @@
+# Ellipse Functions
+
 ```@index
 Pages = ["ellipse_likelihood.md"]
 ```
-
-# Ellipse Functions
 
 ```@docs
 PlaceholderLikelihood.getMLE_hessian_and_covariance

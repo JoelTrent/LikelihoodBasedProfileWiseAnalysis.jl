@@ -1,8 +1,8 @@
+# Common Functions
+
 ```@index
 Pages = ["common.md"]
 ```
-
-# Common Functions
 
 ```@docs
 PlaceholderLikelihood.convertθnames_toindices

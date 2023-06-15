@@ -1,5 +1,9 @@
 # Plots
 
+```@index
+Pages = ["plots.md"]
+```
+
 ## Univariate Profiles
 
 ```@docs
