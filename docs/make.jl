@@ -1,5 +1,4 @@
 using PlaceholderLikelihood
-import Pkg; Pkg.add("Plots")
 using Plots
 using Documenter
 
