@@ -50,8 +50,8 @@ function getMLE_hessian_and_covariance(f::Function, θmle::Vector{<:Float64})
 
     # if inverse fails then may have locally non-identifiable parameter OR parameter is
     # a delta distribution given data.
-    Γmle = inv(Hmle)
-
+    # improves precision of inverse when variables have significantly different magnitudes.
+    Γmle = convert.(Float64, inv(BigFloat.(Hmle, precision=64))) 
     return Hmle, Γmle
 end
 
