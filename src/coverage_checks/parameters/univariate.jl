@@ -71,7 +71,8 @@ function check_univariate_parameter_coverage(data_generator::Function,
     end
 
     coverage = successes ./ N
-    conf_ints = [collect(HypothesisTests.confint(HypothesisTests.BinomialTest(successes[i], N), level=coverage_estimate_confidence_level)) for i in 1:len_θs]
+    conf_ints = zeros(len_θs, 2)
+    for i in 1:len_θs; conf_ints[i, :] .= HypothesisTests.confint(HypothesisTests.BinomialTest(successes[i], N), level=coverage_estimate_confidence_level) end
     
-    return DataFrame(θname=model.core.θnames[θs], θindex=θs, coverage=coverage, coverage_lb=first.(conf_ints), coverage_ub=last.(conf_ints))
+    return DataFrame(θname=model.core.θnames[θs], θindex=θs, coverage=coverage, coverage_lb=conf_ints[:,1], coverage_ub=conf_ints[:,2])
 end
