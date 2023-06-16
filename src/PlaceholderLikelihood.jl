@@ -41,7 +41,10 @@ export initialiseLikelihoodModel,
 
     transformbounds, transformbounds_NLopt,
 
-    univariate_confidenceintervals!, get_points_in_interval!, get_uni_confidenceinterval,
+    univariate_confidenceintervals!, get_points_in_interval!, 
+    get_uni_confidence_interval, get_uni_confidence_interval_points,
+    check_univariate_parameter_coverage,
+
     bivariate_confidenceprofiles!,
     dimensional_likelihood_sample!, bivariate_concave_hull,
     full_likelihood_sample!,
@@ -90,6 +93,9 @@ include("bivariate_methods/MPP_TSP.jl")
 include("dimensional_methods/full_likelihood_sampling.jl")
 include("dimensional_methods/dimensional_likelihood_sampling.jl")
 include("dimensional_methods/bivariate_concave_hull.jl")
+
+# COVERAGE CHECKS #########################################################################
+include("coverage_checks/parameters/univariate.jl")
 
 # PLOT FUNCTIONS ##########################################################################
 function plot_univariate_profiles end

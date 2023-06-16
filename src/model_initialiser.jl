@@ -266,7 +266,8 @@ end
         θmagnitudes::Vector{<:Real}=zeros(0);
         uni_row_prealloaction_size=NaN,
         biv_row_preallocation_size=NaN,
-        dim_row_preallocation_size=NaN)
+        dim_row_preallocation_size=NaN,
+        show_progress=true)
 
 Alternate version of [`initialiseLikelihoodModel`](@ref) that can be called without a prediction function. The function can be added at a later point using [`add_prediction_function!`](@ref).
 """
@@ -279,11 +280,13 @@ function initialiseLikelihoodModel(loglikefunction::Function,
     θmagnitudes::Vector{<:Real}=zeros(0);
     uni_row_prealloaction_size=NaN,
     biv_row_preallocation_size=NaN,
-    dim_row_preallocation_size=NaN)
+    dim_row_preallocation_size=NaN,
+    show_progress=true)
 
     return initialiseLikelihoodModel(loglikefunction, missing, data, θnames,
                                         θinitialGuess, θlb, θub, θmagnitudes,
                                         uni_row_prealloaction_size=uni_row_prealloaction_size,
                                         biv_row_preallocation_size=biv_row_preallocation_size,
-                                        dim_row_preallocation_size=dim_row_preallocation_size)
+                                        dim_row_preallocation_size=dim_row_preallocation_size, 
+                                        show_progress=show_progress)
 end

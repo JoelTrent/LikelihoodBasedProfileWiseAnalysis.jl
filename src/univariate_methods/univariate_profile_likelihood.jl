@@ -1,9 +1,18 @@
 """
-    get_uni_confidenceinterval(model::LikelihoodModel, uni_row_number::Int)
+    get_uni_confidence_interval_points(model::LikelihoodModel, uni_row_number::Int)
 
-Returns the confidence interval corresponding to the profile in row `uni_row_number` of `model.uni_profiles_df`.
+Returns the interval points [`PointsAndLogLikelihood`](@ref) struct corresponding to the profile in row `uni_row_number` of `model.uni_profiles_df`.
 """
-function get_uni_confidenceinterval(model::LikelihoodModel, uni_row_number::Int)
+function get_uni_confidence_interval_points(model::LikelihoodModel, uni_row_number::Int)
+    return model.uni_profiles_dict[uni_row_number].interval_points
+end
+
+"""
+    get_uni_confidence_interval(model::LikelihoodModel, uni_row_number::Int)
+
+Returns the confidence interval corresponding to the profile in row `uni_row_number` of `model.uni_profiles_df` as a vector of length two. If an entry has value `NaN`, that side of the confidence interval is outside the corresponding bound on the interest parameter.
+"""
+function get_uni_confidence_interval(model::LikelihoodModel, uni_row_number::Int)
     return model.uni_profiles_dict[uni_row_number].confidence_interval
 end
 
@@ -29,13 +38,13 @@ function get_interval_brackets(model::LikelihoodModel,
         bracket_l, bracket_r = [0.0, 0.0], [0.0, 0.0]
 
         if conf_ind>1
-            bracket_l[2], bracket_r[1] = get_uni_confidenceinterval(model, model.uni_profile_row_exists[(θi, profile_type)][prof_keys[conf_ind-1]])
+            bracket_l[2], bracket_r[1] = get_uni_confidence_interval(model, model.uni_profile_row_exists[(θi, profile_type)][prof_keys[conf_ind-1]])
         else
             bracket_l[2], bracket_r[1] = model.core.θmle[θi], model.core.θmle[θi]
         end
         
         if conf_ind<len_keys
-            bracket_l[1], bracket_r[2] = get_uni_confidenceinterval(model, model.uni_profile_row_exists[(θi, profile_type)][prof_keys[conf_ind+1]])
+            bracket_l[1], bracket_r[2] = get_uni_confidence_interval(model, model.uni_profile_row_exists[(θi, profile_type)][prof_keys[conf_ind+1]])
         else
             bracket_l[1], bracket_r[2] = model.core.θlb[θi], model.core.θub[θi]
         end
@@ -290,6 +299,8 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
     mle_targetll = get_target_loglikelihood(model, confidence_level, EllipseApproxAnalytical(), 1)
 
     θs_is_unique || (sort(θs_to_profile); unique!(θs_to_profile))
+
+    1 ≤ θs_to_profile[1] && θs_to_profile[end] ≤ model.core.num_pars || throw(DomainError("θs_to_profile can only contain parameter indexes between 1 and the number of model parameters"))
 
     init_uni_profile_row_exists!(model, θs_to_profile, profile_type)
 

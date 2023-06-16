@@ -86,13 +86,13 @@ function generate_prediction_univariate(model::LikelihoodModel,
                                         t::Vector,
                                         proportion_to_keep::Real)
 
-    boundary_col_indices = model.uni_profiles_dict[sub_df[row_i, :row_ind]].interval_points.boundary_col_indices
+    interval_points = get_uni_confidence_interval_points(model, sub_df[row_i, :row_ind])
+    boundary_col_indices = interval_points.boundary_col_indices
     boundary_range = boundary_col_indices[1]:boundary_col_indices[2]
 
     return generate_prediction(model.core.predictfunction, 
                 model.core.data, t, model.core.ymle,
-                model.uni_profiles_dict[sub_df[row_i, :row_ind]].interval_points.points[:, boundary_range], 
-                                                                proportion_to_keep)
+                interval_points.points[:, boundary_range], proportion_to_keep)
 end
 
 function generate_prediction_bivariate(model::LikelihoodModel,

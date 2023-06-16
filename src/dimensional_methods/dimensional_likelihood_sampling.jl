@@ -340,6 +340,8 @@ function dimensional_likelihood_sample!(model::LikelihoodModel,
         θindices = θindices[.!isempty.(θindices)]
         sort!.(θindices); unique!.(θindices)
         sort!(θindices); unique!(θindices)
+
+        1 ≤ first.(θindices)[1] && maximum(last.(θindices)) ≤ model.core.num_pars || throw(DomainError("θindices can only contain parameter indexes between 1 and the number of model parameters"))
     end
     # check if any of θindices is for the full likelihood - do this outside main for loop
     for (i, θs) in enumerate(θindices)

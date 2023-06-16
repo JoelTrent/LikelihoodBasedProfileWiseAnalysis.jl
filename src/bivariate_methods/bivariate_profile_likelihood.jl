@@ -282,6 +282,8 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
     if !θcombinations_is_unique 
         sort!.(θcombinations); unique!.(θcombinations)
         sort!(θcombinations); unique!(θcombinations)
+
+        1 ≤ first.(θcombinations)[1] && maximum(last.(θcombinations)) ≤ model.core.num_pars || throw(DomainError("θcombinations can only contain parameter indexes between 1 and the number of model parameters"))
     end
     extrema(length.(θcombinations)) == (2,2) || throw(ArgumentError("θcombinations must only contain vectors of length 2"))
 
