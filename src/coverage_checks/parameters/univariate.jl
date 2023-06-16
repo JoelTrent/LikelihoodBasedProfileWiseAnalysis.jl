@@ -28,7 +28,8 @@ function check_univariate_parameter_coverage(data_generator::Function,
     θinitialguess::AbstractVector{<:Real}=θtrue; 
     confidence_level::Float64=0.95, 
     profile_type::AbstractProfileType=LogLikelihood(), 
-    θs_is_unique::Bool=false)
+    θs_is_unique::Bool=false,
+    coverage_estimate_confidence_level::Float64=0.95)
 
     length(θtrue) == model.core.num_pars || throw(ArgumentError("θtrue must have the same length as the number of model parameters"))     
 
@@ -68,6 +69,9 @@ function check_univariate_parameter_coverage(data_generator::Function,
         if rem(total, 10) == 0; println(total) end
         if total == N; not_converged=false end
     end
+
+    coverage = successes ./ N
+    conf_ints = [collect(HypothesisTests.confint(HypothesisTests.BinomialTest(successes[i], N), level=coverage_estimate_confidence_level)) for i in 1:len_θs]
     
-    return DataFrame(θname=model.core.θnames[θs], θindex=θs, coverage=successes ./ N)
+    return DataFrame(θname=model.core.θnames[θs], θindex=θs, coverage=coverage, coverage_lb=first.(conf_ints), coverage_ub=last.(conf_ints))
 end

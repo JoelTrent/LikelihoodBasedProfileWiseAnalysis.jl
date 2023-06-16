@@ -12,6 +12,8 @@ using AngleBetweenVectors
 using Distributed, FLoops
 using Requires
 
+import HypothesisTests
+
 using ProgressMeter
 const global PROGRESS__METER__DT = 1.0
 
