@@ -662,37 +662,36 @@ function plot_bivariate_profiles_comparison(model::LikelihoodModel,
                     i += 1
                 end
 
-                if isnothing(conf_df_samples); continue end
+                if !isnothing(conf_df_samples)
+                    for sample_type in sample_types
+                        row = @view(conf_df_samples[conf_df_samples.sample_type .== Ref(sample_type),:])
+                        boundary = zeros(2,0)
 
-                for sample_type in sample_types
-                    row = @view(conf_df_samples[conf_df_samples.sample_type .== Ref(sample_type),:])
-                    boundary = zeros(2,0)
+                        if nrow(row) == 0
+                            continue
+                        else
+                            boundary = bivariate_concave_hull(model.dim_samples_dict[row.row_ind[1]], θindices, 0.15, 0.15, 
+                                                            get_target_loglikelihood(model, confidence_level, EllipseApproxAnalytical(), 2), sample_type)
+                        end
 
-                    if nrow(row) == 0
-                        continue
-                    else
-                        boundary = bivariate_concave_hull(model.dim_samples_dict[row.row_ind[1]], θindices, 0.15, 0.15, 
-                                                        get_target_loglikelihood(model, confidence_level, EllipseApproxAnalytical(), 2), sample_type)
+                        if i == 1
+                            min_vals .= minimum(boundary, dims=2)
+                            max_vals .= maximum(boundary, dims=2)
+                        else
+                            min_vals .= min.(min_vals, minimum(boundary, dims=2))
+                            max_vals .= max.(max_vals, maximum(boundary, dims=2))
+                        end
+
+                        plot2Dboundary!(profile_plots[plot_i], boundary, 
+                            label=string(sample_type),
+                            markershape=profile2Dmarkershape(sample_type, true), 
+                            markercolor=color_palette[profilecolor(sample_type)],
+                            linecolor=color_palette[profilecolor(sample_type)],
+                            markeralpha=markeralpha,
+                            linealpha=markeralpha)
+                        
+                        i += 1
                     end
-
-
-                    if i == 1
-                        min_vals .= minimum(boundary, dims=2)
-                        max_vals .= maximum(boundary, dims=2)
-                    else
-                        min_vals .= min.(min_vals, minimum(boundary, dims=2))
-                        max_vals .= max.(max_vals, maximum(boundary, dims=2))
-                    end
-
-                    plot2Dboundary!(profile_plots[plot_i], boundary, 
-                        label=string(sample_type),
-                        markershape=profile2Dmarkershape(sample_type, true), 
-                        markercolor=color_palette[profilecolor(sample_type)],
-                        linecolor=color_palette[profilecolor(sample_type)],
-                        markeralpha=markeralpha,
-                        linealpha=markeralpha)
-                    
-                    i += 1
                 end
 
                 ranges = max_vals .- min_vals
