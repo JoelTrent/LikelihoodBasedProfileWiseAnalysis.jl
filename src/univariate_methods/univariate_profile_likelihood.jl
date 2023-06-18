@@ -119,7 +119,8 @@ function get_univariate_opt_func(profile_type::AbstractProfileType=LogLikelihood
 end
 
 """
-    univariate_confidenceinterval(univariate_optimiser::Function, 
+    univariate_confidenceinterval!(p::Progress,
+        univariate_optimiser::Function, 
         model::LikelihoodModel, 
         consistent::NamedTuple, 
         θi::Int, 
@@ -145,7 +146,8 @@ function univariate_confidenceinterval(univariate_optimiser::Function,
                                         mle_targetll::Float64,
                                         use_existing_profiles::Bool,
                                         num_points_in_interval::Int,
-                                        additional_width::Real)
+                                        additional_width::Real,
+                                        channel)
 
     interval = zeros(2)
     ll = zeros(2)
@@ -240,6 +242,8 @@ function univariate_confidenceinterval(univariate_optimiser::Function,
                                                     profile_type, points, additional_width)
     end
 
+    put!(channel, true)
+
     return UnivariateConfidenceStruct(interval, points)
 end
 
@@ -333,35 +337,45 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
 
     not_evaluated_internal_points = num_points_in_interval > 0 ? false : true
 
-    # p = Progress(length(θs_to_profile); desc="Computing univariate profiles: ",
-                    # dt=PROGRESS__METER__DT, enabled=show_progress, showspeed=true)
-    profiles_to_add = @showprogress dt=PROGRESS__METER__DT "Computing univariate profiles: "  @distributed (vcat) for θi in θs_to_profile
-        [(θi, univariate_confidenceinterval(univariate_optimiser, model,
-                                                    consistent, θi, 
-                                                    confidence_level, profile_type,
-                                                    mle_targetll,
-                                                    use_existing_profiles,
-                                                    num_points_in_interval,
-                                                    additional_width))]
-        # next!(p)
-        # out
-    end
-    # finish!(p)
+    channel = RemoteChannel(() -> Channel{Bool}(1))
+    p = Progress(length(θs_to_profile); desc="Computing univariate profiles: ",
+                dt=PROGRESS__METER__DT, enabled=show_progress, showspeed=true)
 
-    for (i, (θi, interval_struct)) in enumerate(profiles_to_add)
-        if θs_to_overwrite[i]
-            row_ind = model.uni_profile_row_exists[(θi, profile_type)][confidence_level]
-        else
-            model.num_uni_profiles += 1
-            row_ind = model.num_uni_profiles * 1
-            model.uni_profile_row_exists[(θi, profile_type)][confidence_level] = row_ind
+    @sync begin
+        # this task prints the progress bar
+        @async while take!(channel)
+            next!(p)
         end
 
-        model.uni_profiles_dict[row_ind] = interval_struct
+        # this task does the computation
+        @async begin
+            profiles_to_add = @distributed (vcat) for θi in θs_to_profile
+                [(θi, univariate_confidenceinterval(univariate_optimiser, model,
+                                                            consistent, θi, 
+                                                            confidence_level, profile_type,
+                                                            mle_targetll,
+                                                            use_existing_profiles,
+                                                            num_points_in_interval,
+                                                            additional_width, channel))]
+            end
+            put!(channel, false)
 
-        set_uni_profiles_row!(model, row_ind, θi, not_evaluated_internal_points, true, confidence_level, 
-                                profile_type, num_points_in_interval+2, additional_width)
-    end        
+            for (i, (θi, interval_struct)) in enumerate(profiles_to_add)
+                if θs_to_overwrite[i]
+                    row_ind = model.uni_profile_row_exists[(θi, profile_type)][confidence_level]
+                else
+                    model.num_uni_profiles += 1
+                    row_ind = model.num_uni_profiles * 1
+                    model.uni_profile_row_exists[(θi, profile_type)][confidence_level] = row_ind
+                end
+
+                model.uni_profiles_dict[row_ind] = interval_struct
+
+                set_uni_profiles_row!(model, row_ind, θi, not_evaluated_internal_points, true, confidence_level, 
+                                        profile_type, num_points_in_interval+2, additional_width)
+            end        
+        end
+    end
     
     return nothing
 end

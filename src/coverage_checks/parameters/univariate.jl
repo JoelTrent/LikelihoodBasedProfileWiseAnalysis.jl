@@ -29,7 +29,8 @@ function check_univariate_parameter_coverage(data_generator::Function,
     confidence_level::Float64=0.95, 
     profile_type::AbstractProfileType=LogLikelihood(), 
     θs_is_unique::Bool=false,
-    coverage_estimate_confidence_level::Float64=0.95)
+    coverage_estimate_confidence_level::Float64=0.95,
+    show_progress::Bool=model.show_progress)
 
     length(θtrue) == model.core.num_pars || throw(ArgumentError("θtrue must have the same length as the number of model parameters"))     
 
@@ -44,13 +45,16 @@ function check_univariate_parameter_coverage(data_generator::Function,
     successes, total = zeros(Int, len_θs), 0
     not_converged=true
 
-    while not_converged
+    p = Progress(N; desc="Computing univariate parameter coverage: ",
+        dt=PROGRESS__METER__DT, enabled=show_progress, showspeed=true)
+
+    for total in 1:N
         new_data = data_generator(θtrue, generator_args)
 
         m_new = initialiseLikelihoodModel(model.core.loglikefunction, new_data, model.core.θnames, θinitialguess, model.core.θlb, model.core.θub, model.core.θmagnitudes; uni_row_prealloaction_size=len_θs, show_progress=false)
 
         univariate_confidenceintervals!(m_new, θs; 
-            confidence_level=confidence_level, profile_type=profile_type, θs_is_unique=true)
+            confidence_level=confidence_level, profile_type=profile_type, θs_is_unique=true, show_progress=false)
 
         for row_ind in 1:m_new.num_uni_profiles
 
@@ -65,9 +69,7 @@ function check_univariate_parameter_coverage(data_generator::Function,
                 successes[θi_to_θs[θi]] += 1
             end
         end
-        total += 1
-        if rem(total, 10) == 0; println(total) end
-        if total == N; not_converged=false end
+        next!(p)
     end
 
     coverage = successes ./ N
