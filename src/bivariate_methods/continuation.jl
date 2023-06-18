@@ -140,6 +140,7 @@ function continuation_line_search!(p::NamedTuple,
             boundarypoint .= p.pointa + Ψ*p.uhat
             target_level_set_2D[:, i] .= boundarypoint
             target_level_set_all[[ind1, ind2], i] .= boundarypoint
+            if !biv_opt_is_ellipse_analytical; bivariate_optimiser(Ψ, p) end
         else
             point_is_on_bounds[i] = true
             target_level_set_2D[:, i] .= boundpoint
@@ -212,8 +213,7 @@ function continuation_inwards_radial_search!(p::NamedTuple,
         p.uhat .= v_bar ./ v_bar_norm
 
         if is_a_zero[i]
-            Ψ = v_bar_norm
-            bivariate_optimiser(v_bar_norm, p) # to extract nuisance parameter values
+            Ψ = v_bar_norm # to extract nuisance parameter values
         else
             Ψ = find_zero(bivariate_optimiser, (0.0, v_bar_norm), Roots.Brent(); p=p)
         end
@@ -222,6 +222,7 @@ function continuation_inwards_radial_search!(p::NamedTuple,
         target_level_set_2D[:, i] .= boundarypoint
         target_level_set_all[[ind1, ind2], i] .= boundarypoint
         if !biv_opt_is_ellipse_analytical
+            bivariate_optimiser(Ψ, p)
             variablemapping2d!(@view(target_level_set_all[:, i]), p.λ_opt, p.θranges, p.λranges)
         end
     end

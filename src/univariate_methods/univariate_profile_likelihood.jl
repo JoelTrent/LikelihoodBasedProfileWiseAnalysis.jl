@@ -203,6 +203,7 @@ function univariate_confidenceinterval(univariate_optimiser::Function,
 
             interval[1] = find_zero(univariate_optimiser, bracket_l, Roots.Brent(), p=p) 
             interval_points[θi,1] = interval[1]
+            univariate_optimiser(interval[1], p)
             variablemapping1d!(@view(interval_points[:,1]), p.λ_opt, θranges, λranges)
             ll[1] = mle_targetll
         else
@@ -216,6 +217,7 @@ function univariate_confidenceinterval(univariate_optimiser::Function,
 
             interval[2] = find_zero(univariate_optimiser, bracket_r, Roots.Brent(), p=p)
             interval_points[θi,2] = interval[2]
+            univariate_optimiser(interval[2], p)
             variablemapping1d!(@view(interval_points[:,2]), p.λ_opt, θranges, λranges)
             ll[2] = mle_targetll
         else

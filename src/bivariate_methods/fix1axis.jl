@@ -139,6 +139,7 @@ function bivariate_confidenceprofile_fix1axis(bivariate_optimiser::Function,
             boundary[j, count] = Ψ_y1
             
             if !biv_opt_is_ellipse_analytical
+                bivariate_optimiser(Ψ_y1, p)
                 variablemapping2d!(@view(boundary[:, count]), p.λ_opt, θranges, λranges)
             end
         end

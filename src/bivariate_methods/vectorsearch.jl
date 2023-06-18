@@ -313,6 +313,7 @@ function bivariate_confidenceprofile_vectorsearch(bivariate_optimiser::Function,
             Ψ = find_zero(bivariate_optimiser, (0.0, v_bar_norm), Roots.Brent(); p=p)
             
             boundary[[ind1, ind2], i] .= p.pointa + Ψ*p.uhat
+            if !biv_opt_is_ellipse_analytical; bivariate_optimiser(Ψ, p) end
         end
         if !biv_opt_is_ellipse_analytical
             variablemapping2d!(@view(boundary[:, i]), p.λ_opt, θranges, λranges)

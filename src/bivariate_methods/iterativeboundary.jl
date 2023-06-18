@@ -150,6 +150,7 @@ function iterativeboundary_init(bivariate_optimiser::Function,
             boundary_all[[ind1, ind2], i] .= boundary[:,i]
         end
         if !biv_opt_is_ellipse_analytical
+            bivariate_optimiser(Ψ, p)
             variablemapping2d!(@view(boundary_all[:, i]), p.λ_opt, p.θranges, p.λranges)
         end
     end
@@ -305,6 +306,7 @@ function newboundarypoint!(p::NamedTuple,
                 boundarypoint = p.pointa + Ψ*p.uhat
                 boundary[:, num_vertices] .= boundarypoint
                 boundary_all[[ind1, ind2], num_vertices] .= boundarypoint
+                if !biv_opt_is_ellipse_analytical; bivariate_optimiser(Ψ, p) end
             else
                 point_is_on_bounds[num_vertices] = true
                 boundary[:, num_vertices] .= boundpoint
@@ -362,9 +364,12 @@ function newboundarypoint!(p::NamedTuple,
                     boundarypoint = p.pointa + Ψs[1]*p.uhat
                     if isapprox(boundarypoint, p.pointa)
                         failure=true
+                    else
+                        Ψ = Ψs[1]
                     end
                 else
                     boundarypoint = p.pointa + Ψs[end]*p.uhat
+                    Ψ = Ψs[end]
                 end
             end
                 
@@ -374,7 +379,7 @@ function newboundarypoint!(p::NamedTuple,
 
             boundary[:, num_vertices] .= boundarypoint
             boundary_all[[ind1, ind2], num_vertices] .= boundarypoint
-            bivariate_optimiser(Ψ, p)
+            if !biv_opt_is_ellipse_analytical; bivariate_optimiser(Ψ, p) end
         end
 
         if !biv_opt_is_ellipse_analytical
