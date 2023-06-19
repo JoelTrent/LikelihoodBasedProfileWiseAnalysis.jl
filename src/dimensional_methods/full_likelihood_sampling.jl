@@ -145,8 +145,7 @@ function uniform_random(model::LikelihoodModel,
 
     grid = zeros(num_dims, num_points)
 
-    ex = use_threads ? ThreadedEx() : ThreadedEx(basesize=num_dims) 
-    @floop ex for dim in 1:num_dims
+    for dim in 1:num_dims
         grid[dim, :] .= rand(Uniform(lb[dim], ub[dim]), num_points)
     end
 

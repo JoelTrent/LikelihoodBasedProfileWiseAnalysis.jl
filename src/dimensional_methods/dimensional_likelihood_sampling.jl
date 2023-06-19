@@ -1,13 +1,13 @@
 function dimensional_optimiser!(θs, p, targetll)
     
     function fun(λ)
-        θs[p.λindexes] = λ
+        θs[p.λindices] = λ
         return p.consistent.loglikefunction(θs, p.consistent.data)
     end
 
     (xopt,fopt)=optimise(fun, p.initGuess, p.newLb, p.newUb)
     llb=fopt-targetll
-    θs[p.λindexes] .= xopt
+    θs[p.λindices] .= xopt
     return llb
 end
 
@@ -15,50 +15,16 @@ function init_dimensional_parameters(model::LikelihoodModel,
                                         θindices::Vector{Int},
                                         num_dims::Int)
 
-    λindexes = setdiff(1:model.core.num_pars, θindices)
+    λindices = setdiff(1:model.core.num_pars, θindices)
     newLb     = zeros(model.core.num_pars-num_dims) 
     newUb     = zeros(model.core.num_pars-num_dims)
     initGuess = zeros(model.core.num_pars-num_dims)
 
-    newLb .= model.core.θlb[λindexes]
-    newUb .= model.core.θub[λindexes]
-    initGuess .= model.core.θmle[λindexes]
+    newLb .= model.core.θlb[λindices]
+    newUb .= model.core.θub[λindices]
+    initGuess .= model.core.θmle[λindices]
 
-    return newLb, newUb, initGuess, λindexes
-end
-
-function valid_points(model::LikelihoodModel,
-                        p::NamedTuple, 
-                        grid::Base.Iterators.ProductIterator,
-                        grid_size::Int,
-                        confidence_level::Float64, 
-                        num_dims::Int,
-                        use_threads::Bool)
-    valid_point = falses(grid_size)
-    ll_values = zeros(grid_size)
-    targetll = get_target_loglikelihood(model, confidence_level,
-                                         LogLikelihood(), num_dims)
-
-    ex = use_threads ? ThreadedEx() : ThreadedEx(basesize=grid_size) 
-    @floop ex for (i, point) in enumerate(grid)
-        ll_values[i] = dimensional_optimiser!(point, p, targetll)
-    end
-    valid_point .= ll_values .≥ 0.0
-
-    points = zeros(model.core.num_pars, sum(valid_point))
-    j=1
-    for (i, point) in enumerate(grid)
-        if (ll_values[i]) > 0 
-            points[:,j] .= point
-            j+=1
-        end
-    end
-
-    valid_ll_values = ll_values[valid_point]
-    valid_ll_values .= valid_ll_values .+ get_target_loglikelihood(model, confidence_level,
-                                                        EllipseApproxAnalytical(), num_dims)
-
-    return points, valid_ll_values
+    return newLb, newUb, initGuess, λindices
 end
 
 function valid_points(model::LikelihoodModel, 
@@ -122,10 +88,10 @@ function uniform_grid(model::LikelihoodModel,
         points_per_dimension = fill(points_per_dimension, num_dims)
     end
 
-    newLb, newUb, initGuess, λindexes = init_dimensional_parameters(model, θindices, num_dims)
+    newLb, newUb, initGuess, λindices = init_dimensional_parameters(model, θindices, num_dims)
     consistent = get_consistent_tuple(model, confidence_level, LogLikelihood(), num_dims)
     p=(θindices=θindices, newLb=newLb, newUb=newUb, initGuess=initGuess,
-        λindexes=λindexes, consistent=consistent)
+        λindices=λindices, consistent=consistent)
 
     lb, ub = arguments_checked ? (lb, ub) : check_if_bounds_supplied(model, θindices, lb, ub)
 
@@ -134,8 +100,7 @@ function uniform_grid(model::LikelihoodModel,
     grid_size = prod(points_per_dimension)
 
     grid = zeros(model.core.num_pars, grid_size)
-    ex = use_threads ? ThreadedEx() : ThreadedEx(basesize=grid_size) 
-    @floop ex for (i, point) in enumerate(grid_iterator)
+    for (i, point) in enumerate(grid_iterator)
         grid[θindices, i] .= point
     end
 
@@ -157,10 +122,10 @@ function uniform_random_blocks(model::LikelihoodModel,
     if !arguments_checked
         num_points > 0 || throw(DomainError("num_points must be a strictly positive integer"))
     end
-    newLb, newUb, initGuess, λindexes = init_dimensional_parameters(model, θindices, num_dims)
+    newLb, newUb, initGuess, λindices = init_dimensional_parameters(model, θindices, num_dims)
     consistent = get_consistent_tuple(model, confidence_level, LogLikelihood(), num_dims)
     p=(θindices=θindices, newLb=newLb, newUb=newUb, initGuess=initGuess,
-        λindexes=λindexes, consistent=consistent)
+        λindices=λindices, consistent=consistent)
     
     lb, ub = arguments_checked ? (lb, ub) : check_if_bounds_supplied(model, θindices, lb, ub)
 
@@ -182,8 +147,7 @@ function uniform_random_blocks(model::LikelihoodModel,
 
         if block < block_size; grid = zeros(model.core.num_pars, block) end
 
-        ex = use_threads ? ThreadedEx() : ThreadedEx(basesize=num_dims) 
-        @floop ex for dim in 1:num_dims
+        for dim in 1:num_dims
             grid[θindices[dim], :] .= rand(Uniform(lb[dim], ub[dim]), block)
         end
 
@@ -233,17 +197,16 @@ function uniform_random(model::LikelihoodModel,
     if !arguments_checked
         num_points > 0 || throw(DomainError("num_points must be a strictly positive integer"))
     end
-    newLb, newUb, initGuess, λindexes = init_dimensional_parameters(model, θindices, num_dims)
+    newLb, newUb, initGuess, λindices = init_dimensional_parameters(model, θindices, num_dims)
     consistent = get_consistent_tuple(model, confidence_level, LogLikelihood(), num_dims)
     p=(θindices=θindices, newLb=newLb, newUb=newUb, initGuess=initGuess,
-        λindexes=λindexes, consistent=consistent)
+        λindices=λindices, consistent=consistent)
     
     lb, ub = arguments_checked ? (lb, ub) : check_if_bounds_supplied(model, θindices, lb, ub)
 
     grid = zeros(model.core.num_pars, num_points)
 
-    ex = use_threads ? ThreadedEx() : ThreadedEx(basesize=num_dims) 
-    @floop ex for dim in 1:num_dims
+    for dim in 1:num_dims
         grid[θindices[dim], :] .= rand(Uniform(lb[dim], ub[dim]), num_points)
     end
 
@@ -267,10 +230,10 @@ function LHS(model::LikelihoodModel,
         lb, ub = check_if_bounds_supplied(model, θindices, lb, ub)
     end
 
-    newLb, newUb, initGuess, λindexes = init_dimensional_parameters(model, θindices, num_dims)
+    newLb, newUb, initGuess, λindices = init_dimensional_parameters(model, θindices, num_dims)
     consistent = get_consistent_tuple(model, confidence_level, LogLikelihood(), num_dims)
     p=(θindices=θindices, newLb=newLb, newUb=newUb, initGuess=initGuess,
-        λindexes=λindexes, consistent=consistent)
+        λindices=λindices, consistent=consistent)
 
     grid = zeros(model.core.num_pars, num_points)
     
