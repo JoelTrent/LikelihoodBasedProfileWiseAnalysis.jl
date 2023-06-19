@@ -290,7 +290,8 @@ function dimensional_likelihood_sample(model::LikelihoodModel,
                                     sample_type::AbstractSampleType,
                                     lb::AbstractVector{<:Real},
                                     ub::AbstractVector{<:Real},
-                                    use_threads::Bool)
+                                    use_threads::Bool,
+                                    channel::RemoteChannel)
 
     if sample_type isa UniformGridSamples
         sample_struct = uniform_grid(model, θindices, num_points, confidence_level, lb, ub;
@@ -302,6 +303,8 @@ function dimensional_likelihood_sample(model::LikelihoodModel,
         sample_struct = LHS(model, θindices, num_points, confidence_level, lb, ub;
                             use_threads=use_threads, arguments_checked=true)
     end
+
+    put!(channel, true)
     return sample_struct
 end
 
@@ -385,37 +388,45 @@ function dimensional_likelihood_sample!(model::LikelihoodModel,
         add_dim_samples_rows!(model, num_rows_required)
     end
 
-    # p = Progress(length(θindices); desc="Computing dimensional profile samples: ",
-    #             dt=PROGRESS__METER__DT, enabled=show_progress, showspeed=true)
-    profiles_to_add = @showprogress PROGRESS__METER__DT "Computing dimensional profile samples: " @distributed (vcat) for θs in θindices
-        [(θs, dimensional_likelihood_sample(model, θs, num_points_to_sample,
-                                            confidence_level, sample_type,
-                                            lb[θs], ub[θs], use_threads))]
-        # next!(p)
-        # out
-    end
-    # finish!(p)
+    channel = RemoteChannel(() -> Channel{Bool}(1))
+    p = Progress(length(θindices); desc="Computing dimensional profile samples: ",
+                dt=PROGRESS__METER__DT, enabled=show_progress, showspeed=true)
 
-    for (i, (θs, sample_struct)) in enumerate(profiles_to_add)
-        
-        num_points_kept = length(sample_struct.ll)
-        if num_points_kept == 0
-            @warn string("no sampled points for θindices, ", θs, ", were in the confidence region of the profile likelihood within the supplied bounds: try increasing num_points_to_sample or changing the bounds")
-            continue
+    @sync begin
+        @async while take!(channel)
+            next!(p)
         end
 
-        if θs_to_overwrite[i]
-            row_ind = model.dim_samples_row_exists[(θs, sample_type)][confidence_level]
-        else
-            model.num_dim_samples += 1
-            row_ind = model.num_dim_samples * 1
-            model.dim_samples_row_exists[(θs, sample_type)][confidence_level] = row_ind
-        end
+        @async begin
+            profiles_to_add = @distributed (vcat) for θs in θindices
+                [(θs, dimensional_likelihood_sample(model, θs, num_points_to_sample,
+                                                    confidence_level, sample_type,
+                                                    lb[θs], ub[θs], use_threads, channel))]
+            end
+            put!(channel, false)
 
-        model.dim_samples_dict[row_ind] = sample_struct
-        
-        set_dim_samples_row!(model, row_ind, θs, true, confidence_level, sample_type,
-                                num_points_kept)
+            for (i, (θs, sample_struct)) in enumerate(profiles_to_add)
+                
+                num_points_kept = length(sample_struct.ll)
+                if num_points_kept == 0
+                    @warn string("no sampled points for θindices, ", θs, ", were in the confidence region of the profile likelihood within the supplied bounds: try increasing num_points_to_sample or changing the bounds")
+                    continue
+                end
+
+                if θs_to_overwrite[i]
+                    row_ind = model.dim_samples_row_exists[(θs, sample_type)][confidence_level]
+                else
+                    model.num_dim_samples += 1
+                    row_ind = model.num_dim_samples * 1
+                    model.dim_samples_row_exists[(θs, sample_type)][confidence_level] = row_ind
+                end
+
+                model.dim_samples_dict[row_ind] = sample_struct
+                
+                set_dim_samples_row!(model, row_ind, θs, true, confidence_level, sample_type,
+                                        num_points_kept)
+            end
+        end
     end
 
     return nothing

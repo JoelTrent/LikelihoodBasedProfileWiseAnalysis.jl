@@ -38,7 +38,8 @@ function generate_prediction(predictfunction::Function,
                                 t::Vector,
                                 data_ymle::AbstractArray{<:Real},
                                 parameter_points::Matrix{Float64},
-                                proportion_to_keep::Real)
+                                proportion_to_keep::Real,
+                                channel::RemoteChannel)
 
     num_points = size(parameter_points, 2)
     
@@ -77,6 +78,8 @@ function generate_prediction(predictfunction::Function,
     else
         predict_struct = PredictionStruct(predictions[:, keep_i], extrema)
     end
+
+    put!(channel, true)
     return predict_struct
 end
 
@@ -84,22 +87,24 @@ function generate_prediction_univariate(model::LikelihoodModel,
                                         sub_df,
                                         row_i::Int,
                                         t::Vector,
-                                        proportion_to_keep::Real)
+                                        proportion_to_keep::Real, 
+                                        channel::RemoteChannel)
 
     interval_points = get_uni_confidence_interval_points(model, sub_df[row_i, :row_ind])
     boundary_col_indices = interval_points.boundary_col_indices
     boundary_range = boundary_col_indices[1]:boundary_col_indices[2]
-
+    
     return generate_prediction(model.core.predictfunction, 
                 model.core.data, t, model.core.ymle,
-                interval_points.points[:, boundary_range], proportion_to_keep)
+                interval_points.points[:, boundary_range], proportion_to_keep, channel)
 end
 
 function generate_prediction_bivariate(model::LikelihoodModel,
                                         sub_df,
                                         row_i::Int,
                                         t::Vector,
-                                        proportion_to_keep::Real)
+                                        proportion_to_keep::Real,
+                                        channel::RemoteChannel)
 
     conf_struct = model.biv_profiles_dict[sub_df[row_i, :row_ind]]
 
@@ -107,12 +112,12 @@ function generate_prediction_bivariate(model::LikelihoodModel,
         return generate_prediction(model.core.predictfunction, 
                                     model.core.data, t, model.core.ymle,
                                     hcat(conf_struct.confidence_boundary, conf_struct.internal_points.points), 
-                                    proportion_to_keep)
+                                    proportion_to_keep, channel)
     end
-    return generate_prediction(model.core.predictfunction, 
+    return generate_prediction(model.core.predictfunction,
                                 model.core.data, t, model.core.ymle,
                                 conf_struct.confidence_boundary, 
-                                proportion_to_keep)
+                                proportion_to_keep, channel)
 end
 
 """
@@ -133,22 +138,28 @@ function generate_predictions_univariate!(model::LikelihoodModel,
         return nothing
     end
 
-    
-    # p = Progress(nrow(sub_df); desc="Generating univariate profile predictions: ",
-    #             dt=PROGRESS__METER__DT, enabled=show_progress, showspeed=true)
-    predictions = @showprogress PROGRESS__METER__DT "Generating univariate profile predictions: " @distributed (vcat) for i in 1:nrow(sub_df)
-        [generate_prediction_univariate(model, sub_df, i, t, proportion_to_keep)]
-        # next!(p)
-        # out
-    end
-    # finish!(p)
-    
-    for (i, predict_struct) in enumerate(predictions)
-        model.uni_predictions_dict[sub_df[i, :row_ind]] = predict_struct
+    channel = RemoteChannel(() -> Channel{Bool}(1))
+    p = Progress(nrow(sub_df); desc="Generating univariate profile predictions: ",
+                dt=PROGRESS__METER__DT, enabled=show_progress, showspeed=true)
+
+    @sync begin
+        @async while take!(channel)
+            next!(p)
+        end
+
+        @async begin
+            predictions = @distributed (vcat) for i in 1:nrow(sub_df)
+                [generate_prediction_univariate(model, sub_df, i, t, proportion_to_keep, channel)]
+            end
+            put!(channel, false)
+            
+            for (i, predict_struct) in enumerate(predictions)
+                model.uni_predictions_dict[sub_df[i, :row_ind]] = predict_struct
+            end
+        end
     end
 
     sub_df[:, :not_evaluated_predictions] .= false
-
     return nothing
 end
 
@@ -169,22 +180,29 @@ function generate_predictions_bivariate!(model::LikelihoodModel,
         return nothing
     end
 
-    # p = Progress(nrow(sub_df); desc="Generating bivariate profile predictions: ",
-    #             dt=PROGRESS__METER__DT, enabled=show_progress, showspeed=true)
-    predictions = @showprogress PROGRESS__METER__DT "Generating bivariate profile predictions: " @distributed (vcat) for i in 1:nrow(sub_df)
-        [generate_prediction_bivariate(model, sub_df, i,
-                                        t, proportion_to_keep)]
-        # next!(p)
-        # out
-    end
-    # finish!(p)
+    channel = RemoteChannel(() -> Channel{Bool}(1))
+    p = Progress(nrow(sub_df); desc="Generating bivariate profile predictions: ",
+                dt=PROGRESS__METER__DT, enabled=show_progress, showspeed=true)
+
+    @sync begin
+        @async while take!(channel)
+            next!(p)
+        end
+
+        @async begin
+            predictions = @distributed (vcat) for i in 1:nrow(sub_df)
+                [generate_prediction_bivariate(model, sub_df, i,
+                                                t, proportion_to_keep, channel)]
+            end
+            put!(channel, false)
     
-    for (i, predict_struct) in enumerate(predictions)
-        model.biv_predictions_dict[sub_df[i, :row_ind]] = predict_struct
+            for (i, predict_struct) in enumerate(predictions)
+                model.biv_predictions_dict[sub_df[i, :row_ind]] = predict_struct
+            end
+        end
     end
 
     sub_df[:, :not_evaluated_predictions] .= false
-
     return nothing
 end
 
@@ -204,19 +222,27 @@ function generate_predictions_dim_samples!(model::LikelihoodModel,
         return nothing
     end
 
-    # p = Progress(nrow(sub_df); desc="Generating dimensional profile sample predictions: ",
-    #             dt=PROGRESS__METER__DT, enabled=show_progress, showspeed=true)
-    predictions = @showprogress PROGRESS__METER__DT "Generating dimensional profile sample predictions: "  @distributed (vcat) for i in 1:nrow(sub_df)
-        parameter_points = model.dim_samples_dict[sub_df[i, :row_ind]].points
-        [generate_prediction(model.core.predictfunction, model.core.data, t, 
-                                            model.core.ymle, parameter_points, proportion_to_keep)]
-        # next!(p)
-        # out
-    end
-    # finish!(p)
-    
-    for (i, predict_struct) in enumerate(predictions)
-        model.dim_predictions_dict[sub_df[i, :row_ind]] = predict_struct
+    channel = RemoteChannel(() -> Channel{Bool}(1))
+    p = Progress(nrow(sub_df); desc="Generating dimensional profile sample predictions: ",
+                dt=PROGRESS__METER__DT, enabled=show_progress, showspeed=true)
+
+    @sync begin
+        @async while take!(channel)
+            next!(p)
+        end
+
+        @async begin
+            predictions = @distributed (vcat) for i in 1:nrow(sub_df)
+                parameter_points = model.dim_samples_dict[sub_df[i, :row_ind]].points
+                [generate_prediction(model.core.predictfunction, model.core.data, t, 
+                                                    model.core.ymle, parameter_points, proportion_to_keep, channel)]
+            end
+            put!(channel, false)
+            
+            for (i, predict_struct) in enumerate(predictions)
+                model.dim_predictions_dict[sub_df[i, :row_ind]] = predict_struct
+            end
+        end
     end
 
     sub_df[:, :not_evaluated_predictions] .= false

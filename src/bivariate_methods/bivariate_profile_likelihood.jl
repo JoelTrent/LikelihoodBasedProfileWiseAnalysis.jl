@@ -126,7 +126,8 @@ end
         profile_type::AbstractProfileType,
         method::AbstractBivariateMethod,
         mle_targetll::Float64,
-        save_internal_points::Bool)
+        save_internal_points::Bool,
+        channel::RemoteChannel)
 
 Returns a [`BivariateConfidenceStruct`](@ref) containing the `num_points` boundary points and internal points (if `save_internal_points=true`) for the specified combination of parameters `ind1` and `ind2`, and `profile_type` at `confidence_level` using `method`. Calls the desired method. Called by [`bivariate_confidenceprofiles!`](@ref).
 """
@@ -140,7 +141,9 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
                                         profile_type::AbstractProfileType,
                                         method::AbstractBivariateMethod,
                                         mle_targetll::Float64,
-                                        save_internal_points::Bool)
+                                        save_internal_points::Bool,
+                                        channel::RemoteChannel)
+
     internal=PointsAndLogLikelihood(zeros(model.core.num_pars,0), zeros(0))
     if method isa AnalyticalEllipseMethod
         boundary_ellipse = generate_N_clustered_points(
@@ -214,6 +217,7 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
                                 mle_targetll, save_internal_points)
     end
     
+    put!(channel, true)
     return BivariateConfidenceStruct(boundary, internal)
 end
 
@@ -338,35 +342,44 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
     len_θcombinations = length(θcombinations)
     len_θcombinations > 0 || return nothing
 
-    # p = Progress(length(θcombinations); desc="Computing bivariate profiles: ",
-    #             dt=PROGRESS__METER__DT, enabled=show_progress, showspeed=true)
-    profiles_to_add = @showprogress PROGRESS__METER__DT "Computing bivariate profiles: " @distributed (vcat) for i in 1:len_θcombinations
-        [((θcombinations[i][1], θcombinations[i][2]), bivariate_confidenceprofile(bivariate_optimiser, model, num_new_points[i],
-                                                        confidence_level, consistent, 
-                                                        θcombinations[i][1], θcombinations[i][2], profile_type,
-                                                        method, mle_targetll,
-                                                        save_internal_points))]
-        # next!(p)
-        # out
-    end
-    # finish!(p)
+    
+    channel = RemoteChannel(() -> Channel{Bool}(1))
+    p = Progress(length(θcombinations); desc="Computing bivariate profiles: ",
+                dt=PROGRESS__METER__DT, enabled=show_progress, showspeed=true)
 
-    for (i, (inds, boundary_struct)) in enumerate(profiles_to_add)
-        if θcombinations_to_reuse[i]
-            row_ind = model.biv_profile_row_exists[(inds, profile_type, method)][confidence_level]
-        else
-            model.num_biv_profiles += 1
-            row_ind = model.num_biv_profiles * 1
-            model.biv_profile_row_exists[(inds, profile_type, method)][confidence_level] = row_ind
+    @sync begin
+        @async while take!(channel)
+            next!(p)
         end
 
-        if θcombinations_to_merge[i]
-            model.biv_profiles_dict[row_ind] = merge(model.biv_profiles_dict[row_ind], boundary_struct)
-        else
-            model.biv_profiles_dict[row_ind] = boundary_struct
-        end
+        @async begin
+            profiles_to_add = @distributed (vcat) for i in 1:len_θcombinations
+                [((θcombinations[i][1], θcombinations[i][2]), bivariate_confidenceprofile(bivariate_optimiser, model, num_new_points[i],
+                                                                confidence_level, consistent, 
+                                                                θcombinations[i][1], θcombinations[i][2], profile_type,
+                                                                method, mle_targetll,
+                                                                save_internal_points, channel))]
+            end
+            put!(channel, false)
 
-        set_biv_profiles_row!(model, row_ind, inds, !save_internal_points, true, confidence_level, profile_type, method, num_points)        
+            for (i, (inds, boundary_struct)) in enumerate(profiles_to_add)
+                if θcombinations_to_reuse[i]
+                    row_ind = model.biv_profile_row_exists[(inds, profile_type, method)][confidence_level]
+                else
+                    model.num_biv_profiles += 1
+                    row_ind = model.num_biv_profiles * 1
+                    model.biv_profile_row_exists[(inds, profile_type, method)][confidence_level] = row_ind
+                end
+
+                if θcombinations_to_merge[i]
+                    model.biv_profiles_dict[row_ind] = merge(model.biv_profiles_dict[row_ind], boundary_struct)
+                else
+                    model.biv_profiles_dict[row_ind] = boundary_struct
+                end
+
+                set_biv_profiles_row!(model, row_ind, inds, !save_internal_points, true, confidence_level, profile_type, method, num_points)        
+            end
+        end
     end
 
     return nothing

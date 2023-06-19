@@ -147,7 +147,7 @@ function univariate_confidenceinterval(univariate_optimiser::Function,
                                         use_existing_profiles::Bool,
                                         num_points_in_interval::Int,
                                         additional_width::Real,
-                                        channel)
+                                        channel::RemoteChannel)
 
     interval = zeros(2)
     ll = zeros(2)
@@ -245,7 +245,6 @@ function univariate_confidenceinterval(univariate_optimiser::Function,
     end
 
     put!(channel, true)
-
     return UnivariateConfidenceStruct(interval, points)
 end
 
