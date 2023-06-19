@@ -9,7 +9,7 @@ using Random, StatsBase, Combinatorics, Distributions
 using Distances, TravelingSalesmanHeuristics
 using Clustering, Meshes, ConcaveHull
 using AngleBetweenVectors
-using Distributed, FLoops
+using Distributed, SharedArrays, FLoops
 using Requires
 
 import HypothesisTests
@@ -149,23 +149,23 @@ SnoopPrecompile.@precompile_all_calls begin
     m = initialiseLikelihoodModel(loglike, data, θnames, θG, lb, ub, par_magnitudes)
     getMLE_ellipse_approximation!(m)
 
-    N=8
-    for profile_type in [LogLikelihood(), EllipseApprox(), EllipseApproxAnalytical()]
-        univariate_confidenceintervals!(m, profile_type=profile_type)
-        for method in [IterativeBoundaryMethod(4, 2, 2), RadialRandomMethod(3), SimultaneousMethod(), Fix1AxisMethod(), ContinuationMethod(2, 0.1, 0.0)]
-            bivariate_confidenceprofiles!(m, N, method=method, profile_type=profile_type)
-        end
-    end
+    # N=8
+    # for profile_type in [LogLikelihood(), EllipseApprox(), EllipseApproxAnalytical()]
+    #     univariate_confidenceintervals!(m, profile_type=profile_type)
+    #     for method in [IterativeBoundaryMethod(4, 2, 2), RadialRandomMethod(3), SimultaneousMethod(), Fix1AxisMethod(), ContinuationMethod(2, 0.1, 0.0)]
+    #         bivariate_confidenceprofiles!(m, N, method=method, profile_type=profile_type)
+    #     end
+    # end
 
     univariate_confidenceintervals!(m, use_existing_profiles=true, confidence_level=0.9, num_points_in_interval=10)
 
-    dimensional_likelihood_sample!(m, 1, 100, sample_type=UniformGridSamples())
-    dimensional_likelihood_sample!(m, 1, 100, sample_type=UniformRandomSamples())
-    dimensional_likelihood_sample!(m, 1, 100, sample_type=LatinHypercubeSamples())
+    # dimensional_likelihood_sample!(m, 1, 100, sample_type=UniformGridSamples())
+    # dimensional_likelihood_sample!(m, 1, 100, sample_type=UniformRandomSamples())
+    # dimensional_likelihood_sample!(m, 1, 100, sample_type=LatinHypercubeSamples())
 
-    dimensional_likelihood_sample!(m, 2, 10, sample_type=UniformGridSamples())
-    dimensional_likelihood_sample!(m, 2, 100, sample_type=UniformRandomSamples())
-    dimensional_likelihood_sample!(m, 2, 100, sample_type=LatinHypercubeSamples())
+    # dimensional_likelihood_sample!(m, 2, 10, sample_type=UniformGridSamples())
+    # dimensional_likelihood_sample!(m, 2, 100, sample_type=UniformRandomSamples())
+    # dimensional_likelihood_sample!(m, 2, 100, sample_type=LatinHypercubeSamples())
 
 
 end

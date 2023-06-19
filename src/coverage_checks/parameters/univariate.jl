@@ -9,6 +9,7 @@
 
 """
     check_univariate_parameter_coverage(data_generator::Function, 
+        generator_args::Union{Tuple, NamedTuple},
         model::LikelihoodModel, 
         θtrue::AbstractVector{<:Real}, 
         N::Int, 
@@ -16,7 +17,12 @@
         θinitialguess::AbstractVector{<:Real}=θtrue; 
         confidence_level::Float64=0.95, 
         profile_type::AbstractProfileType=LogLikelihood(), 
-        θs_is_unique::Bool=false)
+        θs_is_unique::Bool=false,
+        coverage_estimate_confidence_level::Float64=0.95,
+        show_progress::Bool=model.show_progress,
+        distributed_over_parameters::Bool=false)
+
+
 
 """
 function check_univariate_parameter_coverage(data_generator::Function, 
@@ -30,7 +36,8 @@ function check_univariate_parameter_coverage(data_generator::Function,
     profile_type::AbstractProfileType=LogLikelihood(), 
     θs_is_unique::Bool=false,
     coverage_estimate_confidence_level::Float64=0.95,
-    show_progress::Bool=model.show_progress)
+    show_progress::Bool=model.show_progress,
+    distributed_over_parameters::Bool=false)
 
     length(θtrue) == model.core.num_pars || throw(ArgumentError("θtrue must have the same length as the number of model parameters"))     
 
@@ -42,34 +49,76 @@ function check_univariate_parameter_coverage(data_generator::Function,
     len_θs = length(θs)
     θi_to_θs = Dict{Int,Int}(θi => θs for (θs, θi) in enumerate(θs))
 
-    successes, total = zeros(Int, len_θs), 0
-    not_converged=true
+    successes = zeros(Int, len_θs)
 
+    channel = RemoteChannel(() -> Channel{Bool}(1))
     p = Progress(N; desc="Computing univariate parameter coverage: ",
         dt=PROGRESS__METER__DT, enabled=show_progress, showspeed=true)
 
-    for total in 1:N
-        new_data = data_generator(θtrue, generator_args)
+    if distributed_over_parameters
+        for _ in 1:N
+            new_data = data_generator(θtrue, generator_args)
 
-        m_new = initialiseLikelihoodModel(model.core.loglikefunction, new_data, model.core.θnames, θinitialguess, model.core.θlb, model.core.θub, model.core.θmagnitudes; uni_row_prealloaction_size=len_θs, show_progress=false)
+            m_new = initialiseLikelihoodModel(model.core.loglikefunction, new_data, model.core.θnames, θinitialguess, model.core.θlb, model.core.θub, model.core.θmagnitudes; uni_row_prealloaction_size=len_θs, show_progress=false)
 
-        univariate_confidenceintervals!(m_new, θs; 
-            confidence_level=confidence_level, profile_type=profile_type, θs_is_unique=true, show_progress=false)
+            univariate_confidenceintervals!(m_new, θs; 
+                confidence_level=confidence_level, profile_type=profile_type, θs_is_unique=true, show_progress=false)
 
-        for row_ind in 1:m_new.num_uni_profiles
+            for row_ind in 1:m_new.num_uni_profiles
 
-            θi = m_new.uni_profiles_df[row_ind, :θindex]
+                θi = m_new.uni_profiles_df[row_ind, :θindex]
 
-            # check if interval contains θtrue[θi]
-            interval_struct = get_uni_confidence_interval_points(m_new, row_ind)
-            interval = @inbounds interval_struct.points[θi, 1:2]
+                # check if interval contains θtrue[θi]
+                interval_struct = get_uni_confidence_interval_points(m_new, row_ind)
+                interval = @inbounds interval_struct.points[θi, 1:2]
 
-            θtrue_i = θtrue[θi]
-            if interval[1] ≤ θtrue_i && θtrue_i ≤ interval[2]
-                successes[θi_to_θs[θi]] += 1
+                θtrue_i = θtrue[θi]
+                if interval[1] ≤ θtrue_i && θtrue_i ≤ interval[2]
+                    successes[θi_to_θs[θi]] += 1
+                end
+            end
+            next!(p)
+        end
+
+    else
+        successes_bool = SharedArray{Bool}(len_θs, N)
+        successes_bool .= false
+        @sync begin
+            # this task prints the progress bar
+            @async while take!(channel)
+                next!(p)
+            end
+
+            # this task does the computation
+            @async begin
+                @distributed (+) for i in 1:N
+                    new_data = data_generator(θtrue, generator_args)
+
+                    m_new = initialiseLikelihoodModel(model.core.loglikefunction, new_data, 
+                        model.core.θnames, θinitialguess, model.core.θlb, model.core.θub, 
+                        model.core.θmagnitudes; uni_row_prealloaction_size=len_θs, show_progress=false)
+
+                    univariate_confidenceintervals!(m_new, θs; 
+                        confidence_level=confidence_level, profile_type=profile_type, θs_is_unique=true, show_progress=false, use_distributed=false)
+
+                    for row_ind in 1:m_new.num_uni_profiles
+                        θi = m_new.uni_profiles_df[row_ind, :θindex]
+                        
+                        # check if interval contains θtrue[θi]
+                        interval_struct = get_uni_confidence_interval_points(m_new, row_ind)
+                        interval = @inbounds interval_struct.points[θi, 1:2]
+                        
+                        θtrue_i = θtrue[θi]
+                        if interval[1] ≤ θtrue_i && θtrue_i ≤ interval[2]
+                            successes_bool[θi_to_θs[θi], i] = true
+                        end
+                    end
+                    put!(channel, true); i^2
+                end
+                put!(channel, false)
             end
         end
-        next!(p)
+        successes .= sum(successes_bool, dims=2)
     end
 
     coverage = successes ./ N

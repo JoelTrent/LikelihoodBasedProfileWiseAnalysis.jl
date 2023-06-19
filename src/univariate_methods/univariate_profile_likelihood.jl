@@ -288,7 +288,8 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
                                         num_points_in_interval::Int=0,
                                         additional_width::Real=0.0,
                                         existing_profiles::Symbol=:ignore,
-                                        show_progress::Bool=model.show_progress)
+                                        show_progress::Bool=model.show_progress,
+                                        use_distributed::Bool=true)
 
     num_points_in_interval >= 0 || throw(DomainError("num_points_in_interval must be a strictly positive integer"))
     additional_width >= 0 || throw(DomainError("additional_width must be greater than or equal to zero"))
@@ -348,34 +349,65 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
         @async while take!(channel)
             next!(p)
         end
+        if use_distributed
 
-        # this task does the computation
-        @async begin
-            profiles_to_add = @distributed (vcat) for θi in θs_to_profile
-                [(θi, univariate_confidenceinterval(univariate_optimiser, model,
-                                                            consistent, θi, 
-                                                            confidence_level, profile_type,
-                                                            mle_targetll,
-                                                            use_existing_profiles,
-                                                            num_points_in_interval,
-                                                            additional_width, channel))]
-            end
-            put!(channel, false)
-
-            for (i, (θi, interval_struct)) in enumerate(profiles_to_add)
-                if θs_to_overwrite[i]
-                    row_ind = model.uni_profile_row_exists[(θi, profile_type)][confidence_level]
-                else
-                    model.num_uni_profiles += 1
-                    row_ind = model.num_uni_profiles * 1
-                    model.uni_profile_row_exists[(θi, profile_type)][confidence_level] = row_ind
+            # this task does the computation
+            @async begin
+                profiles_to_add = @distributed (vcat) for θi in θs_to_profile
+                    [(θi, univariate_confidenceinterval(univariate_optimiser, model,
+                                                                consistent, θi, 
+                                                                confidence_level, profile_type,
+                                                                mle_targetll,
+                                                                use_existing_profiles,
+                                                                num_points_in_interval,
+                                                                additional_width, channel))]
                 end
+                put!(channel, false)
 
-                model.uni_profiles_dict[row_ind] = interval_struct
+                for (i, (θi, interval_struct)) in enumerate(profiles_to_add)
+                    if θs_to_overwrite[i]
+                        row_ind = model.uni_profile_row_exists[(θi, profile_type)][confidence_level]
+                    else
+                        model.num_uni_profiles += 1
+                        row_ind = model.num_uni_profiles * 1
+                        model.uni_profile_row_exists[(θi, profile_type)][confidence_level] = row_ind
+                    end
 
-                set_uni_profiles_row!(model, row_ind, θi, not_evaluated_internal_points, true, confidence_level, 
-                                        profile_type, num_points_in_interval+2, additional_width)
-            end        
+                    model.uni_profiles_dict[row_ind] = interval_struct
+
+                    set_uni_profiles_row!(model, row_ind, θi, not_evaluated_internal_points, true, confidence_level, 
+                                            profile_type, num_points_in_interval+2, additional_width)
+                end        
+            end
+
+        else
+
+            # this task does the computation
+            @async begin
+                for (i, θi) in enumerate(θs_to_profile)
+                    interval_struct = univariate_confidenceinterval(univariate_optimiser, model,
+                        consistent, θi,
+                        confidence_level, profile_type,
+                        mle_targetll,
+                        use_existing_profiles,
+                        num_points_in_interval,
+                        additional_width, channel)
+
+                    if θs_to_overwrite[i]
+                        row_ind = model.uni_profile_row_exists[(θi, profile_type)][confidence_level]
+                    else
+                        model.num_uni_profiles += 1
+                        row_ind = model.num_uni_profiles * 1
+                        model.uni_profile_row_exists[(θi, profile_type)][confidence_level] = row_ind
+                    end
+
+                    model.uni_profiles_dict[row_ind] = interval_struct
+
+                    set_uni_profiles_row!(model, row_ind, θi, not_evaluated_internal_points, true, confidence_level,
+                        profile_type, num_points_in_interval + 2, additional_width)
+                end
+                put!(channel, false)
+            end
         end
     end
     
