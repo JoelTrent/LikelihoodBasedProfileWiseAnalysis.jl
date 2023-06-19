@@ -429,7 +429,8 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
                                         num_points_in_interval::Int=0,
                                         additional_width::Real=0.0,
                                         existing_profiles::Symbol=:ignore,
-                                        show_progress::Bool=model.show_progress)
+                                        show_progress::Bool=model.show_progress,
+                                        use_distributed::Bool=true)
 
     indices_to_profile = convertθnames_toindices(model, θs_to_profile)
     univariate_confidenceintervals!(model, indices_to_profile, confidence_level=confidence_level,
@@ -439,7 +440,8 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
                                 num_points_in_interval=num_points_in_interval,
                                 additional_width=additional_width,
                                 existing_profiles=existing_profiles,
-                                show_progress=show_progress)
+                                show_progress=show_progress,
+                                use_distributed=use_distributed)
     return nothing
 end
 
@@ -462,7 +464,8 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
                                         num_points_in_interval::Int=0,
                                         additional_width::Real=0.0,
                                         existing_profiles::Symbol=:ignore,
-                                        show_progress::Bool=model.show_progress)
+                                        show_progress::Bool=model.show_progress,
+                                        use_distributed::Bool=true)
 
     profile_m_random_parameters = max(0, min(profile_m_random_parameters, model.core.num_pars))
     profile_m_random_parameters > 0 || throw(DomainError("profile_m_random_parameters must be a strictly positive integer"))
@@ -476,6 +479,7 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
                                 num_points_in_interval=num_points_in_interval,
                                 additional_width=additional_width,
                                 existing_profiles=existing_profiles,
-                                show_progress=show_progress)
+                                show_progress=show_progress,
+                                use_distributed=use_distributed)
     return nothing
 end
