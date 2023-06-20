@@ -7,7 +7,7 @@ using EllipseSampling
 using LatinHypercubeSampling
 using Random, StatsBase, Combinatorics, Distributions
 using Distances, TravelingSalesmanHeuristics
-using Clustering, Meshes, ConcaveHull
+using Clustering, Meshes, ConcaveHull, PolygonInbounds
 using AngleBetweenVectors
 using Distributed, SharedArrays, FLoops
 using Requires
@@ -47,7 +47,8 @@ export initialiseLikelihoodModel,
     get_uni_confidence_interval, get_uni_confidence_interval_points,
     check_univariate_parameter_coverage,
 
-    bivariate_confidenceprofiles!,
+    bivariate_confidenceprofiles!, check_bivariate_parameter_coverage,
+    
     dimensional_likelihood_sample!, bivariate_concave_hull,
     full_likelihood_sample!,
 
@@ -98,6 +99,7 @@ include("dimensional_methods/bivariate_concave_hull.jl")
 
 # COVERAGE CHECKS #########################################################################
 include("coverage_checks/parameters/univariate.jl")
+include("coverage_checks/parameters/bivariate.jl")
 
 # PLOT FUNCTIONS ##########################################################################
 function plot_univariate_profiles end

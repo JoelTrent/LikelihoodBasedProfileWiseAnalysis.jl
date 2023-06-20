@@ -27,7 +27,9 @@ makedocs(;
                 "Bivariate Profiles" => "user_interface/profiles_and_samples/bivariate.md",
                 "Dimensional Samples" => "user_interface/profiles_and_samples/dimensional.md"],
             "Predictions" => "user_interface/predictions.md",
-            "Plots" => "user_interface/plots.md"],
+            "Plots" => "user_interface/plots.md"
+            "Simulated Coverage Checks" => 
+                ["Parameter Confidence Intervals" => "user_interface/coverage/univarate_intervals.md"] ],
         "Internal Library" => 
             ["Common Functions" => "internal_library/common.md",
             "Initialisation" => "internal_library/initialisation.md",

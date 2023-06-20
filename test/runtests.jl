@@ -31,7 +31,7 @@ using EllipseSampling
             N = 8
             expected_points = generate_N_equally_spaced_points(N, a, b, α, Cx, Cy, start_point_shift=0.0)
     
-            m = initialiseLikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes)
+            m = initialiseLikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes, show_progress=false)
             getMLE_ellipse_approximation!(m)
         
             # should find exactly the same points as `expected_points`
@@ -46,7 +46,7 @@ using EllipseSampling
         end
 
         @testset "GetIntervalPoints_EllipseLikelihood" begin
-            m1 = initialiseLikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes)
+            m1 = initialiseLikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes, show_progress=false)
 
             N=20
 
@@ -77,7 +77,7 @@ using EllipseSampling
         @testset "BoundaryIsAZero_EllipseLikelihood" begin        
             N = 50
     
-            m = initialiseLikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes)
+            m = initialiseLikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes, show_progress=false)
             getMLE_ellipse_approximation!(m)
 
             # UNIVARIATE
@@ -114,7 +114,7 @@ using EllipseSampling
         end
 
         @testset "ValidDimensionalPoints_EllipseLikelihood" begin
-            m = initialiseLikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes)
+            m = initialiseLikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes, show_progress=false)
 
             # UNIVARIATE
             dimensional_likelihood_sample!(m, 1, 100, sample_type=UniformGridSamples())
@@ -142,7 +142,7 @@ using EllipseSampling
         @testset "BoundaryIsAZeroMethodExtensions_EllipseLikelihood" begin        
             N = 50
     
-            m = initialiseLikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes)
+            m = initialiseLikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes, show_progress=false)
 
             # UNIVARIATE
             targetll = PlaceholderLikelihood.get_target_loglikelihood(m, 0.95, EllipseApprox(), 1)
@@ -155,7 +155,7 @@ using EllipseSampling
                 @test m.num_uni_profiles == 1
             end
 
-            m = initialiseLikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes)
+            m = initialiseLikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes, show_progress=false)
             univariate_confidenceintervals!(m, 1)
 
             for i in 1:1
@@ -175,7 +175,7 @@ using EllipseSampling
                 @test m.num_biv_profiles == 1
             end
 
-            m = initialiseLikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes)
+            m = initialiseLikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes, show_progress=false)
             bivariate_confidenceprofiles!(m, 2, N) # will get set to 1
 
             for i in 1:1
@@ -186,7 +186,7 @@ using EllipseSampling
         end
 
         @testset "UseExistingProfilesBehaviour_EllipseLikelihood" begin
-            m = initialiseLikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes)
+            m = initialiseLikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes, show_progress=false)
 
             setbounds!(m, lb=[-10000000.0, -10000000.0], ub=[10000000.0, 10000000.0])
 
@@ -203,7 +203,7 @@ using EllipseSampling
         end
 
         @testset "ExistingProfilesBehaviour_EllipseLikelihood" begin 
-            m = initialiseLikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes)
+            m = initialiseLikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes, show_progress=false)
 
             # UNIVARIATE
             univariate_confidenceintervals!(m, [:x])
@@ -254,7 +254,7 @@ using EllipseSampling
         end
 
         @testset "SetMagnitudes_EllipseLikelihood" begin
-            m = initialiseLikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes)
+            m = initialiseLikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes, show_progress=false)
 
             @test isapprox(m.core.θmagnitudes, par_magnitudes)
 
@@ -264,7 +264,7 @@ using EllipseSampling
         end
         
         @testset "SetBounds_EllipseLikelihood" begin
-            m = initialiseLikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes)
+            m = initialiseLikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes, show_progress=false)
 
             setbounds!(m, lb=[-100.0, -50.0], ub=[2.0, 4.0])
 
@@ -307,7 +307,7 @@ using EllipseSampling
         @testset "BoundaryIsAZeroRealLikelihood" begin
             N = 50
 
-            m = initialiseLikelihoodModel(loglhood, data, θnames, θG, lb, ub, par_magnitudes)
+            m = initialiseLikelihoodModel(loglhood, data, θnames, θG, lb, ub, par_magnitudes, show_progress=false)
             getMLE_ellipse_approximation!(m)
 
             # UNIVARIATE
@@ -337,7 +337,7 @@ using EllipseSampling
         end
 
         @testset "ValidDimensionalPoints_RealLikelihood" begin
-            m = initialiseLikelihoodModel(loglhood, data, θnames, θG, lb, ub, par_magnitudes)
+            m = initialiseLikelihoodModel(loglhood, data, θnames, θG, lb, ub, par_magnitudes, show_progress=false)
 
             # UNIVARIATE
             dimensional_likelihood_sample!(m, 1, 100, sample_type=UniformGridSamples())
