@@ -60,7 +60,7 @@ Method for iteratively improving an initial boundary of `initial_num_points`, fo
 
 # Details
 
-For additional information on the `radial_start_point_shift` and `ellipse_sqrt_distortion` arguments see the keyword arguments for [`generate_N_clustered_points`](https://joeltrent.github.io/EllipseSampling.jl/stable/user_interface/#EllipseSampling.generate_N_clustered_points) in [EllipseSampling.jl](https://github.com/JoelTrent/EllipseSampling.jl).
+For additional information on the `radial_start_point_shift` and `ellipse_sqrt_distortion` arguments see the keyword arguments for [`generate_N_clustered_points`](https://joeltrent.github.io/EllipseSampling.jl/stable/user_interface/#EllipseSampling.generate_N_clustered_points) in [EllipseSampling.jl](https://joeltrent.github.io/EllipseSampling.jl/stable).
 
 Recommended for use with the [`LogLikelihood`](@ref) profile type. Radial directions, edge length and internal angle calculations are rescaled by the relative magnitude/scale of the two interest parameters. This is so directions and regions explored and consequently the boundary found are not dominated by the parameter with the larger magnitude.
 
@@ -147,7 +147,7 @@ end
     RadialMLEMethod(ellipse_start_point_shift::Float64=rand(), 
         ellipse_sqrt_distortion::Float64=0.01)
 
-Method for finding the bivariate boundary of a confidence profile by bracketing between the MLE point and points on the provided bounds in directions given by points found on the boundary of a ellipse approximation of the log-likelihood function around the MLE, `e`, using [EllipseSampling.jl](https://github.com/JoelTrent/EllipseSampling.jl) (see [`PlaceholderLikelihood.findNpointpairs_radialMLE!`](@ref) and [`PlaceholderLikelihood.bivariate_confidenceprofile_vectorsearch`](@ref))..
+Method for finding the bivariate boundary of a confidence profile by bracketing between the MLE point and points on the provided bounds in directions given by points found on the boundary of a ellipse approximation of the log-likelihood function around the MLE, `e`, using [EllipseSampling.jl](https://joeltrent.github.io/EllipseSampling.jl/stable) (see [`PlaceholderLikelihood.findNpointpairs_radialMLE!`](@ref) and [`PlaceholderLikelihood.bivariate_confidenceprofile_vectorsearch`](@ref))..
 
 # Arguments
 - `ellipse_start_point_shift`: a number ∈ [0.0,1.0]. Default is `rand()` (defined on [0.0,1.0]), meaning that by default a different set of points will be found each time.
@@ -155,7 +155,7 @@ Method for finding the bivariate boundary of a confidence profile by bracketing 
 
 # Details
 
-For additional information on arguments see the keyword arguments for [`generate_N_clustered_points`](https://joeltrent.github.io/EllipseSampling.jl/stable/user_interface/#EllipseSampling.generate_N_clustered_points) in [EllipseSampling.jl](https://github.com/JoelTrent/EllipseSampling.jl).
+For additional information on arguments see the keyword arguments for [`generate_N_clustered_points`](https://joeltrent.github.io/EllipseSampling.jl/stable/user_interface/#EllipseSampling.generate_N_clustered_points) in [EllipseSampling.jl](https://joeltrent.github.io/EllipseSampling.jl/stable).
 
 Recommended for use with the [`EllipseApprox`](@ref) profile type. Will produce reasonable results for the [`LogLikelihood`](@ref) profile type when bivariate profile boundaries are convex. Otherwise, [`IterativeBoundaryMethod`](@ref), which has an option to use a starting solution from [`RadialMLEMethod`](@ref), is preferred as it iteratively improves the quality of the boundary and can discover regions not explored by this method. 
     
@@ -303,7 +303,7 @@ struct Fix1AxisMethod <: AbstractBivariateMethod end
     AnalyticalEllipseMethod(ellipse_start_point_shift::Float64, 
         ellipse_sqrt_distortion::Float64)
 
-Method for sampling the desired number of boundary points on a ellipse approximation of the log-likelihood function centred at the maximum likelihood estimate point using [EllipseSampling.jl](https://github.com/JoelTrent/EllipseSampling.jl).
+Method for sampling the desired number of boundary points on a ellipse approximation of the log-likelihood function centred at the maximum likelihood estimate point using [EllipseSampling.jl](https://joeltrent.github.io/EllipseSampling.jl/stable).
 
 # Arguments
 - `ellipse_start_point_shift`: a number ∈ [0.0,1.0]. Default is `rand()` (defined on [0.0,1.0]), meaning that by default a different set of points will be found each time.
@@ -313,11 +313,11 @@ Method for sampling the desired number of boundary points on a ellipse approxima
 
 Used for the [`EllipseApproxAnalytical`](@ref) profile type only: if this method is specified, then any user provided profile type will be overriden and replaced with [`EllipseApproxAnalytical`](@ref). This ellipse approximation ignores user provided bounds.
 
-For additional information on arguments see the keyword arguments for [`generate_N_clustered_points`](https://joeltrent.github.io/EllipseSampling.jl/stable/user_interface/#EllipseSampling.generate_N_clustered_points) in [EllipseSampling.jl](https://github.com/JoelTrent/EllipseSampling.jl).
+For additional information on arguments see the keyword arguments for [`generate_N_clustered_points`](https://joeltrent.github.io/EllipseSampling.jl/stable/user_interface/#EllipseSampling.generate_N_clustered_points) in [EllipseSampling.jl](https://joeltrent.github.io/EllipseSampling.jl/stable).
 
 # Boundary finding method
 
-Explicitly finds the boundary using [EllipseSampling.jl](https://github.com/JoelTrent/EllipseSampling.jl).
+Explicitly finds the boundary using [EllipseSampling.jl](https://joeltrent.github.io/EllipseSampling.jl/stable).
 
 # Internal Points
 
@@ -362,7 +362,7 @@ If we find a star point we then, for every point on the current boundary, push o
 
 A traveling salesman heuristic is used to reorder the boundary points into a new minimum perimeter polygon, [`PlaceholderLikelihood.minimum_perimeter_polygon!`](@ref), if the continuation of one boundary to the next causes the mapping of adjacent vertices to change (expected if a star point is not found). 
 
-For additional information on the `ellipse_start_point_shift` and `ellipse_sqrt_distortion` arguments see the keyword arguments for [`generate_N_clustered_points`](https://joeltrent.github.io/EllipseSampling.jl/stable/user_interface/#EllipseSampling.generate_N_clustered_points) in [EllipseSampling.jl](https://github.com/JoelTrent/EllipseSampling.jl).
+For additional information on the `ellipse_start_point_shift` and `ellipse_sqrt_distortion` arguments see the keyword arguments for [`generate_N_clustered_points`](https://joeltrent.github.io/EllipseSampling.jl/stable/user_interface/#EllipseSampling.generate_N_clustered_points) in [EllipseSampling.jl](https://joeltrent.github.io/EllipseSampling.jl/stable).
 
 # Boundary finding method
 

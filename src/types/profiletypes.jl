@@ -53,7 +53,7 @@ struct EllipseApprox <: AbstractEllipseProfileType end
 """
     EllipseApproxAnalytical()
 
-Use an ellipse approximation of the log-likelihood function centred at the MLE without use of parameter bounds for confidence profile evaluation. As no parameter bounds are involved, it can be analytically evaluated. The method [`AnalyticalEllipseMethod`](@ref) is recommended for use with this profile type - it analytically samples points on the confidence profile boundary using [EllipseSampling.jl](https://github.com/JoelTrent/EllipseSampling.jl). Other methods can be used, but they will all be unable to find interest parameter points outside user-provided parameter bounds (although nuisance parameters will be allowed outside these bounds).
+Use an ellipse approximation of the log-likelihood function centred at the MLE without use of parameter bounds for confidence profile evaluation. As no parameter bounds are involved, it can be analytically evaluated. The method [`AnalyticalEllipseMethod`](@ref) is recommended for use with this profile type - it analytically samples points on the confidence profile boundary using [EllipseSampling.jl](https://joeltrent.github.io/EllipseSampling.jl/stable). Other methods can be used, but they will all be unable to find interest parameter points outside user-provided parameter bounds (although nuisance parameters will be allowed outside these bounds).
 
 # Supertype Hiearachy
 

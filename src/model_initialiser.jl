@@ -167,7 +167,7 @@ Initialises a [`LikelihoodModel`](@ref) struct, which contains all model informa
 # Arguments
 - `loglikefunction`: a loglikelihood function which takes two arguments, `θ` and `data`, in that order, where θ is a vector containing the values of each parameter in `θnames` and `data` is a Tuple or NamedTuple - see `data` below.
 - `predictfunction`: a prediction function to generate model predictions from that is paired with the `loglikefunction`. Takes three arguments, `θ`, `data` and `t`, in that order, where `θ` and `data` are the same as for `loglikefunction` and `t` needs to be an optional third argument. When `t` is not specified, the prediction function should be evaluated for the same time points/independent variable as the data. When `t` is specified, the prediction function should be evaluated for those specified time points/independent variable. It can also be `missing` if no function is provided to [`initialiseLikelihoodModel`](@ref), because predictions are not required when evaluating parameter profiles. The function can be added at a later point using [`add_prediction_function!`](@ref).
-- `data`: a Tuple or a NamedTuple containing any additional information required by the loglikelihood function, such as the time points to be evaluated at.
+- `data`: a Tuple or a NamedTuple containing any additional information required by the log-likelihood function, such as the time points to be evaluated at.
 - `θnames`: a vector of symbols containing the names of each parameter, e.g. `[:λ, :K, :C0]`.
 - `θinitialguess`: a vector containing the initial guess for the values of each parameter. Used to find the MLE point.
 - `θlb`: a vector of lower bounds on parameters. 

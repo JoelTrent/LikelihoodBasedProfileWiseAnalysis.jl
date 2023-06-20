@@ -1,18 +1,9 @@
-# some function to simulate data from at fixed time points
-
-# Parameter truth as input
-
-# Number of iterations to run OR method for coverage convergence  (e.g. value hasn't changed by more than x% in last y iterations.)
-
-# Probably easiest to have user first initialise a model using initialiseLikelihoodModel - and then we can use the fields of this model to re-init all the next ones ?
-# OR have all the arguments for initialiseLikelihoodModel as arguments for this function.
-
 """
     check_univariate_parameter_coverage(data_generator::Function, 
         generator_args::Union{Tuple, NamedTuple},
         model::LikelihoodModel, 
-        θtrue::AbstractVector{<:Real}, 
         N::Int, 
+        θtrue::AbstractVector{<:Real}, 
         θs::AbstractVector{<:Int64},
         θinitialguess::AbstractVector{<:Real}=θtrue; 
         confidence_level::Float64=0.95, 
@@ -22,14 +13,44 @@
         show_progress::Bool=model.show_progress,
         distributed_over_parameters::Bool=false)
 
+Performs a simulation to estimate the coverage of univariate confidence intervals for parameters in `θs` given a model by: repeatedly drawing new observed data using `data_generator` for fixed true parameter values, θtrue, fitting the model and univariate confidence intervals, and checking whether the confidence interval for the parameters of interest contain the true parameter value in `θtrue`. The estimated coverage is returned with a default 95% confidence interval within a DataFrame. 
 
+# Arguments
+- `data_generator`: a function with two arguments which generates data for fixed time points and true model parameters corresponding to the log-likelihood function contained in `model`. The two arguments must be the vector of true model parameters, `θtrue`, and a Tuple or NamedTuple, `generator_args`. Outputs a `data` Tuple or NamedTuple that corresponds to the log-likelihood function contained in `model`.
+- `generator_args`: a Tuple or NamedTuple containing any additional information required by both the log-likelihood function and `data_generator`, such as the time points to be evaluated at. If evaluating the log-likelihood function requires more than just the simulated data, arguments for the `data` output of `data_generator` should be passed in via `generator_args`. 
+- `model`: a [`LikelihoodModel`](@ref) containing model information, saved profiles and predictions.
+- `N`: a positive number of coverage simulations.
+- `θtrue`: a vector of true parameters values of the model for simulating data with. 
+- `θs`: a vector of parameters to profile, as a vector of model parameter indexes.
+- `θinitialguess`: a vector containing the initial guess for the values of each parameter. Used to find the MLE point in each iteration of the simulation. Default is `θtrue`.
+
+# Keyword Arguments
+- `confidence_level`: a number ∈ (0.0, 1.0) for the confidence level to evaluate the confidence interval coverage at. Default is 0.95 (95%).
+- `profile_type`: whether to use the true log-likelihood function or an ellipse approximation of the log-likelihood function centred at the MLE (with optional use of parameter bounds). Available profile types are [`LogLikelihood`](@ref), [`EllipseApprox`](@ref) and [`EllipseApproxAnalytical`](@ref). Default is `LogLikelihood()` ([`LogLikelihood`](@ref)).
+- `θs_is_unique`: boolean variable specifying whether all parameter indexes in `θs` are ordered by parameter index (ascending) and unique. Default is `false`.
+- `coverage_estimate_confidence_level`: a number ∈ (0.0, 1.0) for the level of a confidence interval of the estimated coverage. Default is 0.95 (95%).
+- `show_progress`: boolean variable specifying whether to display progress bars on the percentage of simulation iterations completed and estimated time of completion. Default is `model.show_progress`.
+- `distributed_over_parameters`: boolean variable specifying whether to distribute the workload of the simulation across simulation iterations or across the individual confidence interval calculations within each iteration. Default is `false`.
+
+# Details
+
+This simulated coverage check is used to estimate the performance of parameter confidence intervals. For a 95% confidence interval of a interest parameter `θi` it is expected that under repeated experiments from an underlying true model (data generation) which are used to construct a confidence interval for `θi` using the method used in [`univariate_confidenceintervals!`](@ref), 95% of the intervals constructed would contain the true value for `θi`. In our simulation where the values of our true parameters, `θtrue`, are known this is equivalent to whether the confidence interval for `θi` contains the value `θtrue[θi]`. 
+
+The uncertainty in estimates of the coverage under the simulated model will decrease as the number of simulations, `N`, is increased. Confidence intervals for the coverage estimate are provided to quantify this uncertainty.
+
+!!! note "Recommended setting for distributed_over_parameters"
+    - If the number of processes available to use is significantly greater than the number of model parameters or only a few model parameters are being checked for coverage, `false` is recommended.   
+    - If system memory or model size in system memory is a concern, or the number of processes available is similar or less than the number of model parameters being checked, `true` will likely be more appropriate. 
+    - When set to `false`, a separate [`LikelihoodModel`](@ref) struct will be used by each process, as opposed to only one when set to `true`, which could be an issue for larger models. 
+
+The 95% confidence interval for the estimated coverage is a Clopper-Pearson interval on a binomial test generated using [HypothesisTests.jl](https://juliastats.org/HypothesisTests.jl/stable/).
 
 """
 function check_univariate_parameter_coverage(data_generator::Function, 
     generator_args::Union{Tuple, NamedTuple},
     model::LikelihoodModel, 
-    θtrue::AbstractVector{<:Real}, 
     N::Int, 
+    θtrue::AbstractVector{<:Real}, 
     θs::AbstractVector{<:Int64},
     θinitialguess::AbstractVector{<:Real}=θtrue; 
     confidence_level::Float64=0.95, 
