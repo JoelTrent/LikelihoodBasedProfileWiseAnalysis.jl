@@ -29,7 +29,7 @@ makedocs(;
             "Predictions" => "user_interface/predictions.md",
             "Plots" => "user_interface/plots.md",
             "Simulated Coverage Checks" => 
-                ["Parameter Confidence Intervals" => "user_interface/coverage/univarate_intervals.md"] ],
+                ["Parameter Confidence Intervals" => "user_interface/coverage/univariate_intervals.md"] ],
         "Internal Library" => 
             ["Common Functions" => "internal_library/common.md",
             "Initialisation" => "internal_library/initialisation.md",
