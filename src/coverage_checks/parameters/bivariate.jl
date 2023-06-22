@@ -1,7 +1,9 @@
 """
 
-!!! danger "Not intended for use on bimodal confidence boundaries"
-    The current implementation constructs a single polygon with minimum area from the set of boundary points as the confidence boundary. If there should be multiple distinct boundaries represented, then there will be edges connecting the distinct boundaries which the true parameter might be inside (but not inside either of the distinct boundaries). 
+First it tests if the true interest parameter, given nuisance parameters, has a log-likelihood value within the confidence threshold and then check if it's inside our boundary polygon, as the straight edges of the polygon do not exactly represent the true boundary. 
+
+!!! danger "May not work correctly on bimodal confidence boundaries"
+    The current implementation constructs a single polygon with minimum area from the set of boundary points as the confidence boundary. If there are multiple distinct boundaries represented, then there will be edges connecting the distinct boundaries which the true parameter might be inside (but not inside either of the distinct boundaries). 
 """
 function check_bivariate_parameter_coverage(data_generator::Function,
     generator_args::Union{Tuple,NamedTuple},
@@ -43,8 +45,14 @@ function check_bivariate_parameter_coverage(data_generator::Function,
 
     successes = zeros(Int, len_θs)
 
+    bivariate_optimiser = get_bivariate_opt_func(profile_type, RadialMLEMethod())
+    biv_opt_is_ellipse_analytical = bivariate_optimiser == bivariateΨ_ellipse_analytical_vectorsearch
+    consistent = get_consistent_tuple(model, confidence_level, profile_type, 2)
+    pointa = [0.0,0.0]
+    uhat   = [0.0,0.0]
+
     channel = RemoteChannel(() -> Channel{Bool}(1))
-    p = Progress(N; desc="Computing bivariate parameter coverage: ",
+    progress = Progress(N; desc="Computing bivariate parameter coverage: ",
         dt=PROGRESS__METER__DT, enabled=show_progress, showspeed=true)
 
     if distributed_over_parameters
@@ -59,6 +67,23 @@ function check_bivariate_parameter_coverage(data_generator::Function,
 
             for row_ind in 1:m_new.num_biv_profiles
                 θindices = m_new.biv_profiles_df[row_ind, :θindices]
+
+                ind1, ind2 = θindices
+                pointa .= θtrue[[ind1, ind2]]
+                newLb, newUb, initGuess, θranges, λranges = init_bivariate_parameters(m_new, ind1, ind2)
+
+                if biv_opt_is_ellipse_analytical
+                    p = (ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, pointa=pointa, uhat=uhat,
+                        θranges=θranges, λranges=λranges, consistent=consistent)
+                else
+                    p = (ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, pointa=pointa, uhat=uhat,
+                        θranges=θranges, λranges=λranges, consistent=consistent, λ_opt=zeros(model.core.num_pars - 2))
+                end
+
+                # first check if inside ll threshold
+                if bivariate_optimiser(0.0, p) < 0.0
+                    continue
+                end
 
                 # check if boundary (defined as polygon with straight edges) contains θtrue[θi]
                 boundary = m_new.biv_profiles_dict[row_ind].confidence_boundary[[θindices...], :]
@@ -79,7 +104,7 @@ function check_bivariate_parameter_coverage(data_generator::Function,
                     successes[combo_to_index[θindices]] += 1
                 end
             end
-            next!(p)
+            next!(progress)
         end
 
     else
@@ -88,7 +113,7 @@ function check_bivariate_parameter_coverage(data_generator::Function,
         @sync begin
             # this task prints the progress bar
             @async while take!(channel)
-                next!(p)
+                next!(progress)
             end
 
             # this task does the computation
@@ -106,6 +131,25 @@ function check_bivariate_parameter_coverage(data_generator::Function,
 
                     for row_ind in 1:m_new.num_biv_profiles
                         θindices = m_new.biv_profiles_df[row_ind, :θindices]
+
+                        θindices = m_new.biv_profiles_df[row_ind, :θindices]
+
+                        ind1, ind2 = θindices
+                        pointa .= θtrue[[ind1, ind2]]
+                        newLb, newUb, initGuess, θranges, λranges = init_bivariate_parameters(m_new, ind1, ind2)
+
+                        if biv_opt_is_ellipse_analytical
+                            p = (ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, pointa=pointa, uhat=uhat,
+                                θranges=θranges, λranges=λranges, consistent=consistent)
+                        else
+                            p = (ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, pointa=pointa, uhat=uhat,
+                                θranges=θranges, λranges=λranges, consistent=consistent, λ_opt=zeros(model.core.num_pars - 2))
+                        end
+
+                        # first check if inside ll threshold
+                        if bivariate_optimiser(0.0, p) < 0.0
+                            continue
+                        end
 
                         # check if boundary (defined as polygon with straight edges) contains θtrue[θi]
                         boundary = m_new.biv_profiles_dict[row_ind].confidence_boundary[[θindices...], :]
