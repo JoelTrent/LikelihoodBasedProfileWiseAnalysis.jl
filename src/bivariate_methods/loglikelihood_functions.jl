@@ -43,17 +43,6 @@ function bivariateψ_continuation!(ψ, p)
     return llb
 end
 
-"""
-Requires optimal values of nuisance parameters at point ψ to be contained in p.ω_opt
-"""
-function bivariateψ_gradient!(ψ::Vector, p)
-    θs=zeros(eltype(ψ), p.consistent.num_pars)
-
-    θs[p.ind1], θs[p.ind2] = ψ
-    variablemapping!(θs, p.ω_opt, p.θranges, p.ωranges)
-    return p.consistent.loglikefunction(θs, p.consistent.data)
-end
-
 function bivariateψ_ellipse_analytical(ψ, p)
     return analytic_ellipse_loglike([p.ψ_x[1], ψ], [p.ind1, p.ind2], p.consistent.data_analytic) - p.consistent.targetll
 end
@@ -64,10 +53,6 @@ end
 
 function bivariateψ_ellipse_analytical_continuation(ψ, p)
     return analytic_ellipse_loglike(p.pointa + ψ*p.uhat, [p.ind1, p.ind2], p.consistent.data_analytic) - p.targetll
-end
-
-function bivariateψ_ellipse_analytical_gradient(ψ::Vector, p)
-    return analytic_ellipse_loglike(ψ, [p.ind1, p.ind2], p.consistent.data_analytic) - p.consistent.targetll
 end
 
 function bivariateψ_ellipse_unbounded(ψ::Vector, p)

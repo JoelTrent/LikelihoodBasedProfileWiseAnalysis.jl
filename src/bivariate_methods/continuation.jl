@@ -33,7 +33,6 @@ LATER: Update to allow specification of alternate method to find_zero(), e.g. Or
 function continuation_line_search!(p::NamedTuple, 
                                     point_is_on_bounds::BitVector,
                                     bivariate_optimiser::Function, 
-                                    bivariate_optimiser_gradient::Function, 
                                     model::LikelihoodModel, 
                                     num_points::Int,
                                     ind1::Int, 
@@ -44,8 +43,6 @@ function continuation_line_search!(p::NamedTuple,
                                     start_level_set_all::Matrix{Float64}=zeros(0,0),
                                     level_set_not_smoothed::Bool=true;
                                     is_a_zero::BitVector=falses(num_points))
-
-    f_gradient(x) = bivariate_optimiser_gradient(x, p)
     
     start_have_all_pars = !isempty(start_level_set_all) 
 
@@ -256,7 +253,6 @@ For both Case 2 and 3, could use gradient at initial elipse point rather than go
 """
 function initial_continuation_solution!(p::NamedTuple, 
                                         bivariate_optimiser::Function, 
-                                        bivariate_optimiser_gradient::Function, 
                                         model::LikelihoodModel, 
                                         num_points::Int, 
                                         ind1::Int, 
@@ -319,7 +315,7 @@ function initial_continuation_solution!(p::NamedTuple,
         is_a_zero[findfirst(ellipse_true_lls .== min_ll)] = true
 
         a, b = continuation_line_search!(p, point_is_on_bounds, bivariate_optimiser, 
-                                            bivariate_optimiser_gradient, model, 
+                                            model, 
                                             num_points, ind1, ind2,
                                             corrected_ll, search_directions, ellipse_points,
                                             is_a_zero=is_a_zero
@@ -349,10 +345,8 @@ end
 
 """
 bivariate_optimiser is the optimiser to use with find_zero
-bivariate_optimiser_gradient is the optimiser to use with ForwardDiff.gradient and to evaluate the obj value for the initial ellipse solution.
 """
 function bivariate_confidenceprofile_continuation(bivariate_optimiser::Function, 
-                                                    bivariate_optimiser_gradient::Function, 
                                                     model::LikelihoodModel, 
                                                     num_points::Int, 
                                                     consistent::NamedTuple, 
@@ -397,7 +391,7 @@ function bivariate_confidenceprofile_continuation(bivariate_optimiser::Function,
     # find initial solution
     current_level_set_2D, current_level_set_all, 
         search_directions, initial_ll, point_is_on_bounds =
-        initial_continuation_solution!(p, bivariate_optimiser, bivariate_optimiser_gradient, 
+        initial_continuation_solution!(p, bivariate_optimiser, 
                                         model, num_points, ind1, ind2, profile_type,
                                         ellipse_confidence_level, initial_target_ll, 
                                         ellipse_start_point_shift)
@@ -442,7 +436,7 @@ function bivariate_confidenceprofile_continuation(bivariate_optimiser::Function,
         # find next level set
         current_level_set_2D, current_level_set_all = 
             continuation_line_search!(p, point_is_on_bounds, 
-                                        bivariate_optimiser, bivariate_optimiser_gradient,
+                                        bivariate_optimiser, 
                                         model, num_points, ind1, ind2, level_set_ll, search_directions,
                                         current_level_set_2D, current_level_set_all,
                                         level_set_not_smoothed)

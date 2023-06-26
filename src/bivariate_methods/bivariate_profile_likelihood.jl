@@ -194,14 +194,8 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
                                     ellipse_sqrt_distortion=method.ellipse_sqrt_distortion)
 
         elseif method isa ContinuationMethod
-            if profile_type isa EllipseApproxAnalytical
-                bivariate_optimiser_gradient = bivariateψ_ellipse_analytical_gradient
-            else
-                bivariate_optimiser_gradient = bivariateψ_gradient!
-            end
-
             boundary, internal = bivariate_confidenceprofile_continuation(
-                                    bivariate_optimiser, bivariate_optimiser_gradient,
+                                    bivariate_optimiser, 
                                     model, num_points, consistent, ind1, ind2, profile_type,
                                     method.ellipse_confidence_level,
                                     confidence_level, 
