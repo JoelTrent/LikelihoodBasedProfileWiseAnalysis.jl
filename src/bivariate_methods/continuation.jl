@@ -23,7 +23,7 @@ For a given level set to get to, that's larger than all points in current level 
 * Check where this normal direction intersects bounds and ensure that the next level set is bracketed by current point and point on boundary
 * If a bracket between current point and point on boundary does not exist the level set point recorded will be the point on the boundary
 * init guess for nuisance parameters should be their value at current point
-* using vector search bivariate function as input to find_zero(), using Order0 method, with starting guess of Ψ=0
+* using vector search bivariate function as input to find_zero(), using Order0 method, with starting guess of ψ=0
 * record point at that level set
 
 p and point_is_on_bounds is mutated by this function.
@@ -49,7 +49,7 @@ function continuation_line_search!(p::NamedTuple,
     
     start_have_all_pars = !isempty(start_level_set_all) 
 
-    biv_opt_is_ellipse_analytical = bivariate_optimiser==bivariateΨ_ellipse_analytical_continuation
+    biv_opt_is_ellipse_analytical = bivariate_optimiser==bivariateψ_ellipse_analytical_continuation
     target_level_set_2D = zeros(2, num_points)
     target_level_set_all = zeros(model.core.num_pars, num_points)
     
@@ -92,7 +92,7 @@ function continuation_line_search!(p::NamedTuple,
             target_level_set_2D[:, i] .= boundarypoint
             target_level_set_all[[ind1, ind2], i] .= boundarypoint
             if !biv_opt_is_ellipse_analytical
-                variablemapping2d!(@view(target_level_set_all[:, i]), p.λ_opt, p.θranges, p.λranges)
+                variablemapping2d!(@view(target_level_set_all[:, i]), p.ω_opt, p.θranges, p.ωranges)
             end
             continue
         end
@@ -128,36 +128,36 @@ function continuation_line_search!(p::NamedTuple,
         g = bivariate_optimiser(0.0, p) 
         if biv_opt_is_ellipse_analytical || g < 0
             
-            Ψ = solve(ZeroProblem(bivariate_optimiser, v_bar_norm), Roots.Order8(); p=p)
+            ψ = solve(ZeroProblem(bivariate_optimiser, v_bar_norm), Roots.Order8(); p=p)
 
             # in event Roots.Order8 fails to converge, switch to bracketing method
-            if isnan(Ψ) || isinf(Ψ) || Ψ < 0.0
+            if isnan(ψ) || isinf(ψ) || ψ < 0.0
                 lb = isinf(g) ? 1e-8 * v_bar_norm : 0.0
-                # value of v_bar_norm that satisfies the equation boundpoint = p.pointa + Ψ*p.uhat
-                Ψ = find_zero(bivariate_optimiser, (lb, v_bar_norm), Roots.Brent(); p=p)
+                # value of v_bar_norm that satisfies the equation boundpoint = p.pointa + ψ*p.uhat
+                ψ = find_zero(bivariate_optimiser, (lb, v_bar_norm), Roots.Brent(); p=p)
             end
 
-            boundarypoint .= p.pointa + Ψ*p.uhat
+            boundarypoint .= p.pointa + ψ*p.uhat
             target_level_set_2D[:, i] .= boundarypoint
             target_level_set_all[[ind1, ind2], i] .= boundarypoint
-            if !biv_opt_is_ellipse_analytical; bivariate_optimiser(Ψ, p) end
+            if !biv_opt_is_ellipse_analytical; bivariate_optimiser(ψ, p) end
         else
             point_is_on_bounds[i] = true
             target_level_set_2D[:, i] .= boundpoint
             target_level_set_all[[ind1, ind2], i] .= boundpoint
         end
         if !biv_opt_is_ellipse_analytical
-            variablemapping2d!(@view(target_level_set_all[:, i]), p.λ_opt, p.θranges, p.λranges)
+            variablemapping2d!(@view(target_level_set_all[:, i]), p.ω_opt, p.θranges, p.ωranges)
         end
     end
 
     if biv_opt_is_ellipse_analytical
         local initGuess = zeros(model.core.num_pars-2)
         boundsmapping2d!(initGuess, model.core.θmle, ind1, ind2)
-        target_level_set_all = get_λs_bivariate_ellipse_analytical!(target_level_set_2D, num_points,
+        target_level_set_all = get_ωs_bivariate_ellipse_analytical!(target_level_set_2D, num_points,
                                                                     p.consistent, ind1, ind2, 
                                                                     model.core.num_pars, initGuess,
-                                                                    p.θranges, p.λranges, target_level_set_all)
+                                                                    p.θranges, p.ωranges, target_level_set_all)
     end
 
 
@@ -197,7 +197,7 @@ function continuation_inwards_radial_search!(p::NamedTuple,
 
     mle_point = model.core.θmle[[ind1, ind2]]
     
-    biv_opt_is_ellipse_analytical = bivariate_optimiser==bivariateΨ_ellipse_analytical_continuation
+    biv_opt_is_ellipse_analytical = bivariate_optimiser==bivariateψ_ellipse_analytical_continuation
     target_level_set_2D = zeros(2, num_points)
     target_level_set_all = zeros(model.core.num_pars, num_points)
     
@@ -213,27 +213,27 @@ function continuation_inwards_radial_search!(p::NamedTuple,
         p.uhat .= v_bar ./ v_bar_norm
 
         if is_a_zero[i]
-            Ψ = v_bar_norm # to extract nuisance parameter values
+            ψ = v_bar_norm # to extract nuisance parameter values
         else
-            Ψ = find_zero(bivariate_optimiser, (0.0, v_bar_norm), Roots.Brent(); p=p)
+            ψ = find_zero(bivariate_optimiser, (0.0, v_bar_norm), Roots.Brent(); p=p)
         end
 
-        boundarypoint .= p.pointa + Ψ*p.uhat
+        boundarypoint .= p.pointa + ψ*p.uhat
         target_level_set_2D[:, i] .= boundarypoint
         target_level_set_all[[ind1, ind2], i] .= boundarypoint
         if !biv_opt_is_ellipse_analytical
-            bivariate_optimiser(Ψ, p)
-            variablemapping2d!(@view(target_level_set_all[:, i]), p.λ_opt, p.θranges, p.λranges)
+            bivariate_optimiser(ψ, p)
+            variablemapping2d!(@view(target_level_set_all[:, i]), p.ω_opt, p.θranges, p.ωranges)
         end
     end
 
     if biv_opt_is_ellipse_analytical
         local initGuess = zeros(model.core.num_pars-2)
         boundsmapping2d!(initGuess, model.core.θmle, ind1, ind2)
-        target_level_set_all = get_λs_bivariate_ellipse_analytical!(target_level_set_2D, num_points,
+        target_level_set_all = get_ωs_bivariate_ellipse_analytical!(target_level_set_2D, num_points,
                                                                     p.consistent, ind1, ind2, 
                                                                     model.core.num_pars, initGuess,
-                                                                    p.θranges, p.λranges, target_level_set_all)
+                                                                    p.θranges, p.ωranges, target_level_set_all)
     end
 
     return target_level_set_2D, target_level_set_all
@@ -299,7 +299,7 @@ function initial_continuation_solution!(p::NamedTuple,
     for i in 1:num_points
         p.pointa .= ellipse_points[:,i]
         ellipse_true_lls[i] = bivariate_optimiser(0.0, p)
-        # extract value of p.λ_opt
+        # extract value of p.ω_opt
     end
 
     if profile_type isa LogLikelihood
@@ -368,7 +368,7 @@ function bivariate_confidenceprofile_continuation(bivariate_optimiser::Function,
                                                     save_internal_points::Bool,
                                                     )
 
-    newLb, newUb, initGuess, θranges, λranges = init_bivariate_parameters(model, ind1, ind2)
+    newLb, newUb, initGuess, θranges, ωranges = init_bivariate_parameters(model, ind1, ind2)
     
     pointa = [0.0,0.0]
     uhat   = [0.0,0.0]
@@ -378,11 +378,11 @@ function bivariate_confidenceprofile_continuation(bivariate_optimiser::Function,
 
     if profile_type isa EllipseApproxAnalytical
         p=(ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, pointa=pointa, uhat=uhat,
-                    θranges=θranges, λranges=λranges, consistent=consistent, targetll=0.0)
+                    θranges=θranges, ωranges=ωranges, consistent=consistent, targetll=0.0)
     else
         p=(ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, pointa=pointa, uhat=uhat,
-                    θranges=θranges, λranges=λranges, consistent=consistent, targetll=0.0, 
-                    λ_opt=zeros(model.core.num_pars-2))
+                    θranges=θranges, ωranges=ωranges, consistent=consistent, targetll=0.0, 
+                    ω_opt=zeros(model.core.num_pars-2))
     end
 
     # PERHAPS HAVE DIFFERENT VERSIONS DEPENDING ON WHETHER ForwardDiff or 1st Order Approx IS USED FOR NORMAL DIRECTIONS? ForwardDiff version can easily parallelise across points, if consider each point separately and find next point on level set. Vs 1st order approx requires knowledge of the points on either side of it on the level set, so would parallelise across points within a single level set, which is probs not as good. 

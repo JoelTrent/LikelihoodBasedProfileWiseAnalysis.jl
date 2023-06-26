@@ -105,14 +105,14 @@ end
 
 Returns the correct univariate optimisation function used to for find the optimal values of nuisance parameters for a given interest parameter value for the `profile_type` log-likelihood function. The optimisation function returns the value of the `profile_type` log-likelihood function as well as finding the optimal nuisance parameters and saving these in one of it's inputs.
     
-Will be [`PlaceholderLikelihood.univariateΨ`](@ref) for the [`LogLikelihood()`](@ref) and [`EllipseApprox()`](@ref) profiles types and [`PlaceholderLikelihood.univariateΨ_ellipse_unbounded`](@ref) for the [`EllipseApproxAnalytical`](@ref) profile type.
+Will be [`PlaceholderLikelihood.univariateψ`](@ref) for the [`LogLikelihood()`](@ref) and [`EllipseApprox()`](@ref) profiles types and [`PlaceholderLikelihood.univariateψ_ellipse_unbounded`](@ref) for the [`EllipseApproxAnalytical`](@ref) profile type.
 """
 function get_univariate_opt_func(profile_type::AbstractProfileType=LogLikelihood())
 
     if profile_type isa LogLikelihood || profile_type isa EllipseApprox
-        return univariateΨ
+        return univariateψ
     elseif profile_type isa EllipseApproxAnalytical
-        return univariateΨ_ellipse_unbounded #univariateΨ_ellipse_analytical
+        return univariateψ_ellipse_unbounded #univariateψ_ellipse_analytical
     end
 
     return (missing)
@@ -152,11 +152,11 @@ function univariate_confidenceinterval(univariate_optimiser::Function,
     interval = zeros(2)
     ll = zeros(2)
     interval_points = zeros(model.core.num_pars, 2)
-    newLb, newUb, initGuess, θranges, λranges = init_univariate_parameters(model, θi)
+    newLb, newUb, initGuess, θranges, ωranges = init_univariate_parameters(model, θi)
 
     p=(ind=θi, newLb=newLb, newUb=newUb, initGuess=initGuess, 
-        θranges=θranges, λranges=λranges, consistent=consistent, 
-        λ_opt=zeros(model.core.num_pars-1))
+        θranges=θranges, ωranges=ωranges, consistent=consistent, 
+        ω_opt=zeros(model.core.num_pars-1))
 
     if use_existing_profiles
         bracket_l, bracket_r = get_interval_brackets(model, θi, confidence_level,
@@ -172,14 +172,14 @@ function univariate_confidenceinterval(univariate_optimiser::Function,
         bracket_r = [model.core.θmle[θi], model.core.θub[θi]]
     end
 
-    if univariate_optimiser == univariateΨ_ellipse_unbounded
+    if univariate_optimiser == univariateψ_ellipse_unbounded
 
         interval .= analytic_ellipse_loglike_1D_soln(θi, consistent.data_analytic, mle_targetll)
         
         if interval[1] >= bracket_l[1]
             interval_points[θi,1] = interval[1]
             univariate_optimiser(interval[1], p)
-            variablemapping1d!(@view(interval_points[:, 1]), p.λ_opt, θranges, λranges)
+            variablemapping1d!(@view(interval_points[:, 1]), p.ω_opt, θranges, ωranges)
             ll[1] = mle_targetll
         else
             interval[1]=NaN 
@@ -188,7 +188,7 @@ function univariate_confidenceinterval(univariate_optimiser::Function,
         if interval[2] <= bracket_r[2]
             interval_points[θi,2] = interval[2]
             univariate_optimiser(interval[2], p)
-            variablemapping1d!(@view(interval_points[:, 2]), p.λ_opt, θranges, λranges)
+            variablemapping1d!(@view(interval_points[:, 2]), p.ω_opt, θranges, ωranges)
             ll[2] = mle_targetll
         else 
             interval[2]=NaN
@@ -204,7 +204,7 @@ function univariate_confidenceinterval(univariate_optimiser::Function,
             interval[1] = find_zero(univariate_optimiser, bracket_l, Roots.Brent(), p=p) 
             interval_points[θi,1] = interval[1]
             univariate_optimiser(interval[1], p)
-            variablemapping1d!(@view(interval_points[:,1]), p.λ_opt, θranges, λranges)
+            variablemapping1d!(@view(interval_points[:,1]), p.ω_opt, θranges, ωranges)
             ll[1] = mle_targetll
         else
             interval[1] = NaN
@@ -218,7 +218,7 @@ function univariate_confidenceinterval(univariate_optimiser::Function,
             interval[2] = find_zero(univariate_optimiser, bracket_r, Roots.Brent(), p=p)
             interval_points[θi,2] = interval[2]
             univariate_optimiser(interval[2], p)
-            variablemapping1d!(@view(interval_points[:,2]), p.λ_opt, θranges, λranges)
+            variablemapping1d!(@view(interval_points[:,2]), p.ω_opt, θranges, ωranges)
             ll[2] = mle_targetll
         else
             interval[2] = NaN
@@ -228,12 +228,12 @@ function univariate_confidenceinterval(univariate_optimiser::Function,
     if isnan(interval[1])
         interval_points[θi,1] = bracket_l[1] * 1.0
         ll[1] = univariate_optimiser(bracket_l[1], p) + mle_targetll
-        variablemapping1d!(@view(interval_points[:, 1]), p.λ_opt, θranges, λranges)
+        variablemapping1d!(@view(interval_points[:, 1]), p.ω_opt, θranges, ωranges)
     end
     if isnan(interval[2])         
         interval_points[θi,2] = bracket_r[2] * 1.0
         ll[2] = univariate_optimiser(bracket_r[2], p) + mle_targetll
-        variablemapping1d!(@view(interval_points[:, 2]), p.λ_opt, θranges, λranges)
+        variablemapping1d!(@view(interval_points[:, 2]), p.ω_opt, θranges, ωranges)
     end
   
     points = PointsAndLogLikelihood(interval_points, ll, [1,2])

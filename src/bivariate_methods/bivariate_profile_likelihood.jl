@@ -52,25 +52,25 @@ Returns the correct bivariate optimisation function used to find the optimal val
 """
 function get_bivariate_opt_func(profile_type::AbstractProfileType, method::AbstractBivariateMethod)
     if method isa AnalyticalEllipseMethod
-        return bivariateΨ_ellipse_analytical
+        return bivariateψ_ellipse_analytical
     elseif method isa Fix1AxisMethod
         if profile_type isa EllipseApproxAnalytical
-            return bivariateΨ_ellipse_analytical
+            return bivariateψ_ellipse_analytical
         elseif profile_type isa LogLikelihood || profile_type isa EllipseApprox
-            return bivariateΨ!
+            return bivariateψ!
         end
 
     elseif method isa AbstractBivariateVectorMethod
         if profile_type isa EllipseApproxAnalytical
-            return bivariateΨ_ellipse_analytical_vectorsearch
+            return bivariateψ_ellipse_analytical_vectorsearch
         elseif profile_type isa LogLikelihood || profile_type isa EllipseApprox
-            return bivariateΨ_vectorsearch!
+            return bivariateψ_vectorsearch!
         end
     elseif method isa ContinuationMethod
         if profile_type isa EllipseApproxAnalytical
-            return bivariateΨ_ellipse_analytical_continuation
+            return bivariateψ_ellipse_analytical_continuation
         elseif profile_type isa LogLikelihood || profile_type isa EllipseApprox
-            return bivariateΨ_continuation!
+            return bivariateψ_continuation!
         end
     end
 
@@ -78,7 +78,7 @@ function get_bivariate_opt_func(profile_type::AbstractProfileType, method::Abstr
 end
 
 """
-    get_λs_bivariate_ellipse_analytical!(boundary,
+    get_ωs_bivariate_ellipse_analytical!(boundary,
         num_points::Int,
         consistent::NamedTuple, 
         ind1::Int, 
@@ -86,12 +86,12 @@ end
         num_pars::Int,
         initGuess::Vector{<:Float64}, 
         θranges::Tuple{T, T, T}, 
-        λranges::Tuple{T, T, T},
+        ωranges::Tuple{T, T, T},
         samples_all_pars::Union{Missing, Matrix{Float64}}=missing) where T<:UnitRange
 
 Determines the nuisance parameters for a [`EllipseApproxAnalytical`](@ref) boundary profile by optimising over the unbounded ellipse approximation of the log-likelihood centred at the MLE. At higher confidence levels, where the ellipse approximation is less accurate, it is likely that predictions produced by running the model with these optimised nuisance parameters will be unrealistic and/or the parameters themselves may be infeasible for the model. 
 """
-function get_λs_bivariate_ellipse_analytical!(boundary,
+function get_ωs_bivariate_ellipse_analytical!(boundary,
                                                 num_points::Int,
                                                 consistent::NamedTuple, 
                                                 ind1::Int, 
@@ -99,11 +99,11 @@ function get_λs_bivariate_ellipse_analytical!(boundary,
                                                 num_pars::Int,
                                                 initGuess::Vector{<:Float64}, 
                                                 θranges::Tuple{T, T, T}, 
-                                                λranges::Tuple{T, T, T},
+                                                ωranges::Tuple{T, T, T},
                                                 samples_all_pars::Union{Missing, Matrix{Float64}}=missing) where T<:UnitRange
 
     p=(ind1=ind1, ind2=ind2, initGuess=initGuess,
-                θranges=θranges, λranges=λranges, consistent=consistent)
+                θranges=θranges, ωranges=ωranges, consistent=consistent)
     
     if ismissing(samples_all_pars)
         samples_all_pars = zeros(num_pars, num_points)
@@ -111,7 +111,7 @@ function get_λs_bivariate_ellipse_analytical!(boundary,
     end
 
     for i in 1:num_points
-        variablemapping2d!(@view(samples_all_pars[:, i]), bivariateΨ_ellipse_unbounded(boundary[:,i], p), θranges, λranges)
+        variablemapping2d!(@view(samples_all_pars[:, i]), bivariateψ_ellipse_unbounded(boundary[:,i], p), θranges, ωranges)
     end
 
     return samples_all_pars
@@ -155,14 +155,14 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
                                     start_point_shift=method.ellipse_start_point_shift,
                                     sqrt_distortion=method.ellipse_sqrt_distortion)
 
-        _, _, initGuess, θranges, λranges = init_bivariate_parameters(model, ind1, ind2)
+        _, _, initGuess, θranges, ωranges = init_bivariate_parameters(model, ind1, ind2)
 
-        boundary = get_λs_bivariate_ellipse_analytical!(
+        boundary = get_ωs_bivariate_ellipse_analytical!(
                             boundary_ellipse, 
                             num_points,
                             consistent, ind1, ind2, 
                             model.core.num_pars, initGuess,
-                            θranges, λranges)
+                            θranges, ωranges)
            
     elseif method isa Fix1AxisMethod
         boundary, internal = bivariate_confidenceprofile_fix1axis(
@@ -194,9 +194,9 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
 
     elseif method isa ContinuationMethod
         if profile_type isa EllipseApproxAnalytical
-            bivariate_optimiser_gradient = bivariateΨ_ellipse_analytical_gradient
+            bivariate_optimiser_gradient = bivariateψ_ellipse_analytical_gradient
         else
-            bivariate_optimiser_gradient = bivariateΨ_gradient!
+            bivariate_optimiser_gradient = bivariateψ_gradient!
         end
 
         boundary, internal = bivariate_confidenceprofile_continuation(

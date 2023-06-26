@@ -1,15 +1,15 @@
 function variablemapping1dranges(num_pars::T, index::T) where T <: Int
     θranges = (1:(index-1), (index+1):num_pars)
-    λranges = (1:(index-1), index:(num_pars-1))
-    return θranges, λranges
+    ωranges = (1:(index-1), index:(num_pars-1))
+    return θranges, ωranges
 end
 
 function variablemapping1d!(θ::Union{Vector, SubArray},
-                            λ::Union{Vector, SubArray},
+                            ω::Union{Vector, SubArray},
                             θranges::Tuple{T, T}, 
-                            λranges::Tuple{T, T}) where T <: UnitRange
-    θ[θranges[1]] .= @view(λ[λranges[1]])
-    θ[θranges[2]] .= @view(λ[λranges[2]])
+                            ωranges::Tuple{T, T}) where T <: UnitRange
+    θ[θranges[1]] .= @view(ω[ωranges[1]])
+    θ[θranges[2]] .= @view(ω[ωranges[2]])
     return θ
 end
 
@@ -29,7 +29,7 @@ function init_univariate_parameters(model::LikelihoodModel,
     boundsmapping1d!(newUb, model.core.θub, index)
     boundsmapping1d!(initGuess, model.core.θmle, index)
 
-    θranges, λranges = variablemapping1dranges(model.core.num_pars, index)
+    θranges, ωranges = variablemapping1dranges(model.core.num_pars, index)
 
-    return newLb, newUb, initGuess, θranges, λranges
+    return newLb, newUb, initGuess, θranges, ωranges
 end

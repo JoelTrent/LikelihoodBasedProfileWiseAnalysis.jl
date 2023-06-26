@@ -16,8 +16,8 @@ PlaceholderLikelihood.init_univariate_parameters
 ## Likelihood Optimisation
 
 ```@docs
-PlaceholderLikelihood.univariateΨ_ellipse_unbounded
-PlaceholderLikelihood.univariateΨ
+PlaceholderLikelihood.univariateψ_ellipse_unbounded
+PlaceholderLikelihood.univariateψ
 ```
 
 ## Get Points in Confidence Interval

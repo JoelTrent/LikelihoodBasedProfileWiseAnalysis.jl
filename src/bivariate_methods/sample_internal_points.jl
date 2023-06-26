@@ -26,20 +26,20 @@ function sample_internal_points_single_row(bivariate_optimiser::Function,
 
 
     bivariate_optimiser = get_bivariate_opt_func(profile_type, RadialMLEMethod())
-    biv_opt_is_ellipse_analytical = bivariate_optimiser == bivariateΨ_ellipse_analytical_vectorsearch
+    biv_opt_is_ellipse_analytical = bivariate_optimiser == bivariateψ_ellipse_analytical_vectorsearch
     consistent = get_consistent_tuple(model, confidence_level, profile_type, 2)
     pointa = [0.0,0.0]
     uhat   = [0.0,0.0]
 
     ind1, ind2 = θindices
-    newLb, newUb, initGuess, θranges, λranges = init_bivariate_parameters(model, ind1, ind2)
+    newLb, newUb, initGuess, θranges, ωranges = init_bivariate_parameters(model, ind1, ind2)
 
     if biv_opt_is_ellipse_analytical
         p = (ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, pointa=pointa, uhat=uhat,
-            θranges=θranges, λranges=λranges, consistent=consistent)
+            θranges=θranges, ωranges=ωranges, consistent=consistent)
     else
         p = (ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, pointa=pointa, uhat=uhat,
-            θranges=θranges, λranges=λranges, consistent=consistent, λ_opt=zeros(model.core.num_pars - 2))
+            θranges=θranges, ωranges=ωranges, consistent=consistent, ω_opt=zeros(model.core.num_pars - 2))
     end
 
     boundary = conf_struct.confidence_boundary[[ind1, ind2], :]
@@ -65,7 +65,7 @@ function sample_internal_points_single_row(bivariate_optimiser::Function,
             if ll[i] ≥ 0.0
                 internal_points[[ind1, ind2], i] .= p.pointa
                 if !biv_opt_is_ellipse_analytical
-                    variablemapping2d!(@view(internal_points[:, i]), p.λ_opt, θranges, λranges)
+                    variablemapping2d!(@view(internal_points[:, i]), p.ω_opt, θranges, ωranges)
                 end
                 i+=1
             end
@@ -75,10 +75,10 @@ function sample_internal_points_single_row(bivariate_optimiser::Function,
     ll .= ll .+ get_target_loglikelihood(model, confidence_level, EllipseApproxAnalytical(), 2)
 
     if biv_opt_is_ellipse_analytical
-        get_λs_bivariate_ellipse_analytical!(@view(internal_points[[ind1, ind2], :]), num_points,
+        get_ωs_bivariate_ellipse_analytical!(@view(internal_points[[ind1, ind2], :]), num_points,
             consistent, ind1, ind2,
             model.core.num_pars, initGuess,
-            θranges, λranges, internal_points)
+            θranges, ωranges, internal_points)
     end
 
     return merge(conf_struct.internal_points, PointsAndLogLikelihood(internal_points, ll))

@@ -1,16 +1,16 @@
 function variablemapping2dranges(num_pars::T, index1::T, index2::T) where T <: Int
     θranges = (1:(index1-1), (index1+1):(index2-1), (index2+1):num_pars)
-    λranges = (1:(index1-1), index1:(index2-2), (index2-1):(num_pars-2) )
-    return θranges, λranges
+    ωranges = (1:(index1-1), index1:(index2-2), (index2-1):(num_pars-2) )
+    return θranges, ωranges
 end
 
 function variablemapping2d!(θ::Union{Vector, SubArray}, 
-                            λ::Union{Vector, SubArray}, 
+                            ω::Union{Vector, SubArray}, 
                             θranges::Tuple{T, T, T}, 
-                            λranges::Tuple{T, T, T}) where T <: UnitRange
-    θ[θranges[1]] .= @view(λ[λranges[1]])
-    θ[θranges[2]] .= @view(λ[λranges[2]])
-    θ[θranges[3]] .= @view(λ[λranges[3]])
+                            ωranges::Tuple{T, T, T}) where T <: UnitRange
+    θ[θranges[1]] .= @view(ω[ωranges[1]])
+    θ[θranges[2]] .= @view(ω[ωranges[2]])
+    θ[θranges[3]] .= @view(ω[ωranges[3]])
     return θ
 end
 
@@ -36,7 +36,7 @@ function init_bivariate_parameters(model::LikelihoodModel,
     boundsmapping2d!(newUb, model.core.θub, ind1, ind2)
     boundsmapping2d!(initGuess, model.core.θmle, ind1, ind2)
 
-    θranges, λranges = variablemapping2dranges(model.core.num_pars, ind1, ind2)
+    θranges, ωranges = variablemapping2dranges(model.core.num_pars, ind1, ind2)
 
-    return newLb, newUb, initGuess, θranges, λranges
+    return newLb, newUb, initGuess, θranges, ωranges
 end

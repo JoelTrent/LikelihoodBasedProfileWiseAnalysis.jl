@@ -16,15 +16,15 @@ PlaceholderLikelihood.init_bivariate_parameters
 ## Likelihood Optimisation
 
 ```@docs
-PlaceholderLikelihood.bivariateΨ!
-PlaceholderLikelihood.bivariateΨ_vectorsearch!
-PlaceholderLikelihood.bivariateΨ_continuation!
-PlaceholderLikelihood.bivariateΨ_gradient!
-PlaceholderLikelihood.bivariateΨ_ellipse_analytical
-PlaceholderLikelihood.bivariateΨ_ellipse_analytical_vectorsearch
-PlaceholderLikelihood.bivariateΨ_ellipse_analytical_continuation
-PlaceholderLikelihood.bivariateΨ_ellipse_analytical_gradient
-PlaceholderLikelihood.bivariateΨ_ellipse_unbounded
+PlaceholderLikelihood.bivariateψ!
+PlaceholderLikelihood.bivariateψ_vectorsearch!
+PlaceholderLikelihood.bivariateψ_continuation!
+PlaceholderLikelihood.bivariateψ_gradient!
+PlaceholderLikelihood.bivariateψ_ellipse_analytical
+PlaceholderLikelihood.bivariateψ_ellipse_analytical_vectorsearch
+PlaceholderLikelihood.bivariateψ_ellipse_analytical_continuation
+PlaceholderLikelihood.bivariateψ_ellipse_analytical_gradient
+PlaceholderLikelihood.bivariateψ_ellipse_unbounded
 ```
 
 ## Finding Points on 2D bounds
@@ -41,7 +41,7 @@ Note: [`AnalyticalEllipseMethod`](@ref) is calculated using [`generate_N_cluster
 PlaceholderLikelihood.add_biv_profiles_rows!
 PlaceholderLikelihood.set_biv_profiles_row!
 PlaceholderLikelihood.get_bivariate_opt_func
-PlaceholderLikelihood.get_λs_bivariate_ellipse_analytical!
+PlaceholderLikelihood.get_ωs_bivariate_ellipse_analytical!
 PlaceholderLikelihood.bivariate_confidenceprofile
 Base.merge(::BivariateConfidenceStruct, ::BivariateConfidenceStruct)
 ```

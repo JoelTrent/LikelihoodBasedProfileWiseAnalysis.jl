@@ -48,12 +48,12 @@ function get_points_in_interval_single_row(univariate_optimiser::Function,
     
     boundary_indices = current_interval_points.boundary_col_indices
     
-    newLb, newUb, initGuess, θranges, λranges = init_univariate_parameters(model, θi)
+    newLb, newUb, initGuess, θranges, ωranges = init_univariate_parameters(model, θi)
     
     consistent = get_consistent_tuple(model, 0.0, profile_type, 1)
     p=(ind=θi, newLb=newLb, newUb=newUb, initGuess=initGuess, 
-        θranges=θranges, λranges=λranges, consistent=consistent, 
-        λ_opt=zeros(model.core.num_pars-1))
+        θranges=θranges, ωranges=ωranges, consistent=consistent, 
+        ω_opt=zeros(model.core.num_pars-1))
     
     if additional_width > 0
         boundary = current_interval_points.points[θi, boundary_indices]
@@ -115,8 +115,8 @@ function get_points_in_interval_single_row(univariate_optimiser::Function,
 
     for i in iter_inds
         ll[i] = univariate_optimiser(point_locations[i], p)
-        variablemapping1d!(@view(interval_points[:,i]), p.λ_opt, θranges, λranges)
-        # p.initGuess .= p.λ_opt .* 1.0
+        variablemapping1d!(@view(interval_points[:,i]), p.ω_opt, θranges, ωranges)
+        # p.initGuess .= p.ω_opt .* 1.0
     end
     interval_points[θi,iter_inds] .= point_locations[iter_inds]
 

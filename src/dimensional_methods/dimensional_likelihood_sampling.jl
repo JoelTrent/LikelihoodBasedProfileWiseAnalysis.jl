@@ -1,13 +1,13 @@
 function dimensional_optimiser!(θs, p, targetll)
     
-    function fun(λ)
-        θs[p.λindices] = λ
+    function fun(ω)
+        θs[p.ωindices] = ω
         return p.consistent.loglikefunction(θs, p.consistent.data)
     end
 
     (xopt,fopt)=optimise(fun, p.initGuess, p.newLb, p.newUb)
     llb=fopt-targetll
-    θs[p.λindices] .= xopt
+    θs[p.ωindices] .= xopt
     return llb
 end
 
@@ -15,16 +15,16 @@ function init_dimensional_parameters(model::LikelihoodModel,
                                         θindices::Vector{Int},
                                         num_dims::Int)
 
-    λindices = setdiff(1:model.core.num_pars, θindices)
+    ωindices = setdiff(1:model.core.num_pars, θindices)
     newLb     = zeros(model.core.num_pars-num_dims) 
     newUb     = zeros(model.core.num_pars-num_dims)
     initGuess = zeros(model.core.num_pars-num_dims)
 
-    newLb .= model.core.θlb[λindices]
-    newUb .= model.core.θub[λindices]
-    initGuess .= model.core.θmle[λindices]
+    newLb .= model.core.θlb[ωindices]
+    newUb .= model.core.θub[ωindices]
+    initGuess .= model.core.θmle[ωindices]
 
-    return newLb, newUb, initGuess, λindices
+    return newLb, newUb, initGuess, ωindices
 end
 
 function valid_points(model::LikelihoodModel, 
@@ -88,10 +88,10 @@ function uniform_grid(model::LikelihoodModel,
         points_per_dimension = fill(points_per_dimension, num_dims)
     end
 
-    newLb, newUb, initGuess, λindices = init_dimensional_parameters(model, θindices, num_dims)
+    newLb, newUb, initGuess, ωindices = init_dimensional_parameters(model, θindices, num_dims)
     consistent = get_consistent_tuple(model, confidence_level, LogLikelihood(), num_dims)
     p=(θindices=θindices, newLb=newLb, newUb=newUb, initGuess=initGuess,
-        λindices=λindices, consistent=consistent)
+        ωindices=ωindices, consistent=consistent)
 
     lb, ub = arguments_checked ? (lb, ub) : check_if_bounds_supplied(model, θindices, lb, ub)
 
@@ -122,10 +122,10 @@ function uniform_random_blocks(model::LikelihoodModel,
     if !arguments_checked
         num_points > 0 || throw(DomainError("num_points must be a strictly positive integer"))
     end
-    newLb, newUb, initGuess, λindices = init_dimensional_parameters(model, θindices, num_dims)
+    newLb, newUb, initGuess, ωindices = init_dimensional_parameters(model, θindices, num_dims)
     consistent = get_consistent_tuple(model, confidence_level, LogLikelihood(), num_dims)
     p=(θindices=θindices, newLb=newLb, newUb=newUb, initGuess=initGuess,
-        λindices=λindices, consistent=consistent)
+        ωindices=ωindices, consistent=consistent)
     
     lb, ub = arguments_checked ? (lb, ub) : check_if_bounds_supplied(model, θindices, lb, ub)
 
@@ -197,10 +197,10 @@ function uniform_random(model::LikelihoodModel,
     if !arguments_checked
         num_points > 0 || throw(DomainError("num_points must be a strictly positive integer"))
     end
-    newLb, newUb, initGuess, λindices = init_dimensional_parameters(model, θindices, num_dims)
+    newLb, newUb, initGuess, ωindices = init_dimensional_parameters(model, θindices, num_dims)
     consistent = get_consistent_tuple(model, confidence_level, LogLikelihood(), num_dims)
     p=(θindices=θindices, newLb=newLb, newUb=newUb, initGuess=initGuess,
-        λindices=λindices, consistent=consistent)
+        ωindices=ωindices, consistent=consistent)
     
     lb, ub = arguments_checked ? (lb, ub) : check_if_bounds_supplied(model, θindices, lb, ub)
 
@@ -230,10 +230,10 @@ function LHS(model::LikelihoodModel,
         lb, ub = check_if_bounds_supplied(model, θindices, lb, ub)
     end
 
-    newLb, newUb, initGuess, λindices = init_dimensional_parameters(model, θindices, num_dims)
+    newLb, newUb, initGuess, ωindices = init_dimensional_parameters(model, θindices, num_dims)
     consistent = get_consistent_tuple(model, confidence_level, LogLikelihood(), num_dims)
     p=(θindices=θindices, newLb=newLb, newUb=newUb, initGuess=initGuess,
-        λindices=λindices, consistent=consistent)
+        ωindices=ωindices, consistent=consistent)
 
     grid = zeros(model.core.num_pars, num_points)
     

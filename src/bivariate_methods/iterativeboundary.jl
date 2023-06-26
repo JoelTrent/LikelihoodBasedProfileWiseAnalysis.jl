@@ -144,14 +144,14 @@ function iterativeboundary_init(bivariate_optimiser::Function,
             v_bar_norm = norm(v_bar, 2)
             p.uhat .= v_bar ./ v_bar_norm
 
-            Ψ = find_zero(bivariate_optimiser, (0.0, v_bar_norm), Roots.Brent(); p=p)
+            ψ = find_zero(bivariate_optimiser, (0.0, v_bar_norm), Roots.Brent(); p=p)
             
-            boundary[:,i] .= p.pointa + Ψ*p.uhat
+            boundary[:,i] .= p.pointa + ψ*p.uhat
             boundary_all[[ind1, ind2], i] .= boundary[:,i]
         end
         if !biv_opt_is_ellipse_analytical
-            bivariate_optimiser(Ψ, p)
-            variablemapping2d!(@view(boundary_all[:, i]), p.λ_opt, p.θranges, p.λranges)
+            bivariate_optimiser(ψ, p)
+            variablemapping2d!(@view(boundary_all[:, i]), p.ω_opt, p.θranges, p.ωranges)
         end
     end
 
@@ -282,7 +282,7 @@ function newboundarypoint!(p::NamedTuple,
                 ll_values[internal_count] = g * 1.0
                 internal_all[[ind1, ind2], internal_count] .= candidate_midpoint
                 if !biv_opt_is_ellipse_analytical
-                    variablemapping2d!(@view(internal_all[:, internal_count]), p.λ_opt, p.θranges, p.λranges)
+                    variablemapping2d!(@view(internal_all[:, internal_count]), p.ω_opt, p.θranges, p.ωranges)
                 end
             end
 
@@ -301,12 +301,12 @@ function newboundarypoint!(p::NamedTuple,
                 
                 lb = isinf(g) ? 1e-12 * v_bar_norm : 0.0
 
-                Ψ = find_zero(bivariate_optimiser, (lb, v_bar_norm), Roots.Brent(); p=p)
+                ψ = find_zero(bivariate_optimiser, (lb, v_bar_norm), Roots.Brent(); p=p)
 
-                boundarypoint = p.pointa + Ψ*p.uhat
+                boundarypoint = p.pointa + ψ*p.uhat
                 boundary[:, num_vertices] .= boundarypoint
                 boundary_all[[ind1, ind2], num_vertices] .= boundarypoint
-                if !biv_opt_is_ellipse_analytical; bivariate_optimiser(Ψ, p) end
+                if !biv_opt_is_ellipse_analytical; bivariate_optimiser(ψ, p) end
             else
                 point_is_on_bounds[num_vertices] = true
                 boundary[:, num_vertices] .= boundpoint
@@ -350,26 +350,26 @@ function newboundarypoint!(p::NamedTuple,
             v_bar_norm = norm(v_bar, 2)
             p.uhat .= v_bar ./ v_bar_norm
 
-            Ψ = solve(ZeroProblem(bivariate_optimiser, v_bar_norm), Roots.Order8(); p=p)
+            ψ = solve(ZeroProblem(bivariate_optimiser, v_bar_norm), Roots.Order8(); p=p)
 
-            boundarypoint = p.pointa + Ψ*p.uhat
+            boundarypoint = p.pointa + ψ*p.uhat
 
-            if isnan(Ψ) || isinf(Ψ) || isapprox(boundarypoint, p.pointa)
+            if isnan(ψ) || isinf(ψ) || isapprox(boundarypoint, p.pointa)
                 # failure=true
                 f(x) = bivariate_optimiser(x, p)
-                Ψs = find_zeros(f, 0.0, v_bar_norm; p=p)
-                if length(Ψs) == 0
+                ψs = find_zeros(f, 0.0, v_bar_norm; p=p)
+                if length(ψs) == 0
                     failure=true
-                elseif length(Ψs) == 1
-                    boundarypoint = p.pointa + Ψs[1]*p.uhat
+                elseif length(ψs) == 1
+                    boundarypoint = p.pointa + ψs[1]*p.uhat
                     if isapprox(boundarypoint, p.pointa)
                         failure=true
                     else
-                        Ψ = Ψs[1]
+                        ψ = ψs[1]
                     end
                 else
-                    boundarypoint = p.pointa + Ψs[end]*p.uhat
-                    Ψ = Ψs[end]
+                    boundarypoint = p.pointa + ψs[end]*p.uhat
+                    ψ = ψs[end]
                 end
             end
                 
@@ -379,11 +379,11 @@ function newboundarypoint!(p::NamedTuple,
 
             boundary[:, num_vertices] .= boundarypoint
             boundary_all[[ind1, ind2], num_vertices] .= boundarypoint
-            if !biv_opt_is_ellipse_analytical; bivariate_optimiser(Ψ, p) end
+            if !biv_opt_is_ellipse_analytical; bivariate_optimiser(ψ, p) end
         end
 
         if !biv_opt_is_ellipse_analytical
-            variablemapping2d!(@view(boundary_all[:, num_vertices]), p.λ_opt, p.θranges, p.λranges)
+            variablemapping2d!(@view(boundary_all[:, num_vertices]), p.ω_opt, p.θranges, p.ωranges)
         end
     end
 
@@ -533,10 +533,10 @@ function heapupdates_failure!(edge_heap::TrackingHeap,
         if save_internal_points
             ll_values = ll_values[1:internal_count] .+ mle_targetll
             if biv_opt_is_ellipse_analytical
-                internal_all = get_λs_bivariate_ellipse_analytical!(internal_all[[ind1, ind2],1:internal_count], internal_count,
+                internal_all = get_ωs_bivariate_ellipse_analytical!(internal_all[[ind1, ind2],1:internal_count], internal_count,
                                         p.consistent, ind1, ind2, 
                                         model.core.num_pars, p.initGuess,
-                                        p.θranges, p.λranges)
+                                        p.θranges, p.ωranges)
             else
                 internal_all = internal_all[:, 1:internal_count]
             end
@@ -564,18 +564,18 @@ function bivariate_confidenceprofile_iterativeboundary(bivariate_optimiser::Func
                                                 save_internal_points::Bool)
 
     num_points ≥ initial_num_points || throw(ArgumentError("num_points must be greater than or equal to initial_num_points"))
-    newLb, newUb, initGuess, θranges, λranges = init_bivariate_parameters(model, ind1, ind2)
+    newLb, newUb, initGuess, θranges, ωranges = init_bivariate_parameters(model, ind1, ind2)
 
-    biv_opt_is_ellipse_analytical = bivariate_optimiser==bivariateΨ_ellipse_analytical
+    biv_opt_is_ellipse_analytical = bivariate_optimiser==bivariateψ_ellipse_analytical
 
     pointa = [0.0,0.0]
     uhat   = [0.0,0.0]
     if biv_opt_is_ellipse_analytical
         p=(ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, pointa=pointa, uhat=uhat,
-                    θranges=θranges, λranges=λranges, consistent=consistent)
+                    θranges=θranges, ωranges=ωranges, consistent=consistent)
     else
         p=(ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, pointa=pointa, uhat=uhat,
-                    θranges=θranges, λranges=λranges, consistent=consistent, λ_opt=zeros(model.core.num_pars-2))
+                    θranges=θranges, ωranges=ωranges, consistent=consistent, ω_opt=zeros(model.core.num_pars-2))
     end
 
     return_tuple = iterativeboundary_init(bivariate_optimiser, model, num_points, p, ind1, ind2,
@@ -670,19 +670,19 @@ function bivariate_confidenceprofile_iterativeboundary(bivariate_optimiser::Func
     end
 
     if biv_opt_is_ellipse_analytical
-        return get_λs_bivariate_ellipse_analytical!(@view(boundary[[ind1, ind2], :]), num_points,
+        return get_ωs_bivariate_ellipse_analytical!(@view(boundary[[ind1, ind2], :]), num_points,
                                                     consistent, ind1, ind2, 
                                                     model.core.num_pars, initGuess,
-                                                    θranges, λranges, boundary), PointsAndLogLikelihood(internal_all, ll_values)
+                                                    θranges, ωranges, boundary), PointsAndLogLikelihood(internal_all, ll_values)
     end
 
     if save_internal_points
         ll_values = ll_values[1:internal_count] .+ mle_targetll
         if biv_opt_is_ellipse_analytical
-            internal_all = get_λs_bivariate_ellipse_analytical!(internal_all[[ind1, ind2],1:internal_count], internal_count,
+            internal_all = get_ωs_bivariate_ellipse_analytical!(internal_all[[ind1, ind2],1:internal_count], internal_count,
                                     p.consistent, ind1, ind2, 
                                     model.core.num_pars, p.initGuess,
-                                    p.θranges, p.λranges)
+                                    p.θranges, p.ωranges)
         else
             internal_all = internal_all[:, 1:internal_count]
         end

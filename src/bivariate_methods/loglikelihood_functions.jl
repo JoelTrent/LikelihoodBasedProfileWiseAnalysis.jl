@@ -1,81 +1,81 @@
-function bivariateΨ!(Ψ::Real, p)
+function bivariateψ!(ψ::Real, p)
     θs=zeros(p.consistent.num_pars)
     
-    function fun(λ)
-        θs[p.ind1] = p.Ψ_x[1]
-        θs[p.ind2] = Ψ
-        return p.consistent.loglikefunction(variablemapping2d!(θs, λ, p.θranges, p.λranges), p.consistent.data)
+    function fun(ω)
+        θs[p.ind1] = p.ψ_x[1]
+        θs[p.ind2] = ψ
+        return p.consistent.loglikefunction(variablemapping2d!(θs, ω, p.θranges, p.ωranges), p.consistent.data)
     end
 
     (xopt,fopt)=optimise(fun, p.initGuess, p.newLb, p.newUb)
     llb=fopt-p.consistent.targetll
-    p.λ_opt .= xopt
+    p.ω_opt .= xopt
     return llb
 end
 
-function bivariateΨ_vectorsearch!(Ψ, p)
+function bivariateψ_vectorsearch!(ψ, p)
     θs=zeros(p.consistent.num_pars)
-    Ψxy = p.pointa + Ψ*p.uhat
+    ψxy = p.pointa + ψ*p.uhat
     
-    function fun(λ)
-        θs[p.ind1], θs[p.ind2] = Ψxy
-        return p.consistent.loglikefunction(variablemapping2d!(θs, λ, p.θranges, p.λranges), p.consistent.data)
+    function fun(ω)
+        θs[p.ind1], θs[p.ind2] = ψxy
+        return p.consistent.loglikefunction(variablemapping2d!(θs, ω, p.θranges, p.ωranges), p.consistent.data)
     end
 
     (xopt,fopt)=optimise(fun, p.initGuess, p.newLb, p.newUb)
     llb=fopt-p.consistent.targetll
-    p.λ_opt .= xopt
+    p.ω_opt .= xopt
     return llb
 end
 
-function bivariateΨ_continuation!(Ψ, p)
+function bivariateψ_continuation!(ψ, p)
     θs=zeros(p.consistent.num_pars)
-    Ψxy = p.pointa + Ψ*p.uhat
+    ψxy = p.pointa + ψ*p.uhat
     
-    function fun(λ)
-        θs[p.ind1], θs[p.ind2] = Ψxy
-        return p.consistent.loglikefunction(variablemapping2d!(θs, λ, p.θranges, p.λranges), p.consistent.data)
+    function fun(ω)
+        θs[p.ind1], θs[p.ind2] = ψxy
+        return p.consistent.loglikefunction(variablemapping2d!(θs, ω, p.θranges, p.ωranges), p.consistent.data)
     end
 
     (xopt,fopt)=optimise(fun, p.initGuess, p.newLb, p.newUb)
     llb=fopt-p.targetll
-    p.λ_opt .= xopt
+    p.ω_opt .= xopt
     return llb
 end
 
 """
-Requires optimal values of nuisance parameters at point Ψ to be contained in p.λ_opt
+Requires optimal values of nuisance parameters at point ψ to be contained in p.ω_opt
 """
-function bivariateΨ_gradient!(Ψ::Vector, p)
-    θs=zeros(eltype(Ψ), p.consistent.num_pars)
+function bivariateψ_gradient!(ψ::Vector, p)
+    θs=zeros(eltype(ψ), p.consistent.num_pars)
 
-    θs[p.ind1], θs[p.ind2] = Ψ
-    variablemapping2d!(θs, p.λ_opt, p.θranges, p.λranges)
+    θs[p.ind1], θs[p.ind2] = ψ
+    variablemapping2d!(θs, p.ω_opt, p.θranges, p.ωranges)
     return p.consistent.loglikefunction(θs, p.consistent.data)
 end
 
-function bivariateΨ_ellipse_analytical(Ψ, p)
-    return analytic_ellipse_loglike([p.Ψ_x[1], Ψ], [p.ind1, p.ind2], p.consistent.data_analytic) - p.consistent.targetll
+function bivariateψ_ellipse_analytical(ψ, p)
+    return analytic_ellipse_loglike([p.ψ_x[1], ψ], [p.ind1, p.ind2], p.consistent.data_analytic) - p.consistent.targetll
 end
 
-function bivariateΨ_ellipse_analytical_vectorsearch(Ψ, p)
-    return analytic_ellipse_loglike(p.pointa + Ψ*p.uhat, [p.ind1, p.ind2], p.consistent.data_analytic) - p.consistent.targetll
+function bivariateψ_ellipse_analytical_vectorsearch(ψ, p)
+    return analytic_ellipse_loglike(p.pointa + ψ*p.uhat, [p.ind1, p.ind2], p.consistent.data_analytic) - p.consistent.targetll
 end
 
-function bivariateΨ_ellipse_analytical_continuation(Ψ, p)
-    return analytic_ellipse_loglike(p.pointa + Ψ*p.uhat, [p.ind1, p.ind2], p.consistent.data_analytic) - p.targetll
+function bivariateψ_ellipse_analytical_continuation(ψ, p)
+    return analytic_ellipse_loglike(p.pointa + ψ*p.uhat, [p.ind1, p.ind2], p.consistent.data_analytic) - p.targetll
 end
 
-function bivariateΨ_ellipse_analytical_gradient(Ψ::Vector, p)
-    return analytic_ellipse_loglike(Ψ, [p.ind1, p.ind2], p.consistent.data_analytic) - p.consistent.targetll
+function bivariateψ_ellipse_analytical_gradient(ψ::Vector, p)
+    return analytic_ellipse_loglike(ψ, [p.ind1, p.ind2], p.consistent.data_analytic) - p.consistent.targetll
 end
 
-function bivariateΨ_ellipse_unbounded(Ψ::Vector, p)
+function bivariateψ_ellipse_unbounded(ψ::Vector, p)
     θs=zeros(p.consistent.num_pars)
-    θs[p.ind1], θs[p.ind2] = Ψ
+    θs[p.ind1], θs[p.ind2] = ψ
 
-    function fun(λ)
-        return ellipse_loglike(variablemapping2d!(θs, λ, p.θranges, p.λranges), p.consistent.data) 
+    function fun(ω)
+        return ellipse_loglike(variablemapping2d!(θs, ω, p.θranges, p.ωranges), p.consistent.data) 
     end
 
     (xopt,_)=optimise_unbounded(fun, p.initGuess)

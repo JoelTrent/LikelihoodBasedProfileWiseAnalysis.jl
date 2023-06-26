@@ -46,7 +46,7 @@ function check_bivariate_parameter_coverage(data_generator::Function,
     successes = zeros(Int, len_θs)
 
     bivariate_optimiser = get_bivariate_opt_func(profile_type, RadialMLEMethod())
-    biv_opt_is_ellipse_analytical = bivariate_optimiser == bivariateΨ_ellipse_analytical_vectorsearch
+    biv_opt_is_ellipse_analytical = bivariate_optimiser == bivariateψ_ellipse_analytical_vectorsearch
     consistent = get_consistent_tuple(model, confidence_level, profile_type, 2)
     pointa = [0.0,0.0]
     uhat   = [0.0,0.0]
@@ -70,14 +70,14 @@ function check_bivariate_parameter_coverage(data_generator::Function,
 
                 ind1, ind2 = θindices
                 pointa .= θtrue[[ind1, ind2]]
-                newLb, newUb, initGuess, θranges, λranges = init_bivariate_parameters(m_new, ind1, ind2)
+                newLb, newUb, initGuess, θranges, ωranges = init_bivariate_parameters(m_new, ind1, ind2)
 
                 if biv_opt_is_ellipse_analytical
                     p = (ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, pointa=pointa, uhat=uhat,
-                        θranges=θranges, λranges=λranges, consistent=consistent)
+                        θranges=θranges, ωranges=ωranges, consistent=consistent)
                 else
                     p = (ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, pointa=pointa, uhat=uhat,
-                        θranges=θranges, λranges=λranges, consistent=consistent, λ_opt=zeros(model.core.num_pars - 2))
+                        θranges=θranges, ωranges=ωranges, consistent=consistent, ω_opt=zeros(model.core.num_pars - 2))
                 end
 
                 # first check if inside ll threshold
@@ -136,14 +136,14 @@ function check_bivariate_parameter_coverage(data_generator::Function,
 
                         ind1, ind2 = θindices
                         pointa .= θtrue[[ind1, ind2]]
-                        newLb, newUb, initGuess, θranges, λranges = init_bivariate_parameters(m_new, ind1, ind2)
+                        newLb, newUb, initGuess, θranges, ωranges = init_bivariate_parameters(m_new, ind1, ind2)
 
                         if biv_opt_is_ellipse_analytical
                             p = (ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, pointa=pointa, uhat=uhat,
-                                θranges=θranges, λranges=λranges, consistent=consistent)
+                                θranges=θranges, ωranges=ωranges, consistent=consistent)
                         else
                             p = (ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, pointa=pointa, uhat=uhat,
-                                θranges=θranges, λranges=λranges, consistent=consistent, λ_opt=zeros(model.core.num_pars - 2))
+                                θranges=θranges, ωranges=ωranges, consistent=consistent, ω_opt=zeros(model.core.num_pars - 2))
                         end
 
                         # first check if inside ll threshold

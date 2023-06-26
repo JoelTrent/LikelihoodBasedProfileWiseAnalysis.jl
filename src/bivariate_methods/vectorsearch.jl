@@ -38,7 +38,7 @@ function findNpointpairs_simultaneous!(p::NamedTuple,
                 ll_values[Ninside] = g * 1.0
                 if !biv_opt_is_ellipse_analytical
                     internal_all[[ind1, ind2], Ninside] .= x, y
-                    variablemapping2d!(@view(internal_all[:, Ninside]), p.λ_opt, p.θranges, p.λranges)
+                    variablemapping2d!(@view(internal_all[:, Ninside]), p.ω_opt, p.θranges, p.ωranges)
                 end
             end
         else
@@ -61,7 +61,7 @@ function findNpointpairs_simultaneous!(p::NamedTuple,
                 ll_values[Ninside] = g * 1.0
                 if !biv_opt_is_ellipse_analytical
                     internal_all[[ind1, ind2], Ninside] .= x, y
-                    variablemapping2d!(@view(internal_all[:, Ninside]), p.λ_opt, p.θranges, p.λranges)
+                    variablemapping2d!(@view(internal_all[:, Ninside]), p.ω_opt, p.θranges, p.ωranges)
                 end
             end
         end
@@ -80,10 +80,10 @@ function findNpointpairs_simultaneous!(p::NamedTuple,
     end
 
     if save_internal_points && biv_opt_is_ellipse_analytical
-        get_λs_bivariate_ellipse_analytical!(internal_all, num_points,
+        get_ωs_bivariate_ellipse_analytical!(internal_all, num_points,
                                                     p.consistent, ind1, ind2, 
                                                     model.core.num_pars, p.initGuess,
-                                                    p.θranges, p.λranges)
+                                                    p.θranges, p.ωranges)
     end
 
     if save_internal_points; ll_values .= ll_values .+ mle_targetll end
@@ -117,11 +117,11 @@ function findNpointpairs_radialrandom!(p::NamedTuple,
     internal_unique = trues(num_points)
     external = zeros(2,num_points)
 
-    save_λs = save_internal_points && !biv_opt_is_ellipse_analytical
+    save_ωs = save_internal_points && !biv_opt_is_ellipse_analytical
 
     count = 0
     internal_count=0
-    λ_opt = zeros(model.core.num_pars-2)
+    ω_opt = zeros(model.core.num_pars-2)
     g_ll = 0.0
     
     if isnan(model.core.θmagnitudes[ind1]) || isnan(model.core.θmagnitudes[ind2]) 
@@ -138,7 +138,7 @@ function findNpointpairs_radialrandom!(p::NamedTuple,
             g_gen = bivariate_optimiser(0.0, p)
             if g_gen > 0 
                 if save_internal_points; g_ll = g_gen end
-                if save_λs; λ_opt .= p.λ_opt end
+                if save_ωs; ω_opt .= p.ω_opt end
                 break
             end
         end
@@ -173,7 +173,7 @@ function findNpointpairs_radialrandom!(p::NamedTuple,
                     ll_values[internal_count] = g_ll * 1.0
                     if !biv_opt_is_ellipse_analytical
                         internal_all[[ind1, ind2], internal_count] .= x, y
-                        variablemapping2d!(@view(internal_all[:, internal_count]), λ_opt, p.θranges, p.λranges)
+                        variablemapping2d!(@view(internal_all[:, internal_count]), ω_opt, p.θranges, p.ωranges)
                     end
                 end
             end
@@ -188,10 +188,10 @@ function findNpointpairs_radialrandom!(p::NamedTuple,
         ll_values = ll_values[1:internal_count] .+ mle_targetll
         
         if biv_opt_is_ellipse_analytical
-            internal_all = get_λs_bivariate_ellipse_analytical!(internal[:, internal_unique], sum(internal_unique),
+            internal_all = get_ωs_bivariate_ellipse_analytical!(internal[:, internal_unique], sum(internal_unique),
                                                                 p.consistent, ind1, ind2, 
                                                                 model.core.num_pars, p.initGuess,
-                                                                p.θranges, p.λranges)
+                                                                p.θranges, p.ωranges)
         else
             internal_all = internal_all[:, 1:internal_count]
         end
@@ -265,9 +265,9 @@ function bivariate_confidenceprofile_vectorsearch(bivariate_optimiser::Function,
                                                     ellipse_start_point_shift::Float64=0.0,
                                                     ellipse_sqrt_distortion::Float64=0.0)
 
-    newLb, newUb, initGuess, θranges, λranges = init_bivariate_parameters(model, ind1, ind2)
+    newLb, newUb, initGuess, θranges, ωranges = init_bivariate_parameters(model, ind1, ind2)
 
-    biv_opt_is_ellipse_analytical = bivariate_optimiser==bivariateΨ_ellipse_analytical_vectorsearch
+    biv_opt_is_ellipse_analytical = bivariate_optimiser==bivariateψ_ellipse_analytical_vectorsearch
     
     pointa = [0.0,0.0]
     uhat   = [0.0,0.0]
@@ -275,10 +275,10 @@ function bivariate_confidenceprofile_vectorsearch(bivariate_optimiser::Function,
 
     if biv_opt_is_ellipse_analytical
         p=(ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, pointa=pointa, uhat=uhat,
-                    θranges=θranges, λranges=λranges, consistent=consistent)
+                    θranges=θranges, ωranges=ωranges, consistent=consistent)
     else
         p=(ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, pointa=pointa, uhat=uhat,
-                    θranges=θranges, λranges=λranges, consistent=consistent, λ_opt=zeros(model.core.num_pars-2))
+                    θranges=θranges, ωranges=ωranges, consistent=consistent, ω_opt=zeros(model.core.num_pars-2))
     end
 
     if ellipse_confidence_level !== -1.0
@@ -310,21 +310,21 @@ function bivariate_confidenceprofile_vectorsearch(bivariate_optimiser::Function,
             v_bar_norm = norm(v_bar, 2)
             p.uhat .= v_bar ./ v_bar_norm
 
-            Ψ = find_zero(bivariate_optimiser, (0.0, v_bar_norm), Roots.Brent(); p=p)
+            ψ = find_zero(bivariate_optimiser, (0.0, v_bar_norm), Roots.Brent(); p=p)
             
-            boundary[[ind1, ind2], i] .= p.pointa + Ψ*p.uhat
-            if !biv_opt_is_ellipse_analytical; bivariate_optimiser(Ψ, p) end
+            boundary[[ind1, ind2], i] .= p.pointa + ψ*p.uhat
+            if !biv_opt_is_ellipse_analytical; bivariate_optimiser(ψ, p) end
         end
         if !biv_opt_is_ellipse_analytical
-            variablemapping2d!(@view(boundary[:, i]), p.λ_opt, θranges, λranges)
+            variablemapping2d!(@view(boundary[:, i]), p.ω_opt, θranges, ωranges)
         end
     end
 
     if biv_opt_is_ellipse_analytical
-        return get_λs_bivariate_ellipse_analytical!(@view(boundary[[ind1, ind2], :]), num_points,
+        return get_ωs_bivariate_ellipse_analytical!(@view(boundary[[ind1, ind2], :]), num_points,
                                                     consistent, ind1, ind2, 
                                                     model.core.num_pars, initGuess,
-                                                    θranges, λranges, boundary), PointsAndLogLikelihood(internal_all, ll_values)
+                                                    θranges, ωranges, boundary), PointsAndLogLikelihood(internal_all, ll_values)
     end
 
     return boundary, PointsAndLogLikelihood(internal_all, ll_values)
