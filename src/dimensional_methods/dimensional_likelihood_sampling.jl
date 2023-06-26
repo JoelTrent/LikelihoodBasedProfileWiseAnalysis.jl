@@ -1,4 +1,9 @@
-function dimensional_optimiser!(θs, p, targetll)
+"""
+    dimensional_optimiser!(θs::Vector, p::NamedTuple, targetll::Real)
+
+Given a log-likelihood function (`p.consistent.loglikefunction`) which is bounded in parameter space, this function finds the values of the nuisance parameters ω that optimise the function for fixed values of the interest parameters ψ (which are already in `θs`) and returns the log-likelihood value minus the confidence boundary target threshold. The returned function value will be zero at the locations of the approximate confidence boundary for ψ. Nuisance parameter values are stored in the corresponding indices of θs, modifying the array in place.
+"""
+function dimensional_optimiser!(θs::Vector, p::NamedTuple, targetll::Real)
     
     function fun(ω)
         θs[p.ωindices] = ω
