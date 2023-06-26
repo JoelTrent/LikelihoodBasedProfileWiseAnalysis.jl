@@ -1,9 +1,9 @@
 """
-    dimensional_optimiser!(θs::Vector, p::NamedTuple, targetll::Real)
+    dimensional_optimiser!(θs::Union{Vector, SubArray}, p::NamedTuple, targetll::Real)
 
 Given a log-likelihood function (`p.consistent.loglikefunction`) which is bounded in parameter space, this function finds the values of the nuisance parameters ω that optimise the function for fixed values of the interest parameters ψ (which are already in `θs`) and returns the log-likelihood value minus the confidence boundary target threshold. The returned function value will be zero at the locations of the approximate confidence boundary for ψ. Nuisance parameter values are stored in the corresponding indices of θs, modifying the array in place.
 """
-function dimensional_optimiser!(θs::Vector, p::NamedTuple, targetll::Real)
+function dimensional_optimiser!(θs::Union{Vector, SubArray}, p::NamedTuple, targetll::Real)
     
     function fun(ω)
         θs[p.ωindices] = ω
@@ -261,7 +261,7 @@ function dimensional_likelihood_sample(model::LikelihoodModel,
         return sample_struct
     catch
         @error string("an error occurred when computing a dimensional sample with settings: ",
-            (profile_type=profile_type, sample_type=sample_type, confidence_level=confidence_level,
+            (sample_type=sample_type, confidence_level=confidence_level,
                 θindices=θindices))
         for (exc, bt) in current_exceptions()
             showerror(stdout, exc, bt)
