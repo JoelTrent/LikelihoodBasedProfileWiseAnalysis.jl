@@ -69,7 +69,7 @@ function continuation_line_search!(p::NamedTuple,
     end
 
     if !level_set_not_smoothed
-        boundsmapping2d!(p.initGuess, model.core.θmle, ind1, ind2)
+        boundsmapping!(p.initGuess, model.core.θmle, ind1, ind2)
     end
 
     for i in 1:num_points
@@ -82,7 +82,7 @@ function continuation_line_search!(p::NamedTuple,
         # if know the optimised values of nuisance parameters at a given start point,
         # pass them to the optimiser
         if start_have_all_pars && level_set_not_smoothed
-            boundsmapping2d!(p.initGuess, @view(start_level_set_all[:,i]), ind1, ind2)
+            boundsmapping!(p.initGuess, @view(start_level_set_all[:,i]), ind1, ind2)
         end
         
         if is_a_zero[i]
@@ -92,7 +92,7 @@ function continuation_line_search!(p::NamedTuple,
             target_level_set_2D[:, i] .= boundarypoint
             target_level_set_all[[ind1, ind2], i] .= boundarypoint
             if !biv_opt_is_ellipse_analytical
-                variablemapping2d!(@view(target_level_set_all[:, i]), p.ω_opt, p.θranges, p.ωranges)
+                variablemapping!(@view(target_level_set_all[:, i]), p.ω_opt, p.θranges, p.ωranges)
             end
             continue
         end
@@ -147,13 +147,13 @@ function continuation_line_search!(p::NamedTuple,
             target_level_set_all[[ind1, ind2], i] .= boundpoint
         end
         if !biv_opt_is_ellipse_analytical
-            variablemapping2d!(@view(target_level_set_all[:, i]), p.ω_opt, p.θranges, p.ωranges)
+            variablemapping!(@view(target_level_set_all[:, i]), p.ω_opt, p.θranges, p.ωranges)
         end
     end
 
     if biv_opt_is_ellipse_analytical
         local initGuess = zeros(model.core.num_pars-2)
-        boundsmapping2d!(initGuess, model.core.θmle, ind1, ind2)
+        boundsmapping!(initGuess, model.core.θmle, ind1, ind2)
         target_level_set_all = get_ωs_bivariate_ellipse_analytical!(target_level_set_2D, num_points,
                                                                     p.consistent, ind1, ind2, 
                                                                     model.core.num_pars, initGuess,
@@ -223,13 +223,13 @@ function continuation_inwards_radial_search!(p::NamedTuple,
         target_level_set_all[[ind1, ind2], i] .= boundarypoint
         if !biv_opt_is_ellipse_analytical
             bivariate_optimiser(ψ, p)
-            variablemapping2d!(@view(target_level_set_all[:, i]), p.ω_opt, p.θranges, p.ωranges)
+            variablemapping!(@view(target_level_set_all[:, i]), p.ω_opt, p.θranges, p.ωranges)
         end
     end
 
     if biv_opt_is_ellipse_analytical
         local initGuess = zeros(model.core.num_pars-2)
-        boundsmapping2d!(initGuess, model.core.θmle, ind1, ind2)
+        boundsmapping!(initGuess, model.core.θmle, ind1, ind2)
         target_level_set_all = get_ωs_bivariate_ellipse_analytical!(target_level_set_2D, num_points,
                                                                     p.consistent, ind1, ind2, 
                                                                     model.core.num_pars, initGuess,
@@ -368,7 +368,7 @@ function bivariate_confidenceprofile_continuation(bivariate_optimiser::Function,
                                                     save_internal_points::Bool,
                                                     )
 
-    newLb, newUb, initGuess, θranges, ωranges = init_bivariate_parameters(model, ind1, ind2)
+    newLb, newUb, initGuess, θranges, ωranges = init_nuisance_parameters(model, ind1, ind2)
     
     pointa = [0.0,0.0]
     uhat   = [0.0,0.0]

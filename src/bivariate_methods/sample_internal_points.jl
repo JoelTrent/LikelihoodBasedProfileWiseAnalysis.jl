@@ -32,7 +32,7 @@ function sample_internal_points_single_row(bivariate_optimiser::Function,
     uhat   = [0.0,0.0]
 
     ind1, ind2 = θindices
-    newLb, newUb, initGuess, θranges, ωranges = init_bivariate_parameters(model, ind1, ind2)
+    newLb, newUb, initGuess, θranges, ωranges = init_nuisance_parameters(model, ind1, ind2)
 
     if biv_opt_is_ellipse_analytical
         p = (ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, pointa=pointa, uhat=uhat,
@@ -65,7 +65,7 @@ function sample_internal_points_single_row(bivariate_optimiser::Function,
             if ll[i] ≥ 0.0
                 internal_points[[ind1, ind2], i] .= p.pointa
                 if !biv_opt_is_ellipse_analytical
-                    variablemapping2d!(@view(internal_points[:, i]), p.ω_opt, θranges, ωranges)
+                    variablemapping!(@view(internal_points[:, i]), p.ω_opt, θranges, ωranges)
                 end
                 i+=1
             end

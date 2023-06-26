@@ -4,15 +4,6 @@
 Pages = ["bivariate.md"]
 ```
 
-## Initialisation and Array Mapping
-
-```@docs
-PlaceholderLikelihood.variablemapping2dranges
-PlaceholderLikelihood.variablemapping2d!
-PlaceholderLikelihood.boundsmapping2d!
-PlaceholderLikelihood.init_bivariate_parameters
-```
-
 ## Likelihood Optimisation
 
 ```@docs

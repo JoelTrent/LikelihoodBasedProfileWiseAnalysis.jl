@@ -70,7 +70,7 @@ function check_bivariate_parameter_coverage(data_generator::Function,
 
                 ind1, ind2 = θindices
                 pointa .= θtrue[[ind1, ind2]]
-                newLb, newUb, initGuess, θranges, ωranges = init_bivariate_parameters(m_new, ind1, ind2)
+                newLb, newUb, initGuess, θranges, ωranges = init_nuisance_parameters(m_new, ind1, ind2)
 
                 if biv_opt_is_ellipse_analytical
                     p = (ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, pointa=pointa, uhat=uhat,
@@ -127,7 +127,7 @@ function check_bivariate_parameter_coverage(data_generator::Function,
 
                     bivariate_confidenceprofiles!(m_new, θcombinations, num_points;
                         confidence_level=confidence_level, profile_type=profile_type, method=method,
-                        θcombinations_is_unique=true, show_progress=false)
+                        θcombinations_is_unique=true, show_progress=false)                    
 
                     for row_ind in 1:m_new.num_biv_profiles
                         θindices = m_new.biv_profiles_df[row_ind, :θindices]
@@ -136,7 +136,7 @@ function check_bivariate_parameter_coverage(data_generator::Function,
 
                         ind1, ind2 = θindices
                         pointa .= θtrue[[ind1, ind2]]
-                        newLb, newUb, initGuess, θranges, ωranges = init_bivariate_parameters(m_new, ind1, ind2)
+                        newLb, newUb, initGuess, θranges, ωranges = init_nuisance_parameters(m_new, ind1, ind2)
 
                         if biv_opt_is_ellipse_analytical
                             p = (ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, pointa=pointa, uhat=uhat,

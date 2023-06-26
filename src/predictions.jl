@@ -40,47 +40,57 @@ function generate_prediction(predictfunction::Function,
                                 parameter_points::Matrix{Float64},
                                 proportion_to_keep::Real,
                                 channel::Union{RemoteChannel,Missing}=missing)
-
-    num_points = size(parameter_points, 2)
-    
-    if ndims(data_ymle) > 2
-        error("this function has not been written to handle predictions that are stored in higher than 2 dimensions")
-    end
-
-    if ndims(data_ymle) == 2
-        predictions = zeros(length(t), num_points, size(data_ymle, 2))
-
-        for i in 1:num_points
-            predictions[:,i,:] .= predictfunction(parameter_points[:,i], data, t)
+    try
+        num_points = size(parameter_points, 2)
+        
+        if ndims(data_ymle) > 2
+            error("this function has not been written to handle predictions that are stored in higher than 2 dimensions")
         end
 
-    else
-        predictions = zeros(length(t), num_points)
+        if ndims(data_ymle) == 2
+            predictions = zeros(length(t), num_points, size(data_ymle, 2))
 
-        for i in 1:num_points
-            predictions[:,i] .= predictfunction(parameter_points[:,i], data, t)
+            for i in 1:num_points
+                predictions[:,i,:] .= predictfunction(parameter_points[:,i], data, t)
+            end
+
+        else
+            predictions = zeros(length(t), num_points)
+
+            for i in 1:num_points
+                predictions[:,i] .= predictfunction(parameter_points[:,i], data, t)
+            end
         end
-    end
-    
-    extrema = hcat(minimum(predictions, dims=2), maximum(predictions, dims=2))
+        
+        extrema = hcat(minimum(predictions, dims=2), maximum(predictions, dims=2))
 
-    num_to_keep = convert(Int, round(num_points*proportion_to_keep, RoundUp))
-    if num_points < 2
-        predict_struct = PredictionStruct(predictions, extrema)
+        num_to_keep = convert(Int, round(num_points*proportion_to_keep, RoundUp))
+        if num_points < 2
+            predict_struct = PredictionStruct(predictions, extrema)
+            return predict_struct
+        elseif num_to_keep < 2
+            num_to_keep = 2
+        end
+
+        keep_i = sample(1:num_points, num_to_keep, replace=false, ordered=true)
+        if ndims(data_ymle) == 2
+            predict_struct = PredictionStruct(predictions[:, keep_i,:], extrema)
+        else
+            predict_struct = PredictionStruct(predictions[:, keep_i], extrema)
+        end
+
+        if !ismissing(channel); put!(channel, true) end
         return predict_struct
-    elseif num_to_keep < 2
-        num_to_keep = 2
-    end
 
-    keep_i = sample(1:num_points, num_to_keep, replace=false, ordered=true)
-    if ndims(data_ymle) == 2
-        predict_struct = PredictionStruct(predictions[:, keep_i,:], extrema)
-    else
-        predict_struct = PredictionStruct(predictions[:, keep_i], extrema)
+    catch
+        @error "an error occurred when generating a prediction"
+        for (exc, bt) in current_exceptions()
+            showerror(stdout, exc, bt)
+            println(stdout)
+            println(stdout)
+        end
     end
-
-    if !ismissing(channel); put!(channel, true) end
-    return predict_struct
+    return nothing
 end
 
 function generate_prediction_univariate(model::LikelihoodModel,
@@ -154,12 +164,14 @@ function generate_predictions_univariate!(model::LikelihoodModel,
             put!(channel, false)
             
             for (i, predict_struct) in enumerate(predictions)
-                model.uni_predictions_dict[sub_df[i, :row_ind]] = predict_struct
+                if !isnothing(predict_struct)
+                    model.uni_predictions_dict[sub_df[i, :row_ind]] = predict_struct
+                    sub_df[i, :not_evaluated_predictions] = false
+                end
             end
         end
     end
 
-    sub_df[:, :not_evaluated_predictions] .= false
     return nothing
 end
 
@@ -197,12 +209,14 @@ function generate_predictions_bivariate!(model::LikelihoodModel,
             put!(channel, false)
     
             for (i, predict_struct) in enumerate(predictions)
-                model.biv_predictions_dict[sub_df[i, :row_ind]] = predict_struct
+                if !isnothing(predict_struct)
+                    model.biv_predictions_dict[sub_df[i, :row_ind]] = predict_struct
+                    sub_df[i, :not_evaluated_predictions] = false
+                end
             end
         end
     end
 
-    sub_df[:, :not_evaluated_predictions] .= false
     return nothing
 end
 
@@ -240,11 +254,13 @@ function generate_predictions_dim_samples!(model::LikelihoodModel,
             put!(channel, false)
             
             for (i, predict_struct) in enumerate(predictions)
-                model.dim_predictions_dict[sub_df[i, :row_ind]] = predict_struct
+                if !isnothing(predict_struct)
+                    model.dim_predictions_dict[sub_df[i, :row_ind]] = predict_struct
+                    sub_df[i, :not_evaluated_predictions] = false
+                end
             end
         end
     end
 
-    sub_df[:, :not_evaluated_predictions] .= false
     return nothing
 end

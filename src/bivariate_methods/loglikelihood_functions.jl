@@ -4,7 +4,7 @@ function bivariateψ!(ψ::Real, p)
     function fun(ω)
         θs[p.ind1] = p.ψ_x[1]
         θs[p.ind2] = ψ
-        return p.consistent.loglikefunction(variablemapping2d!(θs, ω, p.θranges, p.ωranges), p.consistent.data)
+        return p.consistent.loglikefunction(variablemapping!(θs, ω, p.θranges, p.ωranges), p.consistent.data)
     end
 
     (xopt,fopt)=optimise(fun, p.initGuess, p.newLb, p.newUb)
@@ -19,7 +19,7 @@ function bivariateψ_vectorsearch!(ψ, p)
     
     function fun(ω)
         θs[p.ind1], θs[p.ind2] = ψxy
-        return p.consistent.loglikefunction(variablemapping2d!(θs, ω, p.θranges, p.ωranges), p.consistent.data)
+        return p.consistent.loglikefunction(variablemapping!(θs, ω, p.θranges, p.ωranges), p.consistent.data)
     end
 
     (xopt,fopt)=optimise(fun, p.initGuess, p.newLb, p.newUb)
@@ -34,7 +34,7 @@ function bivariateψ_continuation!(ψ, p)
     
     function fun(ω)
         θs[p.ind1], θs[p.ind2] = ψxy
-        return p.consistent.loglikefunction(variablemapping2d!(θs, ω, p.θranges, p.ωranges), p.consistent.data)
+        return p.consistent.loglikefunction(variablemapping!(θs, ω, p.θranges, p.ωranges), p.consistent.data)
     end
 
     (xopt,fopt)=optimise(fun, p.initGuess, p.newLb, p.newUb)
@@ -50,7 +50,7 @@ function bivariateψ_gradient!(ψ::Vector, p)
     θs=zeros(eltype(ψ), p.consistent.num_pars)
 
     θs[p.ind1], θs[p.ind2] = ψ
-    variablemapping2d!(θs, p.ω_opt, p.θranges, p.ωranges)
+    variablemapping!(θs, p.ω_opt, p.θranges, p.ωranges)
     return p.consistent.loglikefunction(θs, p.consistent.data)
 end
 
@@ -75,7 +75,7 @@ function bivariateψ_ellipse_unbounded(ψ::Vector, p)
     θs[p.ind1], θs[p.ind2] = ψ
 
     function fun(ω)
-        return ellipse_loglike(variablemapping2d!(θs, ω, p.θranges, p.ωranges), p.consistent.data) 
+        return ellipse_loglike(variablemapping!(θs, ω, p.θranges, p.ωranges), p.consistent.data) 
     end
 
     (xopt,_)=optimise_unbounded(fun, p.initGuess)

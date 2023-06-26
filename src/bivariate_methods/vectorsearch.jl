@@ -38,7 +38,7 @@ function findNpointpairs_simultaneous!(p::NamedTuple,
                 ll_values[Ninside] = g * 1.0
                 if !biv_opt_is_ellipse_analytical
                     internal_all[[ind1, ind2], Ninside] .= x, y
-                    variablemapping2d!(@view(internal_all[:, Ninside]), p.ω_opt, p.θranges, p.ωranges)
+                    variablemapping!(@view(internal_all[:, Ninside]), p.ω_opt, p.θranges, p.ωranges)
                 end
             end
         else
@@ -61,7 +61,7 @@ function findNpointpairs_simultaneous!(p::NamedTuple,
                 ll_values[Ninside] = g * 1.0
                 if !biv_opt_is_ellipse_analytical
                     internal_all[[ind1, ind2], Ninside] .= x, y
-                    variablemapping2d!(@view(internal_all[:, Ninside]), p.ω_opt, p.θranges, p.ωranges)
+                    variablemapping!(@view(internal_all[:, Ninside]), p.ω_opt, p.θranges, p.ωranges)
                 end
             end
         end
@@ -173,7 +173,7 @@ function findNpointpairs_radialrandom!(p::NamedTuple,
                     ll_values[internal_count] = g_ll * 1.0
                     if !biv_opt_is_ellipse_analytical
                         internal_all[[ind1, ind2], internal_count] .= x, y
-                        variablemapping2d!(@view(internal_all[:, internal_count]), ω_opt, p.θranges, p.ωranges)
+                        variablemapping!(@view(internal_all[:, internal_count]), ω_opt, p.θranges, p.ωranges)
                     end
                 end
             end
@@ -265,7 +265,7 @@ function bivariate_confidenceprofile_vectorsearch(bivariate_optimiser::Function,
                                                     ellipse_start_point_shift::Float64=0.0,
                                                     ellipse_sqrt_distortion::Float64=0.0)
 
-    newLb, newUb, initGuess, θranges, ωranges = init_bivariate_parameters(model, ind1, ind2)
+    newLb, newUb, initGuess, θranges, ωranges = init_nuisance_parameters(model, ind1, ind2)
 
     biv_opt_is_ellipse_analytical = bivariate_optimiser==bivariateψ_ellipse_analytical_vectorsearch
     
@@ -316,7 +316,7 @@ function bivariate_confidenceprofile_vectorsearch(bivariate_optimiser::Function,
             if !biv_opt_is_ellipse_analytical; bivariate_optimiser(ψ, p) end
         end
         if !biv_opt_is_ellipse_analytical
-            variablemapping2d!(@view(boundary[:, i]), p.ω_opt, θranges, ωranges)
+            variablemapping!(@view(boundary[:, i]), p.ω_opt, θranges, ωranges)
         end
     end
 

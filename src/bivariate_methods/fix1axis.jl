@@ -77,11 +77,11 @@ function findNpointpairs_fix1axis!(p::NamedTuple,
                         if f0 ≥ 0 
                             ll_values[k] = f0
                             internal_all[j,k] = ψ_y0
-                            variablemapping2d!(@view(internal_all[:, k]), ω_opt0, p.θranges, p.ωranges)
+                            variablemapping!(@view(internal_all[:, k]), ω_opt0, p.θranges, p.ωranges)
                         else
                             ll_values[k] = f1
                             internal_all[j,k] = ψ_y1
-                            variablemapping2d!(@view(internal_all[:, k]), ω_opt1, p.θranges, p.ωranges)
+                            variablemapping!(@view(internal_all[:, k]), ω_opt1, p.θranges, p.ωranges)
                         end
                     end
                     break
@@ -104,7 +104,7 @@ function bivariate_confidenceprofile_fix1axis(bivariate_optimiser::Function,
                                                 mle_targetll::Float64,
                                                 save_internal_points::Bool)
 
-    newLb, newUb, initGuess, θranges, ωranges = init_bivariate_parameters(model, ind1, ind2)
+    newLb, newUb, initGuess, θranges, ωranges = init_nuisance_parameters(model, ind1, ind2)
 
     biv_opt_is_ellipse_analytical = bivariate_optimiser==bivariateψ_ellipse_analytical
 
@@ -140,7 +140,7 @@ function bivariate_confidenceprofile_fix1axis(bivariate_optimiser::Function,
             
             if !biv_opt_is_ellipse_analytical
                 bivariate_optimiser(ψ_y1, p)
-                variablemapping2d!(@view(boundary[:, count]), p.ω_opt, θranges, ωranges)
+                variablemapping!(@view(boundary[:, count]), p.ω_opt, θranges, ωranges)
             end
         end
 

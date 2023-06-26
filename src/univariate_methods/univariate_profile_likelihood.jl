@@ -149,103 +149,116 @@ function univariate_confidenceinterval(univariate_optimiser::Function,
                                         additional_width::Real,
                                         channel::RemoteChannel)
 
-    interval = zeros(2)
-    ll = zeros(2)
-    interval_points = zeros(model.core.num_pars, 2)
-    newLb, newUb, initGuess, θranges, ωranges = init_univariate_parameters(model, θi)
+    try
+        interval = zeros(2)
+        ll = zeros(2)
+        interval_points = zeros(model.core.num_pars, 2)
+        newLb, newUb, initGuess, θranges, ωranges = init_nuisance_parameters(model, θi)
 
-    p=(ind=θi, newLb=newLb, newUb=newUb, initGuess=initGuess, 
-        θranges=θranges, ωranges=ωranges, consistent=consistent, 
-        ω_opt=zeros(model.core.num_pars-1))
+        p=(ind=θi, newLb=newLb, newUb=newUb, initGuess=initGuess, 
+            θranges=θranges, ωranges=ωranges, consistent=consistent, 
+            ω_opt=zeros(model.core.num_pars-1))
 
-    if use_existing_profiles
-        bracket_l, bracket_r = get_interval_brackets(model, θi, confidence_level,
-                                                        profile_type)
-    else
-        bracket_l, bracket_r = Float64[], Float64[]
-    end
-
-    if isempty(bracket_l)
-        bracket_l = [model.core.θlb[θi], model.core.θmle[θi]]
-    end
-    if isempty(bracket_r)
-        bracket_r = [model.core.θmle[θi], model.core.θub[θi]]
-    end
-
-    if univariate_optimiser == univariateψ_ellipse_unbounded
-
-        interval .= analytic_ellipse_loglike_1D_soln(θi, consistent.data_analytic, mle_targetll)
-        
-        if interval[1] >= bracket_l[1]
-            interval_points[θi,1] = interval[1]
-            univariate_optimiser(interval[1], p)
-            variablemapping1d!(@view(interval_points[:, 1]), p.ω_opt, θranges, ωranges)
-            ll[1] = mle_targetll
+        if use_existing_profiles
+            bracket_l, bracket_r = get_interval_brackets(model, θi, confidence_level,
+                                                            profile_type)
         else
-            interval[1]=NaN 
+            bracket_l, bracket_r = Float64[], Float64[]
         end
 
-        if interval[2] <= bracket_r[2]
-            interval_points[θi,2] = interval[2]
-            univariate_optimiser(interval[2], p)
-            variablemapping1d!(@view(interval_points[:, 2]), p.ω_opt, θranges, ωranges)
-            ll[2] = mle_targetll
-        else 
-            interval[2]=NaN
+        if isempty(bracket_l)
+            bracket_l = [model.core.θlb[θi], model.core.θmle[θi]]
+        end
+        if isempty(bracket_r)
+            bracket_r = [model.core.θmle[θi], model.core.θub[θi]]
         end
 
-    else
-        # by definition, g(θmle[i],p) == abs(llstar) > 0, so only have to check one side of interval to make sure it brackets a zero
-        g = univariate_optimiser(bracket_l[1], p)
-        if g < 0.0
-            # make bracket a tiny bit smaller
-            if isinf(g); bracket_l[1] = bracket_l[1] + 1e-8 * diff(bracket_l)[1] end
+        if univariate_optimiser == univariateψ_ellipse_unbounded
 
-            interval[1] = find_zero(univariate_optimiser, bracket_l, Roots.Brent(), p=p) 
-            interval_points[θi,1] = interval[1]
-            univariate_optimiser(interval[1], p)
-            variablemapping1d!(@view(interval_points[:,1]), p.ω_opt, θranges, ωranges)
-            ll[1] = mle_targetll
+            interval .= analytic_ellipse_loglike_1D_soln(θi, consistent.data_analytic, mle_targetll)
+            
+            if interval[1] >= bracket_l[1]
+                interval_points[θi,1] = interval[1]
+                univariate_optimiser(interval[1], p)
+                variablemapping!(@view(interval_points[:, 1]), p.ω_opt, θranges, ωranges)
+                ll[1] = mle_targetll
+            else
+                interval[1]=NaN 
+            end
+
+            if interval[2] <= bracket_r[2]
+                interval_points[θi,2] = interval[2]
+                univariate_optimiser(interval[2], p)
+                variablemapping!(@view(interval_points[:, 2]), p.ω_opt, θranges, ωranges)
+                ll[2] = mle_targetll
+            else 
+                interval[2]=NaN
+            end
+
         else
-            interval[1] = NaN
+            # by definition, g(θmle[i],p) == abs(llstar) > 0, so only have to check one side of interval to make sure it brackets a zero
+            g = univariate_optimiser(bracket_l[1], p)
+            if g < 0.0
+                # make bracket a tiny bit smaller
+                if isinf(g); bracket_l[1] = bracket_l[1] + 1e-8 * diff(bracket_l)[1] end
+
+                interval[1] = find_zero(univariate_optimiser, bracket_l, Roots.Brent(), p=p) 
+                interval_points[θi,1] = interval[1]
+                univariate_optimiser(interval[1], p)
+                variablemapping!(@view(interval_points[:,1]), p.ω_opt, θranges, ωranges)
+                ll[1] = mle_targetll
+            else
+                interval[1] = NaN
+            end
+
+            g = univariate_optimiser(bracket_r[2], p)
+            if g < 0.0
+                # make bracket a tiny bit smaller
+                if isinf(g); bracket_r[2] = bracket_r[2] - 1e-8 * diff(bracket_r)[1] end
+
+                interval[2] = find_zero(univariate_optimiser, bracket_r, Roots.Brent(), p=p)
+                interval_points[θi,2] = interval[2]
+                univariate_optimiser(interval[2], p)
+                variablemapping!(@view(interval_points[:,2]), p.ω_opt, θranges, ωranges)
+                ll[2] = mle_targetll
+            else
+                interval[2] = NaN
+            end
         end
 
-        g = univariate_optimiser(bracket_r[2], p)
-        if g < 0.0
-            # make bracket a tiny bit smaller
-            if isinf(g); bracket_r[2] = bracket_r[2] - 1e-8 * diff(bracket_r)[1] end
+        if isnan(interval[1])
+            interval_points[θi,1] = bracket_l[1] * 1.0
+            ll[1] = univariate_optimiser(bracket_l[1], p) + mle_targetll
+            variablemapping!(@view(interval_points[:, 1]), p.ω_opt, θranges, ωranges)
+        end
+        if isnan(interval[2])         
+            interval_points[θi,2] = bracket_r[2] * 1.0
+            ll[2] = univariate_optimiser(bracket_r[2], p) + mle_targetll
+            variablemapping!(@view(interval_points[:, 2]), p.ω_opt, θranges, ωranges)
+        end
+    
+        points = PointsAndLogLikelihood(interval_points, ll, [1,2])
 
-            interval[2] = find_zero(univariate_optimiser, bracket_r, Roots.Brent(), p=p)
-            interval_points[θi,2] = interval[2]
-            univariate_optimiser(interval[2], p)
-            variablemapping1d!(@view(interval_points[:,2]), p.ω_opt, θranges, ωranges)
-            ll[2] = mle_targetll
-        else
-            interval[2] = NaN
+        if num_points_in_interval > 0
+            points = get_points_in_interval_single_row(univariate_optimiser, model,
+                                                        num_points_in_interval, θi,
+                                                        profile_type, points, additional_width)
+        end
+
+        put!(channel, true)
+        return UnivariateConfidenceStruct(interval, points)
+    catch
+        @error string("an error occurred when finding the univariate confidence interval with settings: ",
+            (profile_type=profile_type, confidence_level=confidence_level, 
+            θindex=θi))
+        for (exc, bt) in current_exceptions()
+            showerror(stdout, exc, bt)
+            println(stdout)
+            println(stdout)
         end
     end
 
-    if isnan(interval[1])
-        interval_points[θi,1] = bracket_l[1] * 1.0
-        ll[1] = univariate_optimiser(bracket_l[1], p) + mle_targetll
-        variablemapping1d!(@view(interval_points[:, 1]), p.ω_opt, θranges, ωranges)
-    end
-    if isnan(interval[2])         
-        interval_points[θi,2] = bracket_r[2] * 1.0
-        ll[2] = univariate_optimiser(bracket_r[2], p) + mle_targetll
-        variablemapping1d!(@view(interval_points[:, 2]), p.ω_opt, θranges, ωranges)
-    end
-  
-    points = PointsAndLogLikelihood(interval_points, ll, [1,2])
-
-    if num_points_in_interval > 0
-        points = get_points_in_interval_single_row(univariate_optimiser, model,
-                                                    num_points_in_interval, θi,
-                                                    profile_type, points, additional_width)
-    end
-
-    put!(channel, true)
-    return UnivariateConfidenceStruct(interval, points)
+    return nothing
 end
 
 """
@@ -365,18 +378,20 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
                 put!(channel, false)
 
                 for (i, (θi, interval_struct)) in enumerate(profiles_to_add)
-                    if θs_to_overwrite[i]
-                        row_ind = model.uni_profile_row_exists[(θi, profile_type)][confidence_level]
-                    else
-                        model.num_uni_profiles += 1
-                        row_ind = model.num_uni_profiles * 1
-                        model.uni_profile_row_exists[(θi, profile_type)][confidence_level] = row_ind
+                    if !isnothing(interval_struct)
+                        if θs_to_overwrite[i]
+                            row_ind = model.uni_profile_row_exists[(θi, profile_type)][confidence_level]
+                        else
+                            model.num_uni_profiles += 1
+                            row_ind = model.num_uni_profiles * 1
+                            model.uni_profile_row_exists[(θi, profile_type)][confidence_level] = row_ind
+                        end
+
+                        model.uni_profiles_dict[row_ind] = interval_struct
+
+                        set_uni_profiles_row!(model, row_ind, θi, not_evaluated_internal_points, true, confidence_level, 
+                                                profile_type, num_points_in_interval+2, additional_width)
                     end
-
-                    model.uni_profiles_dict[row_ind] = interval_struct
-
-                    set_uni_profiles_row!(model, row_ind, θi, not_evaluated_internal_points, true, confidence_level, 
-                                            profile_type, num_points_in_interval+2, additional_width)
                 end        
             end
 
@@ -393,18 +408,20 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
                         num_points_in_interval,
                         additional_width, channel)
 
-                    if θs_to_overwrite[i]
-                        row_ind = model.uni_profile_row_exists[(θi, profile_type)][confidence_level]
-                    else
-                        model.num_uni_profiles += 1
-                        row_ind = model.num_uni_profiles * 1
-                        model.uni_profile_row_exists[(θi, profile_type)][confidence_level] = row_ind
+                    if !isnothing(interval_struct)
+                        if θs_to_overwrite[i]
+                            row_ind = model.uni_profile_row_exists[(θi, profile_type)][confidence_level]
+                        else
+                            model.num_uni_profiles += 1
+                            row_ind = model.num_uni_profiles * 1
+                            model.uni_profile_row_exists[(θi, profile_type)][confidence_level] = row_ind
+                        end
+
+                        model.uni_profiles_dict[row_ind] = interval_struct
+
+                        set_uni_profiles_row!(model, row_ind, θi, not_evaluated_internal_points, true, confidence_level,
+                            profile_type, num_points_in_interval + 2, additional_width)
                     end
-
-                    model.uni_profiles_dict[row_ind] = interval_struct
-
-                    set_uni_profiles_row!(model, row_ind, θi, not_evaluated_internal_points, true, confidence_level,
-                        profile_type, num_points_in_interval + 2, additional_width)
                 end
                 put!(channel, false)
             end

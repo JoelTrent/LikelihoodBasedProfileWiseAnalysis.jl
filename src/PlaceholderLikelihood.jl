@@ -74,15 +74,14 @@ include("transform_bounds.jl")
 include("common_profile_likelihood.jl")
 include("ellipse_likelihood.jl")
 include("predictions.jl")
+include("nuisance_parameters_and_array_mapping.jl")
 
 # UNIVARIATE METHODS ######################################################################
-include("univariate_methods/init_and_array_mapping.jl")
 include("univariate_methods/loglikelihood_functions.jl")
 include("univariate_methods/univariate_profile_likelihood.jl")
 include("univariate_methods/points_in_interval.jl")
 
 # BIVARIATE METHODS #######################################################################
-include("bivariate_methods/init_and_array_mapping.jl")
 include("bivariate_methods/findpointon2Dbounds.jl")
 include("bivariate_methods/loglikelihood_functions.jl")
 include("bivariate_methods/fix1axis.jl")
@@ -129,29 +128,29 @@ import SnoopPrecompile
 SnoopPrecompile.@precompile_all_calls begin
     
     a, b = 2.0, 1.0
-    α = 0.2 * π
-    Cx, Cy = 2.0, 2.0
+    # α = 0.2 * π
+    # Cx, Cy = 2.0, 2.0
 
-    Hw11 = (cos(α)^2 / a^2 + sin(α)^2 / b^2)
-    Hw22 = (sin(α)^2 / a^2 + cos(α)^2 / b^2)
-    Hw12 = cos(α) * sin(α) * (1 / a^2 - 1 / b^2)
-    Hw_norm = [Hw11 Hw12; Hw12 Hw22]
+    # Hw11 = (cos(α)^2 / a^2 + sin(α)^2 / b^2)
+    # Hw22 = (sin(α)^2 / a^2 + cos(α)^2 / b^2)
+    # Hw12 = cos(α) * sin(α) * (1 / a^2 - 1 / b^2)
+    # Hw_norm = [Hw11 Hw12; Hw12 Hw22]
 
-    confidence_level = 0.95
-    Hw = Hw_norm ./ (0.5 ./ (quantile(Chisq(2), confidence_level) * 0.5))
+    # confidence_level = 0.95
+    # Hw = Hw_norm ./ (0.5 ./ (quantile(Chisq(2), confidence_level) * 0.5))
 
-    data = (θmle=[Cx, Cy], Hmle=Hw)
+    # data = (θmle=[Cx, Cy], Hmle=Hw)
 
-    θnames = [:x, :y]
-    θG = [2.0, 2.0]
-    lb = [0.0, 0.0]
-    ub = [4.0, 4.0]
-    par_magnitudes = [1, 1]
-    function loglike(θ::AbstractVector, data); ellipse_loglike(θ, data); end
-    function loglike(θ::Tuple, data); ellipse_loglike([θ...], data); end
+    # θnames = [:x, :y]
+    # θG = [2.0, 2.0]
+    # lb = [0.0, 0.0]
+    # ub = [4.0, 4.0]
+    # par_magnitudes = [1, 1]
+    # function loglike(θ::AbstractVector, data); ellipse_loglike(θ, data); end
+    # function loglike(θ::Tuple, data); ellipse_loglike([θ...], data); end
 
-    m = initialiseLikelihoodModel(loglike, data, θnames, θG, lb, ub, par_magnitudes)
-    getMLE_ellipse_approximation!(m)
+    # m = initialiseLikelihoodModel(loglike, data, θnames, θG, lb, ub, par_magnitudes)
+    # getMLE_ellipse_approximation!(m)
 
     # N=8
     # for profile_type in [LogLikelihood(), EllipseApprox(), EllipseApproxAnalytical()]
@@ -161,7 +160,7 @@ SnoopPrecompile.@precompile_all_calls begin
     #     end
     # end
 
-    univariate_confidenceintervals!(m, use_existing_profiles=true, confidence_level=0.9, num_points_in_interval=10)
+    # univariate_confidenceintervals!(m, use_existing_profiles=true, confidence_level=0.9, num_points_in_interval=10)
 
     # dimensional_likelihood_sample!(m, 1, 100, sample_type=UniformGridSamples())
     # dimensional_likelihood_sample!(m, 1, 100, sample_type=UniformRandomSamples())

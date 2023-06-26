@@ -86,7 +86,6 @@ function check_univariate_parameter_coverage(data_generator::Function,
                 confidence_level=confidence_level, profile_type=profile_type, θs_is_unique=true, show_progress=false)
 
             for row_ind in 1:m_new.num_uni_profiles
-
                 θi = m_new.uni_profiles_df[row_ind, :θindex]
 
                 # check if interval contains θtrue[θi]

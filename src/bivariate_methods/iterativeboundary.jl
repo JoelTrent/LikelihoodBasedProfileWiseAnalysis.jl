@@ -151,7 +151,7 @@ function iterativeboundary_init(bivariate_optimiser::Function,
         end
         if !biv_opt_is_ellipse_analytical
             bivariate_optimiser(ψ, p)
-            variablemapping2d!(@view(boundary_all[:, i]), p.ω_opt, p.θranges, p.ωranges)
+            variablemapping!(@view(boundary_all[:, i]), p.ω_opt, p.θranges, p.ωranges)
         end
     end
 
@@ -282,7 +282,7 @@ function newboundarypoint!(p::NamedTuple,
                 ll_values[internal_count] = g * 1.0
                 internal_all[[ind1, ind2], internal_count] .= candidate_midpoint
                 if !biv_opt_is_ellipse_analytical
-                    variablemapping2d!(@view(internal_all[:, internal_count]), p.ω_opt, p.θranges, p.ωranges)
+                    variablemapping!(@view(internal_all[:, internal_count]), p.ω_opt, p.θranges, p.ωranges)
                 end
             end
 
@@ -383,7 +383,7 @@ function newboundarypoint!(p::NamedTuple,
         end
 
         if !biv_opt_is_ellipse_analytical
-            variablemapping2d!(@view(boundary_all[:, num_vertices]), p.ω_opt, p.θranges, p.ωranges)
+            variablemapping!(@view(boundary_all[:, num_vertices]), p.ω_opt, p.θranges, p.ωranges)
         end
     end
 
@@ -564,7 +564,7 @@ function bivariate_confidenceprofile_iterativeboundary(bivariate_optimiser::Func
                                                 save_internal_points::Bool)
 
     num_points ≥ initial_num_points || throw(ArgumentError("num_points must be greater than or equal to initial_num_points"))
-    newLb, newUb, initGuess, θranges, ωranges = init_bivariate_parameters(model, ind1, ind2)
+    newLb, newUb, initGuess, θranges, ωranges = init_nuisance_parameters(model, ind1, ind2)
 
     biv_opt_is_ellipse_analytical = bivariate_optimiser==bivariateψ_ellipse_analytical
 

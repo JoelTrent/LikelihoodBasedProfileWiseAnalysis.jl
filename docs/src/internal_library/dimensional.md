@@ -26,6 +26,5 @@ PlaceholderLikelihood.full_likelihood_sample
 
 ```@docs
 PlaceholderLikelihood.dimensional_optimiser!
-PlaceholderLikelihood.init_dimensional_parameters
 PlaceholderLikelihood.dimensional_likelihood_sample
 ```

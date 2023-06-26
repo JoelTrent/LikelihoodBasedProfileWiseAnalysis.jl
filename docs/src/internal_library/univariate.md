@@ -4,15 +4,6 @@
 Pages = ["univariate.md"]
 ```
 
-## Initialisation and Array Mapping
-
-```@docs
-PlaceholderLikelihood.variablemapping1dranges
-PlaceholderLikelihood.variablemapping1d!
-PlaceholderLikelihood.boundsmapping1d!
-PlaceholderLikelihood.init_univariate_parameters
-```
-
 ## Likelihood Optimisation
 
 ```@docs
