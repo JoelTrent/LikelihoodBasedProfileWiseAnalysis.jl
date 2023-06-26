@@ -8,6 +8,12 @@ Pages = ["bivariate.md"]
 bivariate_confidenceprofiles!
 ```
 
+## Sampling Internal Points
+
+```@docs
+sample_bivariate_internal_points!
+```
+
 ## Methods
 
 ```@docs

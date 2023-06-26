@@ -78,16 +78,6 @@ struct BivariateConfidenceStruct <: AbstractConfidenceStruct
 end
 
 """
-    Base.merge(a::BivariateConfidenceStruct, b::BivariateConfidenceStruct)
-
-Specifies how to merge two variables with type [`BivariateConfidenceStruct`](@ref).
-"""
-function Base.merge(a::BivariateConfidenceStruct, b::BivariateConfidenceStruct)
-    return BivariateConfidenceStruct(hcat(a.confidence_boundary, b.confidence_boundary),
-        PointsAndLogLikelihood(hcat(a.internal_points.points, b.internal_points.points), vcat(a.internal_points.ll, b.internal_points.ll)))
-end
-
-"""
     SampledConfidenceStruct(points::Array{Float64}, 
         ll::Vector{<:Float64})
 
@@ -104,4 +94,23 @@ Struct that stores samples produced by an [`AbstractSampleType`](@ref) that are 
 struct SampledConfidenceStruct <: AbstractConfidenceStruct
     points::Array{Float64}
     ll::Vector{<:Float64}
+end
+
+"""
+    Base.merge(a::BivariateConfidenceStruct, b::BivariateConfidenceStruct)
+
+Specifies how to merge two variables with type [`BivariateConfidenceStruct`](@ref).
+"""
+function Base.merge(a::BivariateConfidenceStruct, b::BivariateConfidenceStruct)
+    return BivariateConfidenceStruct(hcat(a.confidence_boundary, b.confidence_boundary),
+        PointsAndLogLikelihood(hcat(a.internal_points.points, b.internal_points.points), vcat(a.internal_points.ll, b.internal_points.ll)))
+end
+
+"""
+    Base.merge(a::PointsAndLogLikelihood, b::PointsAndLogLikelihood)
+
+Specifies how to merge two variables with type [`PointsAndLogLikelihood`](@ref).
+"""
+function Base.merge(a::PointsAndLogLikelihood, b::PointsAndLogLikelihood)
+    return PointsAndLogLikelihood(hcat(a.points, b.points), vcat(a.ll, b.ll))
 end

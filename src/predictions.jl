@@ -39,7 +39,7 @@ function generate_prediction(predictfunction::Function,
                                 data_ymle::AbstractArray{<:Real},
                                 parameter_points::Matrix{Float64},
                                 proportion_to_keep::Real,
-                                channel::RemoteChannel)
+                                channel::Union{RemoteChannel,Missing}=missing)
 
     num_points = size(parameter_points, 2)
     
@@ -79,7 +79,7 @@ function generate_prediction(predictfunction::Function,
         predict_struct = PredictionStruct(predictions[:, keep_i], extrema)
     end
 
-    put!(channel, true)
+    if !ismissing(channel); put!(channel, true) end
     return predict_struct
 end
 

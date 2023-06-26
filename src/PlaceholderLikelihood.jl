@@ -47,7 +47,8 @@ export initialiseLikelihoodModel,
     get_uni_confidence_interval, get_uni_confidence_interval_points,
     check_univariate_parameter_coverage,
 
-    bivariate_confidenceprofiles!, check_bivariate_parameter_coverage,
+    bivariate_confidenceprofiles!, sample_bivariate_internal_points!,
+    check_bivariate_parameter_coverage,
     
     dimensional_likelihood_sample!, bivariate_concave_hull,
     full_likelihood_sample!,
@@ -91,6 +92,7 @@ include("bivariate_methods/continuation.jl")
 include("bivariate_methods/iterativeboundary.jl")
 include("bivariate_methods/bivariate_profile_likelihood.jl")
 include("bivariate_methods/MPP_TSP.jl")
+include("bivariate_methods/sample_internal_points.jl")
 
 # SAMPLING METHODS ########################################################################
 include("dimensional_methods/full_likelihood_sampling.jl")

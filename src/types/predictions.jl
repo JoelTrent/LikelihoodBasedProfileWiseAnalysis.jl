@@ -23,6 +23,16 @@ Struct for containing evaluated predictions corresponding to confidence profiles
 `PredictionStruct <: AbstractPredictionStruct <: Any`
 """
 struct PredictionStruct <: AbstractPredictionStruct
-    predictions::Array{Real}
-    extrema::Array{Real}
+    predictions::Array{<:Real}
+    extrema::Array{<:Real}
+end
+
+"""
+    Base.merge(a::PredictionStruct, b::PredictionStruct)
+
+Specifies how to merge two variables with type [`PredictionStruct`](@ref).
+"""
+function Base.merge(a::PredictionStruct, b::PredictionStruct)
+    return PredictionStruct(hcat(a.predictions, b.predictions), 
+        hcat(min.(a.extrema[:,1], b.extrema[:,1]), max.(a.extrema[:,2], b.extrema[:,2])))
 end
