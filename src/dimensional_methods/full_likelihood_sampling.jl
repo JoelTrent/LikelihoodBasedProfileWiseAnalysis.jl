@@ -279,7 +279,7 @@ function full_likelihood_sample!(model::LikelihoodModel,
     lb, ub = check_if_bounds_supplied(model, lb, ub)
 
     init_dim_samples_row_exists!(model, sample_type)
-    # check if sample has already been evaluated
+
     requires_overwrite = model.dim_samples_row_exists[sample_type][confidence_level] != 0
     if existing_profiles == :ignore && requires_overwrite; return nothing end
 

@@ -309,7 +309,7 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
     θcombinations_to_keep = trues(length(θcombinations))
     θcombinations_to_reuse = falses(length(θcombinations))
     num_to_reuse = 0
-    # check if profile has already been evaluated
+
     for (i, (ind1, ind2)) in enumerate(θcombinations)
         if model.biv_profile_row_exists[((ind1, ind2), profile_type, method)][confidence_level] != 0
             θcombinations_to_keep[i] = false
@@ -366,7 +366,6 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
         end
 
         if use_distributed
-
             @async begin
                 profiles_to_add = @distributed (vcat) for i in 1:len_θcombinations
                     [((θcombinations[i][1], θcombinations[i][2]), bivariate_confidenceprofile(bivariate_optimiser, model, num_new_points[i],

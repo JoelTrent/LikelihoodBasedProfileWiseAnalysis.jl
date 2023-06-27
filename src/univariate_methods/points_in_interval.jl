@@ -55,7 +55,7 @@ function get_points_in_interval_single_row(univariate_optimiser::Function,
         θranges=θranges, ωranges=ωranges, consistent=consistent, 
         ω_opt=zeros(model.core.num_pars-1))
     
-    if additional_width > 0
+    if additional_width > 0.0
         boundary = current_interval_points.points[θi, boundary_indices]
         boundary_width = diff(boundary)[1]
         half_add_width = boundary_width * (additional_width / 2.0)
