@@ -148,9 +148,9 @@ function iterativeboundary_init(bivariate_optimiser::Function,
             
             boundary[:,i] .= p.pointa + ψ*p.uhat
             boundary_all[[ind1, ind2], i] .= boundary[:,i]
+            bivariate_optimiser(ψ, p)
         end
         if !biv_opt_is_ellipse_analytical
-            bivariate_optimiser(ψ, p)
             variablemapping!(@view(boundary_all[:, i]), p.ω_opt, p.θranges, p.ωranges)
         end
     end

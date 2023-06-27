@@ -23,7 +23,7 @@ function bivariate_concave_hull(points::AbstractArray{Float64}, ll::Vector{<:Flo
     if sample_type isa UniformGridSamples
         k = max(3, convert(Int, round(num_to_keep^(1.0/2.0), RoundDown)))
     else
-        k = max(3, convert(Int, round(num_to_keep^(1.0/1.6), RoundDown)))
+        k = max(3, convert(Int, round(num_to_keep^(1.0/1.3), RoundDown)))
     end
     hull = concave_hull([eachcol(points_kept)...], k)
 

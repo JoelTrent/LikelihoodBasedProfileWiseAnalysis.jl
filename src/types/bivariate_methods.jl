@@ -43,7 +43,7 @@ abstract type AbstractBivariateVectorMethod <: AbstractBivariateMethod end
         angle_points_per_iter::Int, 
         edge_points_per_iter::Int, 
         radial_start_point_shift::Float64=rand(), 
-        ellipse_sqrt_distortion::Float64=1.0, 
+        ellipse_sqrt_distortion::Float64=1.0;
         use_ellipse::Bool=false)
 
 Method for iteratively improving an initial boundary of `initial_num_points`, found by pushing out from the MLE point in directions defined by either [`RadialMLEMethod`](@ref), `use_ellipse=true`, or [`RadialRandomMethod`], `use_ellipse=false` (see [`PlaceholderLikelihood.findNpointpairs_radialMLE!`](@ref), [`PlaceholderLikelihood.iterativeboundary_init`](@ref) and [`PlaceholderLikelihood.bivariate_confidenceprofile_iterativeboundary`](@ref)).
