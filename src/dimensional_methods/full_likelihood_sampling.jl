@@ -28,17 +28,38 @@ function valid_points(model::LikelihoodModel,
                         grid_size::Int,
                         confidence_level::Float64, 
                         num_dims::Int,
-                        use_threads::Bool)
+                        use_threads::Bool,
+                        use_distributed::Bool,
+                        channel::RemoteChannel)
+    
     valid_point = falses(grid_size)
     ll_values = zeros(grid_size)
     targetll = get_target_loglikelihood(model, confidence_level,
                                          LogLikelihood(), num_dims)
 
-    ex = use_threads ? ThreadedEx() : ThreadedEx(basesize=grid_size) 
-    @floop ex for (i, point) in enumerate(grid)
-        ll_values[i] = model.core.loglikefunction(point, model.core.data)-targetll
-        if ll_values[i] >= 0
-            valid_point[i] = true
+    if use_distributed
+        valid_point_shared = SharedArray{Bool}(grid_size)
+        valid_point_shared .= false
+        ll_values_shared = SharedArray{Float64}(grid_size)
+
+        @distributed for i in axes(grid, 2)
+            ll_values_shared[i] = model.core.loglikefunction(grid[:, i], model.core.data) - targetll
+            if ll_values_shared[i] >= 0
+                valid_point_shared[i] = true
+            end
+            put!(channel, true)
+        end
+        valid_point .= valid_point_shared
+        ll_values   .= ll_values_shared
+
+    else
+        ex = use_threads ? ThreadedEx() : ThreadedEx(basesize=grid_size) 
+        @floop ex for (i, point) in enumerate(grid)
+            ll_values[i] = model.core.loglikefunction(point, model.core.data)-targetll
+            if ll_values[i] >= 0
+                valid_point[i] = true
+            end
+            put!(channel, true)
         end
     end
 
@@ -55,6 +76,8 @@ function valid_points(model::LikelihoodModel,
     valid_ll_values .= valid_ll_values .+ get_target_loglikelihood(model, confidence_level,
                                                         EllipseApproxAnalytical(), num_dims)
 
+    put!(channel, false)
+
     return points, valid_ll_values
 end
 
@@ -63,23 +86,42 @@ function valid_points(model::LikelihoodModel,
                         grid_size::Int,
                         confidence_level::Float64, 
                         num_dims::Int,
-                        use_threads::Bool)
-
+                        use_threads::Bool,
+                        use_distributed::Bool,
+                        channel::RemoteChannel)
+    
     valid_point = falses(grid_size)
     ll_values = zeros(grid_size)
     targetll = get_target_loglikelihood(model, confidence_level, LogLikelihood(), num_dims)
 
-    ex = use_threads ? ThreadedEx() : ThreadedEx(basesize=grid_size) 
-    @floop ex for i in axes(grid,2)
-        ll_values[i] = model.core.loglikefunction(grid[:,i], model.core.data)-targetll
-        if ll_values[i] >= 0
-            valid_point[i] = true
+    if use_distributed
+        ll_values_shared = SharedArray{Float64}(grid_size)
+
+        @distributed (+) for i in axes(grid, 2)
+            ll_values_shared[i] = model.core.loglikefunction(grid[:, i], model.core.data) - targetll
+            put!(channel, true)
+            i^2
+        end
+
+        ll_values[:]   .= ll_values_shared
+        valid_point[:] .= ll_values .>= 0.0
+
+    else
+        ex = use_threads ? ThreadedEx() : ThreadedEx(basesize=grid_size) 
+        @floop ex for i in axes(grid,2)
+            ll_values[i] = model.core.loglikefunction(grid[:,i], model.core.data)-targetll
+            if ll_values[i] >= 0.0
+                valid_point[i] = true
+            end
+            put!(channel, true)
         end
     end
 
     valid_ll_values = ll_values[valid_point]
     valid_ll_values .= valid_ll_values .+ get_target_loglikelihood(model, confidence_level,
                                                         EllipseApproxAnalytical(), num_dims)
+
+    put!(channel, false)
 
     return grid[:,valid_point], valid_ll_values
 end
@@ -106,8 +148,10 @@ function uniform_grid(model::LikelihoodModel,
                         confidence_level::Float64,
                         lb::AbstractVector{<:Real}=Float64[],
                         ub::AbstractVector{<:Real}=Float64[];
-                        use_threads=true,
-                        arguments_checked::Bool=false)
+                        use_threads::Bool=true,
+                        use_distributed::Bool=false,
+                        arguments_checked::Bool=false,
+                        channel::RemoteChannel=RemoteChannel(() -> Channel{Bool}(1)))
 
     num_dims = model.core.num_pars
 
@@ -124,7 +168,7 @@ function uniform_grid(model::LikelihoodModel,
     grid = Iterators.product(ranges...)
     grid_size = prod(points_per_dimension)
 
-    pnts, lls = valid_points(model, grid, grid_size, confidence_level, num_dims, use_threads)
+    pnts, lls = valid_points(model, grid, grid_size, confidence_level, num_dims, use_threads, use_distributed, channel)
     return SampledConfidenceStruct(pnts, lls)
 end
 
@@ -134,7 +178,9 @@ function uniform_random(model::LikelihoodModel,
                         lb::AbstractVector{<:Real}=Float64[],
                         ub::AbstractVector{<:Real}=Float64[];
                         use_threads::Bool=true,
-                        arguments_checked::Bool=false)
+                        use_distributed::Bool=false,
+                        arguments_checked::Bool=false,
+                        channel::RemoteChannel=RemoteChannel(() -> Channel{Bool}(1)))
 
     num_dims = model.core.num_pars
     if !arguments_checked
@@ -149,7 +195,7 @@ function uniform_random(model::LikelihoodModel,
         grid[dim, :] .= rand(Uniform(lb[dim], ub[dim]), num_points)
     end
 
-    pnts, lls = valid_points(model, grid, num_points, confidence_level, num_dims, use_threads)
+    pnts, lls = valid_points(model, grid, num_points, confidence_level, num_dims, use_threads, use_distributed, channel)
     return SampledConfidenceStruct(pnts, lls)
 end
 
@@ -160,7 +206,9 @@ function LHS(model::LikelihoodModel,
             lb::AbstractVector{<:Real}=Float64[],
             ub::AbstractVector{<:Real}=Float64[];
             use_threads::Bool=true,
-            arguments_checked::Bool=false)
+            use_distributed::Bool=false,
+            arguments_checked::Bool=false,
+            channel::RemoteChannel=RemoteChannel(() -> Channel{Bool}(1)))
     
     num_dims = model.core.num_pars
     if !arguments_checked
@@ -173,7 +221,7 @@ function LHS(model::LikelihoodModel,
 
     # grid = permutedims(scaleLHC(LHCoptim(num_points, num_dims, num_gens; kwargs...)[1], scale_range))
     
-    pnts, lls = valid_points(model, grid, num_points, confidence_level, num_dims, use_threads)
+    pnts, lls = valid_points(model, grid, num_points, confidence_level, num_dims, use_threads, use_distributed, channel)
     return SampledConfidenceStruct(pnts, lls)
 end
 
@@ -183,17 +231,22 @@ function full_likelihood_sample(model::LikelihoodModel,
                                     sample_type::AbstractSampleType,
                                     lb::AbstractVector{<:Real},
                                     ub::AbstractVector{<:Real},
-                                    use_threads::Bool)
+                                    use_threads::Bool,
+                                    use_distributed::Bool,
+                                    channel::RemoteChannel)
 
     if sample_type isa UniformGridSamples
         sample_struct = uniform_grid(model, num_points, confidence_level, lb, ub;
-                                        use_threads=use_threads, arguments_checked=true)
+                                        use_threads=use_threads, use_distributed=use_distributed,
+                                        arguments_checked=true, channel=channel)
     elseif sample_type isa UniformRandomSamples
         sample_struct = uniform_random(model, num_points, confidence_level, lb, ub;             
-                                        use_threads=use_threads, arguments_checked=true)
+                                        use_threads=use_threads, use_distributed=use_distributed,
+                                        arguments_checked=true, channel=channel)
     elseif sample_type isa LatinHypercubeSamples
         sample_struct = LHS(model, num_points, confidence_level, lb, ub;
-                            use_threads=use_threads, arguments_checked=true)
+                            use_threads=use_threads, use_distributed=use_distributed,
+                            arguments_checked=true, channel=channel)
     end
     return sample_struct
 end
@@ -215,7 +268,9 @@ function full_likelihood_sample!(model::LikelihoodModel,
                                     lb::AbstractVector{<:Real}=Float64[],
                                     ub::AbstractVector{<:Real}=Float64[],
                                     use_threads::Bool=true,
-                                    existing_profiles::Symbol=:overwrite)
+                                    use_distributed::Bool=false,
+                                    existing_profiles::Symbol=:overwrite,
+                                    show_progress::Bool=model.show_progress)
 
     if num_points_to_sample isa Int
         num_points_to_sample > 0 || throw(DomainError("num_points_to_sample must be a strictly positive integer"))
@@ -228,7 +283,32 @@ function full_likelihood_sample!(model::LikelihoodModel,
     requires_overwrite = model.dim_samples_row_exists[sample_type][confidence_level] != 0
     if existing_profiles == :ignore && requires_overwrite; return nothing end
 
-    sample_struct = full_likelihood_sample(model, num_points_to_sample, confidence_level, sample_type, lb, ub, use_threads)
+    channel = RemoteChannel(() -> Channel{Bool}(1))
+    p = Progress(num_points_to_sample; desc="Computing full likelihood samples: ",
+                dt=PROGRESS__METER__DT, enabled=show_progress, showspeed=true)
+
+    local sample_struct
+    @sync begin
+        @async while take!(channel)
+            next!(p)
+        end
+
+        @async begin
+            try
+                sample_struct = full_likelihood_sample(model, num_points_to_sample, confidence_level, sample_type, lb, ub, use_threads, use_distributed, channel)
+            catch
+                @error string("an error occurred when computing a full likelihood sample with settings: ",
+                    (sample_type=sample_type, confidence_level=confidence_level))
+                for (exc, bt) in current_exceptions()
+                    showerror(stdout, exc, bt)
+                    println(stdout)
+                    println(stdout)
+                end
+                return nothing
+            end
+        end
+    end
+
     num_points_kept = length(sample_struct.ll)
     
     if num_points_kept == 0

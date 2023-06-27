@@ -943,7 +943,8 @@ function plot_predictions_union(model::LikelihoodModel,
 
     if !ismissing(compare_to_full_sample_type)
         row_subset = desired_df_subset(model.dim_samples_df, model.num_dim_samples, confidence_level,
-                                        [compare_to_full_sample_type], for_prediction_plots=true,
+                                        [compare_to_full_sample_type], sample_dimension=model.core.num_pars, 
+                                        for_prediction_plots=true,
                                         include_higher_confidence_levels=true)
         
         if nrow(row_subset) > 0
