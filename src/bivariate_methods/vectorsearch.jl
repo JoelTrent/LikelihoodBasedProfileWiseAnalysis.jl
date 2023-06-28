@@ -117,7 +117,7 @@ function findNpointpairs_simultaneous!(p::NamedTuple,
     end
 
     if save_internal_points && biv_opt_is_ellipse_analytical
-        get_ωs_bivariate_ellipse_analytical!(internal_all, length(ll_values),
+        get_ωs_bivariate_ellipse_analytical!(internal_all, size(internal_all, 2),
                                                     p.consistent, ind1, ind2, 
                                                     model.core.num_pars, p.initGuess,
                                                     p.θranges, p.ωranges)
