@@ -270,7 +270,7 @@ The method will fail if the interest parameter bounds are fully contained by the
 
 # Internal Points
 
-Finds at least `ceil(min_proportion_unique * num_points)` internal points.
+Finds at least `ceil(min_proportion_unique*num_points) - 1*use_MLE_point` internal points.
 
 # Supertype Hiearachy
 
