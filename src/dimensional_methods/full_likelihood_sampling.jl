@@ -100,7 +100,7 @@ function valid_points(model::LikelihoodModel,
         @distributed (+) for i in axes(grid, 2)
             ll_values_shared[i] = model.core.loglikefunction(grid[:, i], model.core.data) - targetll
             put!(channel, true)
-            i^2
+            i
         end
 
         ll_values[:]   .= ll_values_shared
@@ -151,7 +151,7 @@ function uniform_grid(model::LikelihoodModel,
                         use_threads::Bool=true,
                         use_distributed::Bool=false,
                         arguments_checked::Bool=false,
-                        channel::RemoteChannel=RemoteChannel(() -> Channel{Bool}(1)))
+                        channel::RemoteChannel=RemoteChannel(() -> Channel{Bool}(Inf)))
 
     num_dims = model.core.num_pars
 
@@ -180,7 +180,7 @@ function uniform_random(model::LikelihoodModel,
                         use_threads::Bool=true,
                         use_distributed::Bool=false,
                         arguments_checked::Bool=false,
-                        channel::RemoteChannel=RemoteChannel(() -> Channel{Bool}(1)))
+                        channel::RemoteChannel=RemoteChannel(() -> Channel{Bool}(num_points+1)))
 
     num_dims = model.core.num_pars
     if !arguments_checked
@@ -208,7 +208,7 @@ function LHS(model::LikelihoodModel,
             use_threads::Bool=true,
             use_distributed::Bool=false,
             arguments_checked::Bool=false,
-            channel::RemoteChannel=RemoteChannel(() -> Channel{Bool}(1)))
+            channel::RemoteChannel=RemoteChannel(() -> Channel{Bool}(num_points+1)))
     
     num_dims = model.core.num_pars
     if !arguments_checked
@@ -260,6 +260,11 @@ end
         ub::AbstractVector{<:Real}=Float64[],
         use_threads::Bool=true,
         existing_profiles::Symbol=:overwrite)
+
+        
+## Iteration Speed Of the Progress Meter
+
+The time/it value is the time it takes for each point chosen under the specified sampling scheme to be evaluated as valid or not. A point is valid if the log-likelihood function value at that point is greater than the confidence log-likelihood threshold.
 """
 function full_likelihood_sample!(model::LikelihoodModel,
                                     num_points_to_sample::Union{Int, Vector{Int}};
@@ -274,6 +279,8 @@ function full_likelihood_sample!(model::LikelihoodModel,
 
     if num_points_to_sample isa Int
         num_points_to_sample > 0 || throw(DomainError("num_points_to_sample must be a strictly positive integer"))
+    else
+        min(num_points_to_sample) > 0 || throw(DomainError("num_points_to_sample must contain strictly positive integers"))
     end
     existing_profiles ∈ [:ignore, :overwrite] || throw(ArgumentError("existing_profiles can only take value :ignore or :overwrite"))
     lb, ub = check_if_bounds_supplied(model, lb, ub)
@@ -283,8 +290,10 @@ function full_likelihood_sample!(model::LikelihoodModel,
     requires_overwrite = model.dim_samples_row_exists[sample_type][confidence_level] != 0
     if existing_profiles == :ignore && requires_overwrite; return nothing end
 
-    channel = RemoteChannel(() -> Channel{Bool}(1))
-    p = Progress(num_points_to_sample; desc="Computing full likelihood samples: ",
+    num_total_points = num_points_to_sample isa Int ? num_points_to_sample : prod(num_points_to_sample)
+    channel_buffer_size = min(ceil(Int, num_total_points*0.2), 1000)
+    channel = RemoteChannel(() -> Channel{Bool}(channel_buffer_size))
+    p = Progress(num_total_points; desc="Computing full likelihood samples: ",
                 dt=PROGRESS__METER__DT, enabled=show_progress, showspeed=true)
 
     local sample_struct
@@ -306,6 +315,7 @@ function full_likelihood_sample!(model::LikelihoodModel,
                 end
                 return nothing
             end
+            put!(channel, false)
         end
     end
 

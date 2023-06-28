@@ -149,6 +149,7 @@ function univariate_confidenceinterval(univariate_optimiser::Function,
                                         additional_width::Real,
                                         channel::RemoteChannel)
 
+
     try
         interval = zeros(2)
         ll = zeros(2)
@@ -185,6 +186,7 @@ function univariate_confidenceinterval(univariate_optimiser::Function,
             else
                 interval[1]=NaN 
             end
+            put!(channel, 1)
 
             if interval[2] <= bracket_r[2]
                 interval_points[θi,2] = interval[2]
@@ -194,7 +196,7 @@ function univariate_confidenceinterval(univariate_optimiser::Function,
             else 
                 interval[2]=NaN
             end
-
+            put!(channel, 1)
         else
             # by definition, g(θmle[i],p) == abs(llstar) > 0, so only have to check one side of interval to make sure it brackets a zero
             g = univariate_optimiser(bracket_l[1], p)
@@ -210,6 +212,7 @@ function univariate_confidenceinterval(univariate_optimiser::Function,
             else
                 interval[1] = NaN
             end
+            put!(channel, true)
 
             g = univariate_optimiser(bracket_r[2], p)
             if g < 0.0
@@ -224,6 +227,7 @@ function univariate_confidenceinterval(univariate_optimiser::Function,
             else
                 interval[2] = NaN
             end
+            put!(channel, true)
         end
 
         if isnan(interval[1])
@@ -243,9 +247,9 @@ function univariate_confidenceinterval(univariate_optimiser::Function,
             points = get_points_in_interval_single_row(univariate_optimiser, model,
                                                         num_points_in_interval, θi,
                                                         profile_type, points, additional_width)
+            put!(channel, true)
         end
 
-        put!(channel, true)
         return UnivariateConfidenceStruct(interval, points)
     catch
         @error string("an error occurred when finding the univariate confidence interval with settings: ",
@@ -291,6 +295,10 @@ Computes likelihood-based confidence interval profiles for the provided `θs_to_
 # Details
 
 Using [`univariate_confidenceinterval`](@ref) this function uses a bracketing method for each interest parameter in `θs_to_profile` (depending on the setting for `existing_profiles` if these profiles already exist). Updates `model.uni_profiles_df` for each successful profile and saves their results as a [`UnivariateConfidenceStruct`](@ref) in `model.uni_profiles_dict`, where the keys for the dictionary is the row number in `model.uni_profiles_df` of the corresponding profile.
+
+## Iteration Speed Of the Progress Meter
+
+An iteration within the progress meter is specified as one iteration per side of the confidence interval found and an additional iteration for once points within the interval have been found if `num_points_in_interval > 0`. This means on a per interest parameter basis, there are either two or three iterations counted in time/it calculation.
 """
 function univariate_confidenceintervals!(model::LikelihoodModel, 
                                         θs_to_profile::Vector{<:Int64}=collect(1:model.core.num_pars); 
@@ -327,8 +335,7 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
     θs_to_keep = trues(length(θs_to_profile))
     θs_to_overwrite = falses(length(θs_to_profile))
     num_to_overwrite = 0
-    # check if profile has already been evaluated
-    # in this case we only have :ignore and :overwrite
+
     for (i, θi) in enumerate(θs_to_profile)
         if model.uni_profile_row_exists[(θi, profile_type)][confidence_level] != 0
             θs_to_keep[i] = false
@@ -353,29 +360,28 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
 
     not_evaluated_internal_points = num_points_in_interval > 0 ? false : true
 
-    channel = RemoteChannel(() -> Channel{Bool}(1))
-    p = Progress(length(θs_to_profile); desc="Computing univariate profiles: ",
+    tasks_per_profile = num_points_in_interval == 0 ? 2 : 3 
+    totaltasks = length(θs_to_profile) * tasks_per_profile
+    p = Progress(totaltasks; desc="Computing univariate profiles: ",
                 dt=PROGRESS__METER__DT, enabled=show_progress, showspeed=true)
+    channel = RemoteChannel(() -> Channel{Bool}(tasks_per_profile))
 
     @sync begin
-        # this task prints the progress bar
         @async while take!(channel)
             next!(p)
         end
-        if use_distributed
 
-            # this task does the computation
-            @async begin
+        @async begin
+            if use_distributed
                 profiles_to_add = @distributed (vcat) for θi in θs_to_profile
                     [(θi, univariate_confidenceinterval(univariate_optimiser, model,
-                                                                consistent, θi, 
-                                                                confidence_level, profile_type,
-                                                                mle_targetll,
-                                                                use_existing_profiles,
-                                                                num_points_in_interval,
-                                                                additional_width, channel))]
+                                                        consistent, θi, 
+                                                        confidence_level, profile_type,
+                                                        mle_targetll,
+                                                        use_existing_profiles,
+                                                        num_points_in_interval,
+                                                        additional_width, channel))]
                 end
-                put!(channel, false)
 
                 for (i, (θi, interval_struct)) in enumerate(profiles_to_add)
                     if !isnothing(interval_struct)
@@ -392,21 +398,17 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
                         set_uni_profiles_row!(model, row_ind, θi, not_evaluated_internal_points, true, confidence_level, 
                                                 profile_type, num_points_in_interval+2, additional_width)
                     end
-                end        
-            end
+                end
 
-        else
-
-            # this task does the computation
-            @async begin
+            else
                 for (i, θi) in enumerate(θs_to_profile)
                     interval_struct = univariate_confidenceinterval(univariate_optimiser, model,
-                        consistent, θi,
-                        confidence_level, profile_type,
-                        mle_targetll,
-                        use_existing_profiles,
-                        num_points_in_interval,
-                        additional_width, channel)
+                                                                    consistent, θi,
+                                                                    confidence_level, profile_type,
+                                                                    mle_targetll,
+                                                                    use_existing_profiles,
+                                                                    num_points_in_interval,
+                                                                    additional_width, channel)
 
                     if !isnothing(interval_struct)
                         if θs_to_overwrite[i]
@@ -423,8 +425,8 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
                             profile_type, num_points_in_interval + 2, additional_width)
                     end
                 end
-                put!(channel, false)
             end
+            put!(channel, false)
         end
     end
     
