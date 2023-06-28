@@ -17,7 +17,8 @@ function findNpointpairs_simultaneous!(p::NamedTuple,
                                         mle_targetll::Float64,
                                         save_internal_points::Bool,
                                         biv_opt_is_ellipse_analytical::Bool,
-                                        min_proportion_unique::Real)
+                                        min_proportion_unique::Real,
+                                        use_MLE_point::Bool)
 
     internal  = zeros(2,num_points)
     internal_all = zeros(model.core.num_pars, save_internal_points ? num_points : 0)
@@ -28,6 +29,12 @@ function findNpointpairs_simultaneous!(p::NamedTuple,
 
     Ninside=0; Noutside=0
     iters=0
+
+    if use_MLE_point
+        Ninside +=1
+        internal[:,Ninside] = model.core.θmle[[ind1, ind2]]
+    end
+
     while Noutside<num_points && Ninside<num_points
 
         x, y = generatepoint(model, ind1, ind2)
@@ -102,6 +109,11 @@ function findNpointpairs_simultaneous!(p::NamedTuple,
             external[:, i:(i+j-1)] .= external[:, 1:j]
             Noutside += num_unique
         end
+    end
+
+    if use_MLE_point
+        ll_values = ll_values[2:end]
+        internal_all = internal_all[:, 2:end]
     end
 
     if save_internal_points && biv_opt_is_ellipse_analytical
@@ -288,6 +300,7 @@ function bivariate_confidenceprofile_vectorsearch(bivariate_optimiser::Function,
                                                     channel::RemoteChannel;
                                                     num_radial_directions::Int=0,
                                                     min_proportion_unique::Real=1.0,
+                                                    use_MLE_point::Bool=false,
                                                     ellipse_confidence_level::Float64=-1.0,
                                                     ellipse_start_point_shift::Float64=0.0,
                                                     ellipse_sqrt_distortion::Float64=0.0)
@@ -318,7 +331,7 @@ function bivariate_confidenceprofile_vectorsearch(bivariate_optimiser::Function,
             internal, internal_all, ll_values, external = 
                 findNpointpairs_simultaneous!(p, bivariate_optimiser, model, num_points, ind1, ind2,
                                                 mle_targetll, save_internal_points, biv_opt_is_ellipse_analytical,
-                                                min_proportion_unique)
+                                                min_proportion_unique, use_MLE_point)
         else
             internal, internal_all, ll_values, external = 
                 findNpointpairs_radialrandom!(p, bivariate_optimiser, model, num_points, 

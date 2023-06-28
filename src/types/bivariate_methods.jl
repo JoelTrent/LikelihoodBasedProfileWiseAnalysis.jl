@@ -233,13 +233,14 @@ struct RadialRandomMethod <: AbstractBivariateVectorMethod
 end
 
 """
-    SimultaneousMethod(min_proportion_unique::Real=0.5)
+    SimultaneousMethod(min_proportion_unique::Real=0.5, include_MLE_point::Bool=true)
 
 Method for finding the bivariate boundary of a confidence profile by finding internal and external boundary points using a uniform random distribution on provided bounds, pairing these points in the order they're found and bracketing between each pair (see [`PlaceholderLikelihood.findNpointpairs_simultaneous!`](@ref) and [`PlaceholderLikelihood.bivariate_confidenceprofile_vectorsearch`](@ref)). Values of `min_proportion_unique` lower than zero may improve performance if finding either internal points or external points is difficult given the specified bounds on interest parameters.
     
 
 # Arguments
-- `min_proportion_unique`: a proportion ∈ (0.0, 1.0] for the minimum allowed proportion of unique points in one of the internal or external point vectors. One of these vectors will be fully unique. Whichever vector is not unique, will have at least `min_proportion_unique` unique points. Default is 0.5
+- `min_proportion_unique`: a proportion ∈ (0.0, 1.0] for the minimum allowed proportion of unique points in one of the internal or external point vectors. One of these vectors will be fully unique. Whichever vector is not unique, will have at least `min_proportion_unique` unique points. Default is 0.5.
+- `use_MLE_point`: whether to use the MLE point as the first internal point found or not. Default is true (use).
 
 # Details
 
@@ -277,9 +278,10 @@ Finds at least `ceil(min_proportion_unique * num_points)` internal points.
 """
 struct SimultaneousMethod <: AbstractBivariateVectorMethod 
     min_proportion_unique::Real
-    function SimultaneousMethod(min_proportion_unique::Real=0.5)
+    use_MLE_point::Bool
+    function SimultaneousMethod(min_proportion_unique::Real=0.5, use_MLE_point::Bool=true)
         (0.0 < min_proportion_unique && min_proportion_unique <= 1.0) || throw(DomainError("min_proportion_unique must be in the interval (0.0,1.0]"))
-        return new(min_proportion_unique)
+        return new(min_proportion_unique, use_MLE_point)
     end
 end
 

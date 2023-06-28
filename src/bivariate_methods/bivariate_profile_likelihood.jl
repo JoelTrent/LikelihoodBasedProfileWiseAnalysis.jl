@@ -178,7 +178,8 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
                                     bivariate_optimiser, model, 
                                     num_points, consistent, ind1, ind2,
                                     mle_targetll, save_internal_points, channel,
-                                    min_proportion_unique=method.min_proportion_unique)
+                                    min_proportion_unique=method.min_proportion_unique,
+                                    use_MLE_point=method.use_MLE_point)
 
         elseif method isa RadialRandomMethod
             boundary, internal = bivariate_confidenceprofile_vectorsearch(
