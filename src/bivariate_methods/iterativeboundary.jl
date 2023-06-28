@@ -108,7 +108,8 @@ function iterativeboundary_init(bivariate_optimiser::Function,
                                 radial_start_point_shift::Float64,
                                 ellipse_sqrt_distortion::Float64,
                                 use_ellipse::Bool,
-                                save_internal_points::Bool)
+                                save_internal_points::Bool,
+                                channel::RemoteChannel)
 
     boundary = zeros(2, num_points)
     boundary_all = zeros(model.core.num_pars, num_points)
@@ -120,12 +121,16 @@ function iterativeboundary_init(bivariate_optimiser::Function,
     bound_warning=true
 
     if use_ellipse
-        _, _, _, external, point_is_on_bounds_external, bound_warning = findNpointpairs_radialMLE!(p, bivariate_optimiser, model, 
-                                                                initial_num_points, ind1, ind2, 
-                                                                0.1, radial_start_point_shift, ellipse_sqrt_distortion)
+        _, _, _, external, point_is_on_bounds_external, bound_warning = 
+            findNpointpairs_radialMLE!(p, bivariate_optimiser, model, 
+                                        initial_num_points, ind1, ind2, 
+                                        0.1, radial_start_point_shift, 
+                                        ellipse_sqrt_distortion)
     else
-        external, point_is_on_bounds_external, bound_warning = findNpointpairs_radialMLE!(p, bivariate_optimiser, model, 
-                                                                initial_num_points, ind1, ind2, bound_warning, radial_start_point_shift)
+        external, point_is_on_bounds_external, bound_warning = 
+            findNpointpairs_radialMLE!(p, bivariate_optimiser, model, 
+                                        initial_num_points, ind1, ind2, 
+                                        bound_warning, radial_start_point_shift)
     end
 
     point_is_on_bounds[1:initial_num_points] .= point_is_on_bounds_external[:]
@@ -153,6 +158,7 @@ function iterativeboundary_init(bivariate_optimiser::Function,
         if !biv_opt_is_ellipse_analytical
             variablemapping!(@view(boundary_all[:, i]), p.ω_opt, p.θranges, p.ωranges)
         end
+        put!(channel, true)
     end
 
     if initial_num_points == num_points
@@ -561,7 +567,8 @@ function bivariate_confidenceprofile_iterativeboundary(bivariate_optimiser::Func
                                                 ellipse_sqrt_distortion::Float64,
                                                 use_ellipse::Bool,
                                                 mle_targetll::Float64,
-                                                save_internal_points::Bool)
+                                                save_internal_points::Bool,
+                                                channel::RemoteChannel)
 
     num_points ≥ initial_num_points || throw(ArgumentError("num_points must be greater than or equal to initial_num_points"))
     newLb, newUb, initGuess, θranges, ωranges = init_nuisance_parameters(model, ind1, ind2)
@@ -581,7 +588,7 @@ function bivariate_confidenceprofile_iterativeboundary(bivariate_optimiser::Func
     return_tuple = iterativeboundary_init(bivariate_optimiser, model, num_points, p, ind1, ind2,
                                             initial_num_points, biv_opt_is_ellipse_analytical,
                                             radial_start_point_shift, ellipse_sqrt_distortion,
-                                            use_ellipse, save_internal_points)
+                                            use_ellipse, save_internal_points, channel)
 
     if return_tuple[1]
         return return_tuple[2], return_tuple[3]
@@ -625,7 +632,7 @@ function bivariate_confidenceprofile_iterativeboundary(bivariate_optimiser::Func
                 if termination; return return_args end
                 continue
             end
-
+            put!(channel, true)
             heapupdates_success!(edge_heap, angle_heap, edge_clock, edge_anti, point_is_on_bounds, edge_anti_on_bounds,
                             boundary, num_vertices, vi, adj_vertex, relative_magnitude, adjacent_index == 1)
             
@@ -662,8 +669,8 @@ function bivariate_confidenceprofile_iterativeboundary(bivariate_optimiser::Func
                                                                 relative_magnitude)
                 if termination; return return_args end
                 continue
-            end
-                        
+            end        
+            put!(channel, true)
             heapupdates_success!(edge_heap, angle_heap, edge_clock, edge_anti, point_is_on_bounds, edge_anti_on_bounds,
                             boundary, num_vertices, vi, adj_vertex, relative_magnitude)
         end

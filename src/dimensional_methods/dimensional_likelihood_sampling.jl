@@ -22,7 +22,8 @@ function valid_points(model::LikelihoodModel,
                         grid_size::Int,
                         confidence_level::Float64, 
                         num_dims::Int,
-                        use_threads::Bool)
+                        use_threads::Bool,
+                        channel::RemoteChannel)
 
     valid_point = falses(grid_size)
     ll_values = zeros(grid_size)
@@ -31,6 +32,7 @@ function valid_points(model::LikelihoodModel,
     ex = use_threads ? ThreadedEx() : ThreadedEx(basesize=grid_size) 
     @floop ex for i in axes(grid,2)
         ll_values[i] = dimensional_optimiser!(@view(grid[:,i]), p, targetll)
+        put!(channel, true)
     end
     valid_point .= ll_values .≥ 0.0
 
@@ -66,7 +68,8 @@ function uniform_grid(model::LikelihoodModel,
                         lb::AbstractVector{<:Real}=Float64[],
                         ub::AbstractVector{<:Real}=Float64[];
                         use_threads=true,
-                        arguments_checked::Bool=false)
+                        arguments_checked::Bool=false,
+                        channel::RemoteChannel=RemoteChannel(() -> Channel{Bool}(Inf)))
 
     num_dims = length(θindices); num_dims > 0 || throw(ArgumentError("θindices must not be empty"))
     if points_per_dimension isa Vector{Int}
@@ -93,7 +96,7 @@ function uniform_grid(model::LikelihoodModel,
         grid[θindices, i] .= point
     end
 
-    pnts, lls = valid_points(model, p, grid, grid_size, confidence_level, num_dims, use_threads)
+    pnts, lls = valid_points(model, p, grid, grid_size, confidence_level, num_dims, use_threads, channel)
     return SampledConfidenceStruct(pnts, lls)
 end
 
@@ -105,7 +108,8 @@ function uniform_random_blocks(model::LikelihoodModel,
                         ub::AbstractVector{<:Real}=Float64[];
                         block_size=20000,
                         use_threads::Bool=true,
-                        arguments_checked::Bool=false)
+                        arguments_checked::Bool=false,
+                        channel::RemoteChannel=RemoteChannel(() -> Channel{Bool}(num_points+1)))
 
     num_dims = length(θindices); num_dims > 0 || throw(ArgumentError("θindices must not be empty"))
     if !arguments_checked
@@ -140,7 +144,7 @@ function uniform_random_blocks(model::LikelihoodModel,
             grid[θindices[dim], :] .= rand(Uniform(lb[dim], ub[dim]), block)
         end
 
-        pnts, lls = valid_points(model, p, grid, block, confidence_level, num_dims, use_threads)
+        pnts, lls = valid_points(model, p, grid, block, confidence_level, num_dims, use_threads, channel)
 
         if i ≤ preallocate_j
             valid_grid = hcat(valid_grid, @view(pnts[:,:]))
@@ -180,7 +184,8 @@ function uniform_random(model::LikelihoodModel,
                         lb::AbstractVector{<:Real}=Float64[],
                         ub::AbstractVector{<:Real}=Float64[];
                         use_threads::Bool=true,
-                        arguments_checked::Bool=false)
+                        arguments_checked::Bool=false,
+                        channel::RemoteChannel=RemoteChannel(() -> Channel{Bool}(num_points+1)))
 
     num_dims = length(θindices); num_dims > 0 || throw(ArgumentError("θindices must not be empty"))
     if !arguments_checked
@@ -199,7 +204,7 @@ function uniform_random(model::LikelihoodModel,
         grid[θindices[dim], :] .= rand(Uniform(lb[dim], ub[dim]), num_points)
     end
 
-    pnts, lls = valid_points(model, p, grid, num_points, confidence_level, num_dims, use_threads)
+    pnts, lls = valid_points(model, p, grid, num_points, confidence_level, num_dims, use_threads, channel)
     return SampledConfidenceStruct(pnts, lls)
 end
 
@@ -211,7 +216,8 @@ function LHS(model::LikelihoodModel,
             lb::AbstractVector{<:Real}=Float64[],
             ub::AbstractVector{<:Real}=Float64[];
             use_threads::Bool=true,
-            arguments_checked::Bool=false)
+            arguments_checked::Bool=false,
+            channel::RemoteChannel=RemoteChannel(() -> Channel{Bool}(num_points+1)))
     
     num_dims = length(θindices); num_dims > 0 || throw(ArgumentError("θindices must not be empty"))
     if !arguments_checked
@@ -231,7 +237,7 @@ function LHS(model::LikelihoodModel,
 
     # grid = permutedims(scaleLHC(LHCoptim(num_points, num_dims, num_gens; kwargs...)[1], scale_range))
     
-    pnts, lls = valid_points(model, p, grid, num_points, confidence_level, num_dims, use_threads)
+    pnts, lls = valid_points(model, p, grid, num_points, confidence_level, num_dims, use_threads, channel)
     return SampledConfidenceStruct(pnts, lls)
 end
 
@@ -248,16 +254,17 @@ function dimensional_likelihood_sample(model::LikelihoodModel,
     try         
         if sample_type isa UniformGridSamples
             sample_struct = uniform_grid(model, θindices, num_points, confidence_level, lb, ub;
-            use_threads=use_threads, arguments_checked=true)
+                                            use_threads=use_threads, arguments_checked=true,
+                                            channel=channel)
         elseif sample_type isa UniformRandomSamples
             sample_struct = uniform_random(model, θindices, num_points, confidence_level, lb, ub;             
-            use_threads=use_threads, arguments_checked=true)
+                                            use_threads=use_threads, arguments_checked=true,
+                                            channel=channel)
         elseif sample_type isa LatinHypercubeSamples
             sample_struct = LHS(model, θindices, num_points, confidence_level, lb, ub;
-            use_threads=use_threads, arguments_checked=true)
+                                use_threads=use_threads, arguments_checked=true, channel=channel)
         end
         
-        put!(channel, true)
         return sample_struct
     catch
         @error string("an error occurred when computing a dimensional sample with settings: ",
@@ -284,6 +291,10 @@ end
         use_threads::Bool=true,
         existing_profiles::Symbol=:overwrite,
         show_progress::Bool=model.show_progress)
+
+## Iteration Speed Of the Progress Meter
+
+The time/it value is the time it takes for each point chosen under the specified sampling scheme to be evaluated as valid or not, for each interest parameter combination. A point is valid if the log-likelihood function value at that point is greater than the confidence log-likelihood threshold.
 """
 function dimensional_likelihood_sample!(model::LikelihoodModel,
                                         θindices::Vector{Vector{Int}},
@@ -299,6 +310,8 @@ function dimensional_likelihood_sample!(model::LikelihoodModel,
 
     if num_points_to_sample isa Int
         num_points_to_sample > 0 || throw(DomainError("num_points_to_sample must be a strictly positive integer"))
+    else
+        min(num_points_to_sample) > 0 || throw(DomainError("num_points_to_sample must contain strictly positive integers"))
     end
     existing_profiles ∈ [:ignore, :overwrite] || throw(ArgumentError("existing_profiles can only take value :ignore or :overwrite"))
     lb, ub = check_if_bounds_supplied(model, lb, ub)
@@ -352,8 +365,11 @@ function dimensional_likelihood_sample!(model::LikelihoodModel,
         add_dim_samples_rows!(model, num_rows_required)
     end
 
-    channel = RemoteChannel(() -> Channel{Bool}(1))
-    p = Progress(length(θindices); desc="Computing dimensional profile samples: ",
+    tasks_per_profile = num_points_to_sample isa Int ? num_points_to_sample : prod(num_points_to_sample)
+    channel_buffer_size = min(ceil(Int, tasks_per_profile*0.2), 1000)
+    channel = RemoteChannel(() -> Channel{Bool}(channel_buffer_size))
+    totaltasks = length(θindices)*tasks_per_profile
+    p = Progress(totaltasks; desc="Computing dimensional profile samples: ",
                 dt=PROGRESS__METER__DT, enabled=show_progress, showspeed=true)
 
     @sync begin

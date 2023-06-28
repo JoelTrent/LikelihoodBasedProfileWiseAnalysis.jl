@@ -259,7 +259,8 @@ function bivariate_confidenceprofile_vectorsearch(bivariate_optimiser::Function,
                                                     ind1::Int, 
                                                     ind2::Int,
                                                     mle_targetll::Float64,
-                                                    save_internal_points::Bool;
+                                                    save_internal_points::Bool,
+                                                    channel::RemoteChannel;
                                                     num_radial_directions::Int=0,
                                                     ellipse_confidence_level::Float64=-1.0,
                                                     ellipse_start_point_shift::Float64=0.0,
@@ -282,18 +283,21 @@ function bivariate_confidenceprofile_vectorsearch(bivariate_optimiser::Function,
     end
 
     if ellipse_confidence_level !== -1.0
-        internal, internal_all, ll_values, external, point_is_on_bounds, _ = findNpointpairs_radialMLE!(p, bivariate_optimiser, model, num_points, ind1, ind2, 
-                                                                                            ellipse_confidence_level, ellipse_start_point_shift, ellipse_sqrt_distortion)
+        internal, internal_all, ll_values, external, point_is_on_bounds, _ = 
+            findNpointpairs_radialMLE!(p, bivariate_optimiser, model, num_points, ind1, ind2, 
+                                        ellipse_confidence_level, ellipse_start_point_shift, ellipse_sqrt_distortion)
 
     else
         if num_radial_directions == 0
-            internal, internal_all, ll_values, external = findNpointpairs_simultaneous!(p, bivariate_optimiser, model, num_points, ind1, ind2,
-                                                                                mle_targetll, save_internal_points, biv_opt_is_ellipse_analytical)
+            internal, internal_all, ll_values, external = 
+                findNpointpairs_simultaneous!(p, bivariate_optimiser, model, num_points, ind1, ind2,
+                                                mle_targetll, save_internal_points, biv_opt_is_ellipse_analytical)
         else
-            internal, internal_all, ll_values, external = findNpointpairs_radialrandom!(p, bivariate_optimiser, model, num_points, 
-                                                                                num_radial_directions, ind1, ind2,
-                                                                                mle_targetll,
-                                                                                save_internal_points, biv_opt_is_ellipse_analytical)
+            internal, internal_all, ll_values, external = 
+                findNpointpairs_radialrandom!(p, bivariate_optimiser, model, num_points, 
+                                                num_radial_directions, ind1, ind2,
+                                                mle_targetll,
+                                                save_internal_points, biv_opt_is_ellipse_analytical)
         end
         point_is_on_bounds = falses(num_points)
     end
@@ -318,6 +322,7 @@ function bivariate_confidenceprofile_vectorsearch(bivariate_optimiser::Function,
         if !biv_opt_is_ellipse_analytical
             variablemapping!(@view(boundary[:, i]), p.ω_opt, θranges, ωranges)
         end
+        put!(channel, true)
     end
 
     if biv_opt_is_ellipse_analytical

@@ -6,7 +6,8 @@ function findNpointpairs_fix1axis!(p::NamedTuple,
                                     j::Int,
                                     mle_targetll::Float64,
                                     save_internal_points::Bool,
-                                    biv_opt_is_ellipse_analytical::Bool)
+                                    biv_opt_is_ellipse_analytical::Bool,
+                                    channel::RemoteChannel)
 
     x_vec, y_vec = zeros(num_points), zeros(2, num_points)
     local internal_all = zeros(model.core.num_pars, save_internal_points ? num_points : 0)
@@ -44,6 +45,7 @@ function findNpointpairs_fix1axis!(p::NamedTuple,
                     break
                 end
             end
+            put!(channel, true)
         end
 
         if save_internal_points
@@ -87,6 +89,7 @@ function findNpointpairs_fix1axis!(p::NamedTuple,
                     break
                 end
             end
+            put!(channel, true)
         end
     end
 
@@ -102,7 +105,8 @@ function bivariate_confidenceprofile_fix1axis(bivariate_optimiser::Function,
                                                 ind1::Int, 
                                                 ind2::Int,
                                                 mle_targetll::Float64,
-                                                save_internal_points::Bool)
+                                                save_internal_points::Bool, 
+                                                channel::RemoteChannel)
 
     newLb, newUb, initGuess, θranges, ωranges = init_nuisance_parameters(model, ind1, ind2)
 
@@ -126,7 +130,7 @@ function bivariate_confidenceprofile_fix1axis(bivariate_optimiser::Function,
 
         x_vec, y_vec, internal, ll = findNpointpairs_fix1axis!(p, bivariate_optimiser, model,
                                                             N, i, j, mle_targetll, save_internal_points,
-                                                            biv_opt_is_ellipse_analytical)
+                                                            biv_opt_is_ellipse_analytical, channel)
         
         for k in 1:N
             count +=1
@@ -142,6 +146,7 @@ function bivariate_confidenceprofile_fix1axis(bivariate_optimiser::Function,
                 bivariate_optimiser(ψ_y1, p)
                 variablemapping!(@view(boundary[:, count]), p.ω_opt, θranges, ωranges)
             end
+            put!(channel, true)
         end
 
         if save_internal_points

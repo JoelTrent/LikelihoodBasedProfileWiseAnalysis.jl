@@ -40,8 +40,9 @@ function continuation_line_search!(p::NamedTuple,
                                     target_confidence_ll::Float64, 
                                     search_directions::Matrix{Float64},
                                     start_level_set_2D::Matrix{Float64}, 
+                                    channel::RemoteChannel;
                                     start_level_set_all::Matrix{Float64}=zeros(0,0),
-                                    level_set_not_smoothed::Bool=true;
+                                    level_set_not_smoothed::Bool=true,
                                     is_a_zero::BitVector=falses(num_points))
     
     start_have_all_pars = !isempty(start_level_set_all) 
@@ -146,6 +147,7 @@ function continuation_line_search!(p::NamedTuple,
         if !biv_opt_is_ellipse_analytical
             variablemapping!(@view(target_level_set_all[:, i]), p.ω_opt, p.θranges, p.ωranges)
         end
+        put!(channel, true)
     end
 
     if biv_opt_is_ellipse_analytical
@@ -190,7 +192,8 @@ function continuation_inwards_radial_search!(p::NamedTuple,
                                                 target_confidence_ll::Float64,
                                                 search_directions::Matrix{Float64},
                                                 start_level_set_2D::Matrix{Float64},
-                                                is_a_zero::BitVector)
+                                                is_a_zero::BitVector,
+                                                channel::RemoteChannel)
 
     mle_point = model.core.θmle[[ind1, ind2]]
     
@@ -222,6 +225,7 @@ function continuation_inwards_radial_search!(p::NamedTuple,
             bivariate_optimiser(ψ, p)
             variablemapping!(@view(target_level_set_all[:, i]), p.ω_opt, p.θranges, p.ωranges)
         end
+        put!(channel, true)
     end
 
     if biv_opt_is_ellipse_analytical
@@ -260,7 +264,8 @@ function initial_continuation_solution!(p::NamedTuple,
                                         profile_type::AbstractProfileType,
                                         ellipse_confidence_level::Float64,
                                         target_confidence_ll::Float64,
-                                        ellipse_start_point_shift::Float64)
+                                        ellipse_start_point_shift::Float64, 
+                                        channel::RemoteChannel)
     
     check_ellipse_approx_exists!(model)
     
@@ -318,6 +323,7 @@ function initial_continuation_solution!(p::NamedTuple,
                                             model, 
                                             num_points, ind1, ind2,
                                             corrected_ll, search_directions, ellipse_points,
+                                            channel,
                                             is_a_zero=is_a_zero
                                             )
         return a, b, search_directions, min_ll, point_is_on_bounds
@@ -329,7 +335,7 @@ function initial_continuation_solution!(p::NamedTuple,
         a, b = continuation_inwards_radial_search!(p, bivariate_optimiser, model, 
                                                     num_points, ind1, ind2,
                                                     corrected_ll, search_directions, ellipse_points,
-                                                    is_a_zero)
+                                                    is_a_zero, channel)
         return a, b, search_directions, target_confidence_ll, point_is_on_bounds
     end
 
@@ -338,8 +344,10 @@ function initial_continuation_solution!(p::NamedTuple,
     is_a_zero[findfirst(ellipse_true_lls .== max_ll)] = true
 
     @warn string("ellipse starting point for continuation with variables ", model.core.θnames[ind1], " and ", model.core.θnames[ind2]," intersects the smallest target confidence level set. Using a smaller ellipse confidence level is recommended")
-    a, b = continuation_inwards_radial_search!(p, bivariate_optimiser, model, num_points, 
-                                                ind1, ind2, corrected_ll, search_directions, ellipse_points, is_a_zero)
+    a, b = continuation_inwards_radial_search!(p, bivariate_optimiser, model, 
+                                                num_points, ind1, ind2, 
+                                                corrected_ll, search_directions, ellipse_points, 
+                                                is_a_zero, channel)
     return a, b, search_directions, max_ll, point_is_on_bounds
 end
 
@@ -360,6 +368,7 @@ function bivariate_confidenceprofile_continuation(bivariate_optimiser::Function,
                                                     level_set_spacing::Symbol,
                                                     mle_targetll::Float64,
                                                     save_internal_points::Bool,
+                                                    channel::RemoteChannel
                                                     )
 
     newLb, newUb, initGuess, θranges, ωranges = init_nuisance_parameters(model, ind1, ind2)
@@ -394,7 +403,7 @@ function bivariate_confidenceprofile_continuation(bivariate_optimiser::Function,
         initial_continuation_solution!(p, bivariate_optimiser, 
                                         model, num_points, ind1, ind2, profile_type,
                                         ellipse_confidence_level, initial_target_ll, 
-                                        ellipse_start_point_shift)
+                                        ellipse_start_point_shift, channel)
 
     # display(scatter(current_level_set_2D[1,:], current_level_set_2D[2,:], legend=false, markeropacity=0.4))
 
@@ -420,7 +429,9 @@ function bivariate_confidenceprofile_continuation(bivariate_optimiser::Function,
     for (i, level_set_ll) in enumerate(level_set_lls)
         if save_internal_points
             internal_all = hcat(internal_all, current_level_set_all[:, .!point_is_on_bounds])
-            ll_values = vcat(ll_values, fill(i == 1 ? initial_ll : level_set_lls[i-1], length(point_is_on_bounds) - sum(point_is_on_bounds)))
+            ll_values = vcat(ll_values, fill(i == 1 ? 
+                                                get_target_loglikelihood(model, initial_confidence_level, profile_type, 2) : 
+                                                level_set_lls[i-1], length(point_is_on_bounds) - sum(point_is_on_bounds)))
         end
         
         # perform any desired manipulation of the polygon boundary or search directions
@@ -438,8 +449,9 @@ function bivariate_confidenceprofile_continuation(bivariate_optimiser::Function,
             continuation_line_search!(p, point_is_on_bounds, 
                                         bivariate_optimiser, 
                                         model, num_points, ind1, ind2, level_set_ll, search_directions,
-                                        current_level_set_2D, current_level_set_all,
-                                        level_set_not_smoothed)
+                                        current_level_set_2D, channel,
+                                        start_level_set_all=current_level_set_all,
+                                        level_set_not_smoothed=level_set_not_smoothed)
 
         if require_TSP_reordering
             path = minimum_perimeter_polygon!(current_level_set_2D)[1:end-1]
@@ -448,7 +460,7 @@ function bivariate_confidenceprofile_continuation(bivariate_optimiser::Function,
         end
     end
 
-    if save_internal_points; ll_values .= ll_values .+ mle_targetll end
+    if save_internal_points; ll_values .= ll_values .- ll_correction(model, profile_type, 0.0) end
 
     return current_level_set_all, PointsAndLogLikelihood(internal_all, ll_values)
 end

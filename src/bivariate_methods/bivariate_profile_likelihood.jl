@@ -164,31 +164,33 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
                                 consistent, ind1, ind2, 
                                 model.core.num_pars, initGuess,
                                 θranges, ωranges)
+
+            put!(channel, true)
             
         elseif method isa Fix1AxisMethod
             boundary, internal = bivariate_confidenceprofile_fix1axis(
                                     bivariate_optimiser, model, 
                                     num_points, consistent, ind1, ind2,
-                                    mle_targetll, save_internal_points)
+                                    mle_targetll, save_internal_points, channel)
             
         elseif method isa SimultaneousMethod
             boundary, internal = bivariate_confidenceprofile_vectorsearch(
                                     bivariate_optimiser, model, 
                                     num_points, consistent, ind1, ind2,
-                                    mle_targetll, save_internal_points)
+                                    mle_targetll, save_internal_points, channel)
 
         elseif method isa RadialRandomMethod
             boundary, internal = bivariate_confidenceprofile_vectorsearch(
                                     bivariate_optimiser, model, 
                                     num_points, consistent, ind1, ind2,
-                                    mle_targetll, save_internal_points,
+                                    mle_targetll, save_internal_points, channel,
                                     num_radial_directions=method.num_radial_directions)
 
         elseif method isa RadialMLEMethod
             boundary, internal = bivariate_confidenceprofile_vectorsearch(
                                     bivariate_optimiser, model, 
                                     num_points, consistent, ind1, ind2,
-                                    mle_targetll, save_internal_points,
+                                    mle_targetll, save_internal_points, channel,
                                     ellipse_confidence_level=0.1,
                                     ellipse_start_point_shift=method.ellipse_start_point_shift,
                                     ellipse_sqrt_distortion=method.ellipse_sqrt_distortion)
@@ -202,7 +204,7 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
                                     method.ellipse_start_point_shift,
                                     method.num_level_sets,
                                     method.level_set_spacing,
-                                    mle_targetll, save_internal_points)
+                                    mle_targetll, save_internal_points, channel)
         
         elseif method isa IterativeBoundaryMethod
             boundary, internal = bivariate_confidenceprofile_iterativeboundary(
@@ -211,10 +213,9 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
                                     method.initial_num_points, method.angle_points_per_iter,
                                     method.edge_points_per_iter, method.radial_start_point_shift,
                                     method.ellipse_sqrt_distortion, method.use_ellipse,
-                                    mle_targetll, save_internal_points)
+                                    mle_targetll, save_internal_points, channel)
         end
-        
-        put!(channel, true)
+
         return BivariateConfidenceStruct(boundary, internal)
     catch
         @error string("an error occurred when finding the bivariate boundary with settings: ",
@@ -228,6 +229,16 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
     end
 
     return nothing
+end
+
+function get_bivariate_method_tasknumbers(method::AbstractBivariateMethod, num_points::Int)
+    if method isa ContinuationMethod
+        return num_points * method.num_level_sets
+    elseif method isa AnalyticalEllipseMethod
+        return 1
+    else
+        return num_points
+    end
 end
 
 """
@@ -262,6 +273,10 @@ Finds `num_points` `profile_type` boundary points at a specified `confidence_lev
 # Details
 
 Using [`bivariate_confidenceprofile`](@ref) this function calls the algorithm/method specified by `method` for each parameter combination in `θcombinations` (depending on the setting for `existing_profiles` and `num_points` if these profiles already exist). Updates `model.biv_profiles_df` for each successful profile and saves their results as a [`BivariateConfidenceStruct`](@ref) in `model.biv_profiles_dict`, where the keys for the dictionary is the row number in `model.biv_profiles_df` of the corresponding profile.
+
+## Iteration Speed Of the Progress Meter
+
+The time/it value is the time it takes for each new boundary point to be found (for all methods except for [`AnalyticalEllipseMethod`](@ref) and [`ContinuationMethod`](@ref)). For [`AnalyticalEllipseMethod`](@ref) this is the time it takes to find all points on the boundary of the ellipse of two interest parameters. For [`ContinuationMethod`](@ref) this is the time it takes to find each new point, internal or on the boundary.  
 """
 function bivariate_confidenceprofiles!(model::LikelihoodModel, 
                                         θcombinations::Vector{Vector{Int}}, 
@@ -355,9 +370,14 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
     len_θcombinations = length(θcombinations)
     len_θcombinations > 0 || return nothing
 
-    
-    channel = RemoteChannel(() -> Channel{Bool}(1))
-    p = Progress(length(θcombinations); desc="Computing bivariate profiles: ",
+
+
+    tasks_per_profile = get_bivariate_method_tasknumbers(method, num_points)
+    totaltasks = tasks_per_profile * len_θcombinations
+    # channel_buffer_size = min(ceil(Int, tasks_per_profile * 0.05), 30)
+    channel_buffer_size = 2
+    channel = RemoteChannel(() -> Channel{Bool}(channel_buffer_size))
+    p = Progress(totaltasks; desc="Computing bivariate profiles: ",
                 dt=PROGRESS__METER__DT, enabled=show_progress, showspeed=true)
 
     @sync begin
@@ -368,11 +388,12 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
         if use_distributed
             @async begin
                 profiles_to_add = @distributed (vcat) for i in 1:len_θcombinations
-                    [((θcombinations[i][1], θcombinations[i][2]), bivariate_confidenceprofile(bivariate_optimiser, model, num_new_points[i],
-                                                                    confidence_level, consistent, 
-                                                                    θcombinations[i][1], θcombinations[i][2], profile_type,
-                                                                    method, mle_targetll,
-                                                                    save_internal_points, channel))]
+                    [((θcombinations[i][1], θcombinations[i][2]), 
+                        bivariate_confidenceprofile(bivariate_optimiser, model, num_new_points[i],
+                                                    confidence_level, consistent, 
+                                                    θcombinations[i][1], θcombinations[i][2], profile_type,
+                                                    method, mle_targetll,
+                                                    save_internal_points, channel))]
                 end
                 put!(channel, false)
 

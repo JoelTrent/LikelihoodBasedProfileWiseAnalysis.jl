@@ -290,10 +290,10 @@ function full_likelihood_sample!(model::LikelihoodModel,
     requires_overwrite = model.dim_samples_row_exists[sample_type][confidence_level] != 0
     if existing_profiles == :ignore && requires_overwrite; return nothing end
 
-    num_total_points = num_points_to_sample isa Int ? num_points_to_sample : prod(num_points_to_sample)
-    channel_buffer_size = min(ceil(Int, num_total_points*0.2), 1000)
+    totaltasks = num_points_to_sample isa Int ? num_points_to_sample : prod(num_points_to_sample)
+    channel_buffer_size = min(ceil(Int, totaltasks*0.2), 1000)
     channel = RemoteChannel(() -> Channel{Bool}(channel_buffer_size))
-    p = Progress(num_total_points; desc="Computing full likelihood samples: ",
+    p = Progress(totaltasks; desc="Computing full likelihood samples: ",
                 dt=PROGRESS__METER__DT, enabled=show_progress, showspeed=true)
 
     local sample_struct
