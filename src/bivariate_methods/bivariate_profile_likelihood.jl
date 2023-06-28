@@ -177,7 +177,8 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
             boundary, internal = bivariate_confidenceprofile_vectorsearch(
                                     bivariate_optimiser, model, 
                                     num_points, consistent, ind1, ind2,
-                                    mle_targetll, save_internal_points, channel)
+                                    mle_targetll, save_internal_points, channel,
+                                    min_proportion_unique=method.min_proportion_unique)
 
         elseif method isa RadialRandomMethod
             boundary, internal = bivariate_confidenceprofile_vectorsearch(
@@ -370,10 +371,8 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
     len_θcombinations = length(θcombinations)
     len_θcombinations > 0 || return nothing
 
-
-
-    tasks_per_profile = get_bivariate_method_tasknumbers(method, num_points)
-    totaltasks = tasks_per_profile * len_θcombinations
+    tasks_per_profile = get_bivariate_method_tasknumbers.(Ref(method), num_new_points)
+    totaltasks = sum(tasks_per_profile)
     # channel_buffer_size = min(ceil(Int, tasks_per_profile * 0.05), 30)
     channel_buffer_size = 2
     channel = RemoteChannel(() -> Channel{Bool}(channel_buffer_size))

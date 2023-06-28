@@ -233,15 +233,23 @@ struct RadialRandomMethod <: AbstractBivariateVectorMethod
 end
 
 """
-    SimultaneousMethod()
+    SimultaneousMethod(min_proportion_unique::Real=0.5)
 
-Method for finding the bivariate boundary of a confidence profile by finding internal and external boundary points using a uniform random distribution on provided bounds, pairing these points in the order they're found and bracketing between each pair (see [`PlaceholderLikelihood.findNpointpairs_simultaneous!`](@ref) and [`PlaceholderLikelihood.bivariate_confidenceprofile_vectorsearch`](@ref)).
+Method for finding the bivariate boundary of a confidence profile by finding internal and external boundary points using a uniform random distribution on provided bounds, pairing these points in the order they're found and bracketing between each pair (see [`PlaceholderLikelihood.findNpointpairs_simultaneous!`](@ref) and [`PlaceholderLikelihood.bivariate_confidenceprofile_vectorsearch`](@ref)). Values of `min_proportion_unique` lower than zero may improve performance if finding either internal points or external points is difficult given the specified bounds on interest parameters.
+    
+
+# Arguments
+- `min_proportion_unique`: a proportion ∈ (0.0, 1.0] for the minimum allowed proportion of unique points in one of the internal or external point vectors. One of these vectors will be fully unique. Whichever vector is not unique, will have at least `min_proportion_unique` unique points. Default is 0.5
 
 # Details
 
 Recommended for use with the [`LogLikelihood`](@ref) profile type. 
 
-The method uniformly samples the region specified by the bounds for the two interest parameters until as many internal and external boundary points as the desired number of boundary points are found. These points are paired in the order they are found. A bracketing method is then used to find a boundary point between the point pair (the external point and the internal point).
+When `min_proportion_unique = 1.0` the method uniformly samples the region specified by the bounds for the two interest parameters until as many internal and external boundary points as the desired number of boundary points are found. These points are paired in the order they are found. 
+
+If `min_proportion_unique < 1.0` the method uniformly samples the region specified by the bounds for the two interest parameters until either the internal or external number of boundary points found is as many as the number of desired boundary points. For whichever vector is less than the number of desired boundary points, we keep searching for that kind of point until at least `ceil(min_proportion_unique * num_points)` points have been found. Once `ceil(min_proportion_unique * num_points)` points have been found these points are used to fill the remainder of the vector, in order found. Internal and external points in each vector are then paired in the order they are found.
+
+A bracketing method is then used to find a boundary point between each point pair (the external point and the internal point).
 
 [`RadialRandomMethod`](@ref) and [`IterativeBoundaryMethod`](@ref) are preferred over this method from a computational performance standpoint as they require fewer log-likelihood evalutions (when [`RadialRandomMethod`](@ref) has parameter `num_radial_directions` > 1). 
 
@@ -253,18 +261,27 @@ This method can find multiple boundaries (if they exist).
 
 ## Impact of parameter bounds
 
-If a parameter bound is in the way of reaching the boundary, points will not be put on that bound. Additionally, if the true boundary is very close to a parameter bound, the method will struggle to find this region of the boundary. This is because finding the boundary in this location requires generating a random point between the boundary and the parameter bound, which becomes more difficult the closer they are. Interest parameter bounds that have ranges magnitudes larger than the range of the boundary will make finding internal points very difficult, requiring a lot of computational effort. Similarly, the inverse will be true if external points are hard to find. The method will fail if the interest parameter bounds are fully contained by the boundary.
+If a parameter bound is in the way of reaching the boundary, points will not be put on that bound. Additionally, if the true boundary is very close to a parameter bound, the method will struggle to find this region of the boundary. This is because finding the boundary in this location requires generating a random point between the boundary and the parameter bound, which becomes more difficult the closer they are. 
+
+Interest parameter bounds that have ranges magnitudes larger than the range of the boundary will make finding internal points difficult, requiring a lot of computational effort. Similarly, the inverse will be true if external points are hard to find. Smaller values of `min_proportion_unique` will improve performance in these cases. 
+
+The method will fail if the interest parameter bounds are fully contained by the boundary.
 
 # Internal Points
 
-Finds `num_points` internal points.
+Finds at least `ceil(min_proportion_unique * num_points)` internal points.
 
 # Supertype Hiearachy
 
 `SimultaneousMethod <: AbstractBivariateVectorMethod <: AbstractBivariateMethod <: Any`
 """
-struct SimultaneousMethod <: AbstractBivariateVectorMethod end
-
+struct SimultaneousMethod <: AbstractBivariateVectorMethod 
+    min_proportion_unique::Real
+    function SimultaneousMethod(min_proportion_unique::Real=0.5)
+        (0.0 < min_proportion_unique && min_proportion_unique <= 1.0) || throw(DomainError("min_proportion_unique must be in the interval (0.0,1.0]"))
+        return new(min_proportion_unique)
+    end
+end
 
 """
     Fix1AxisMethod()

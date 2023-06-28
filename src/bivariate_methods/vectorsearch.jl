@@ -16,12 +16,15 @@ function findNpointpairs_simultaneous!(p::NamedTuple,
                                         ind2::Int,
                                         mle_targetll::Float64,
                                         save_internal_points::Bool,
-                                        biv_opt_is_ellipse_analytical::Bool)
+                                        biv_opt_is_ellipse_analytical::Bool,
+                                        min_proportion_unique::Real)
 
     internal  = zeros(2,num_points)
     internal_all = zeros(model.core.num_pars, save_internal_points ? num_points : 0)
     ll_values = zeros(save_internal_points ? num_points : 0)
     external = zeros(2,num_points)
+
+    min_num_unique = ceil(Int, min_proportion_unique*num_points)
 
     Ninside=0; Noutside=0
     iters=0
@@ -49,7 +52,7 @@ function findNpointpairs_simultaneous!(p::NamedTuple,
     end
 
     # while Ninside < N && iters < maxIters
-    while Ninside < num_points
+    while Ninside < min_num_unique
         x, y = generatepoint(model, ind1, ind2)
         p.pointa .= [x,y]
         g = bivariate_optimiser(0.0, p)
@@ -69,7 +72,7 @@ function findNpointpairs_simultaneous!(p::NamedTuple,
     end
 
     # while Noutside < N && iters < maxIters
-    while Noutside < num_points
+    while Noutside < min_num_unique
         x, y = generatepoint(model, ind1, ind2)
         p.pointa .= [x,y]
         if bivariate_optimiser(0.0, p) < 0
@@ -77,6 +80,28 @@ function findNpointpairs_simultaneous!(p::NamedTuple,
             external[:,Noutside] .= [x,y]
         end
         iters+=1
+    end
+
+    if Ninside < num_points
+        num_unique = Ninside*1
+        while Ninside < num_points
+            i, j = Ninside+1, min(num_points-Ninside, num_unique)
+            internal[:, i:(i+j-1)] .= internal[:,1:j]
+            Ninside += num_unique
+        end
+        
+        if save_internal_points
+            ll_values = ll_values[1:num_unique]
+            internal_all = internal_all[:, 1:num_unique]
+        end
+
+    elseif Noutside < num_points
+        num_unique = Ninside * 1
+        while Noutside < num_points
+            i, j = Noutside+1, min(num_points-Noutside, num_unique)
+            external[:, i:(i+j-1)] .= external[:, 1:j]
+            Noutside += num_unique
+        end
     end
 
     if save_internal_points && biv_opt_is_ellipse_analytical
@@ -262,6 +287,7 @@ function bivariate_confidenceprofile_vectorsearch(bivariate_optimiser::Function,
                                                     save_internal_points::Bool,
                                                     channel::RemoteChannel;
                                                     num_radial_directions::Int=0,
+                                                    min_proportion_unique::Real=1.0,
                                                     ellipse_confidence_level::Float64=-1.0,
                                                     ellipse_start_point_shift::Float64=0.0,
                                                     ellipse_sqrt_distortion::Float64=0.0)
@@ -291,7 +317,8 @@ function bivariate_confidenceprofile_vectorsearch(bivariate_optimiser::Function,
         if num_radial_directions == 0
             internal, internal_all, ll_values, external = 
                 findNpointpairs_simultaneous!(p, bivariate_optimiser, model, num_points, ind1, ind2,
-                                                mle_targetll, save_internal_points, biv_opt_is_ellipse_analytical)
+                                                mle_targetll, save_internal_points, biv_opt_is_ellipse_analytical,
+                                                min_proportion_unique)
         else
             internal, internal_all, ll_values, external = 
                 findNpointpairs_radialrandom!(p, bivariate_optimiser, model, num_points, 
