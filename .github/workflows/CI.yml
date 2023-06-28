@@ -39,6 +39,8 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: lcov.info
+    timeout-minutes: 20
+
   docs:
     name: Documentation
     runs-on: ubuntu-latest
