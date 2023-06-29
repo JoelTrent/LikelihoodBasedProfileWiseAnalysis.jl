@@ -71,7 +71,6 @@ function sample_internal_points_single_row(bivariate_optimiser::Function,
     end
 
     rejection_rate = num_rejected / (num_rejected+i-1)
-
     ll .= ll .+ get_target_loglikelihood(model, confidence_level, EllipseApproxAnalytical(), 2)
 
     if biv_opt_is_ellipse_analytical
