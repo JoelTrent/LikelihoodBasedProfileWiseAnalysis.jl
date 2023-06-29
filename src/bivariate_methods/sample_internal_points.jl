@@ -49,6 +49,7 @@ function sample_internal_points_single_row(bivariate_optimiser::Function,
     internal_points = zeros(model.core.num_pars, num_points)
     ll = zeros(num_points)
     i=1
+    num_rejected=0
     while i ≤ num_points
 
         sample_points = reduce(hcat, [point.coords for point in collect(sample(mesh, HomogeneousSampling(num_points-(i-1))))])
@@ -63,9 +64,13 @@ function sample_internal_points_single_row(bivariate_optimiser::Function,
                     variablemapping!(@view(internal_points[:, i]), p.ω_opt, θranges, ωranges)
                 end
                 i+=1
+            else
+                num_rejected+=1
             end
         end
     end
+
+    rejection_rate = num_rejected / (num_rejected+i-1)
 
     ll .= ll .+ get_target_loglikelihood(model, confidence_level, EllipseApproxAnalytical(), 2)
 
@@ -76,7 +81,7 @@ function sample_internal_points_single_row(bivariate_optimiser::Function,
             θranges, ωranges, internal_points)
     end
 
-    return merge(conf_struct.internal_points, PointsAndLogLikelihood(internal_points, ll))
+    return merge(conf_struct.internal_points, PointsAndLogLikelihood(internal_points, ll)), rejection_rate
 end
 
 function sample_internal_points_single_row(model::LikelihoodModel, biv_row_number::Int, num_points::Int, hullmethod::AbstractBivariateHullMethod)
@@ -124,6 +129,8 @@ function sample_bivariate_internal_points!(model::LikelihoodModel,
         return nothing
     end
 
+    rejection_df = DataFrame(rejection_rate=zeros(nrow(sub_df)), biv_df_row_ind=zeros(Int, nrow(sub_df)))
+
     for i in 1:nrow(sub_df)
 
         row_ind = sub_df[i, :row_ind]
@@ -141,8 +148,9 @@ function sample_bivariate_internal_points!(model::LikelihoodModel,
             end
         end
 
-        internal_points = sample_internal_points_single_row(model, row_ind, num_points, hullmethod)
+        internal_points, rejection_rate = sample_internal_points_single_row(model, row_ind, num_points, hullmethod)
         update_biv_dict_internal!(model, row_ind, internal_points)
+        rejection_df[i, :] .= rejection_rate, row_ind
 
         if evaluate_predictions_for_samples && !sub_df[i, :not_evaluated_predictions]
 
@@ -159,7 +167,9 @@ function sample_bivariate_internal_points!(model::LikelihoodModel,
         end
     end
 
+    rejection_df = rejection_df[rejection_df.biv_df_row_ind .!= 0, :]
+
     sub_df[:, :not_evaluated_internal_points] .= false
 
-    return nothing
+    return rejection_df
 end
