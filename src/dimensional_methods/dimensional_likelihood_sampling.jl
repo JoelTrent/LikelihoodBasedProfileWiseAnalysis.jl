@@ -446,7 +446,6 @@ function dimensional_likelihood_sample!(model::LikelihoodModel,
     lb::AbstractVector{<:Real}=Float64[],
     ub::AbstractVector{<:Real}=Float64[],
     use_threads::Bool=true,
-    use_distributed::Bool=false,
     existing_profiles::Symbol=:overwrite,
     show_progress::Bool=model.show_progress)
 

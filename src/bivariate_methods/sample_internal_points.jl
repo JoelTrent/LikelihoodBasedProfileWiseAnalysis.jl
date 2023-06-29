@@ -22,7 +22,8 @@ function sample_internal_points_single_row(bivariate_optimiser::Function,
                                             profile_type::AbstractProfileType,
                                             conf_struct::BivariateConfidenceStruct, 
                                             confidence_level::Float64,
-                                            boundary_not_ordered::Bool)
+                                            boundary_not_ordered::Bool,
+                                            hullmethod::AbstractBivariateHullMethod)
 
 
     bivariate_optimiser = get_bivariate_opt_func(profile_type, RadialMLEMethod())
@@ -42,14 +43,30 @@ function sample_internal_points_single_row(bivariate_optimiser::Function,
             θranges=θranges, ωranges=ωranges, consistent=consistent, ω_opt=zeros(model.core.num_pars - 2))
     end
 
-    boundary = conf_struct.confidence_boundary[[ind1, ind2], :]
-    if boundary_not_ordered
-        minimum_perimeter_polygon!(boundary)
+    if hullmethod isa MPPHullMethod
+        boundary = conf_struct.confidence_boundary[[ind1, ind2], :]
+        if boundary_not_ordered
+            minimum_perimeter_polygon!(boundary)
+        end
+        n = size(boundary, 2)
+        mesh = SimpleMesh([(boundary[1, i], boundary[2, i]) for i in 1:n], [connect(tuple(1:n...))])
+
+    elseif hullmethod isa ConcaveHullMethod
+        point_union = hcat(conf_struct.confidence_boundary[[ind1, ind2], :], conf_struct.internal_points.points[[ind1, ind2], :])
+
+        num_boundary_points = size(conf_struct.confidence_boundary, 2)
+        ll_boundary = get_target_loglikelihood(model, confidence_level, EllipseApprox(), 2)
+        ll_values = vcat(fill(ll_boundary, num_boundary_points), conf_struct.internal_points.ll)
+
+        boundary = bivariate_concave_hull(point_union, ll_values, 0.8, 0.8, ll_boundary, LatinHypercubeSamples())
+        n = size(boundary, 2)
+        mesh = SimpleMesh([(boundary[1, i], boundary[2, i]) for i in 1:n], [connect(tuple(1:n...))])
+
+    elseif hullmethod isa ConvexHullMethod
+        point_union = hcat(conf_struct.confidence_boundary[[ind1, ind2], :], conf_struct.internal_points.points[[ind1, ind2], :])
+        pset = PointSet(point_union)
+        mesh = convexhull(pset)
     end
-    boundary = permutedims(boundary)
-    n = size(boundary, 1)
-    
-    mesh = SimpleMesh([(boundary[i, 1], boundary[i, 2]) for i in 1:n], [connect(tuple(1:n...))])
     
     internal_points = zeros(model.core.num_pars, num_points)
     ll = zeros(num_points)
@@ -84,7 +101,7 @@ function sample_internal_points_single_row(bivariate_optimiser::Function,
     return merge(conf_struct.internal_points, PointsAndLogLikelihood(internal_points, ll))
 end
 
-function sample_internal_points_single_row(model::LikelihoodModel, biv_row_number::Int, num_points::Int)
+function sample_internal_points_single_row(model::LikelihoodModel, biv_row_number::Int, num_points::Int, hullmethod::AbstractBivariateHullMethod)
     θindices = model.biv_profiles_df.θindices[biv_row_number]
     profile_type = model.biv_profiles_df.profile_type[biv_row_number]
     method = model.biv_profiles_df.method[biv_row_number]
@@ -94,7 +111,7 @@ function sample_internal_points_single_row(model::LikelihoodModel, biv_row_numbe
     boundary_not_ordered = model.biv_profiles_df.boundary_not_ordered[biv_row_number]
 
     return sample_internal_points_single_row(bivariate_optimiser, model, num_points, θindices,
-        profile_type, conf_struct, confidence_level, boundary_not_ordered)
+        profile_type, conf_struct, confidence_level, boundary_not_ordered, hullmethod)
 end
 
 """
@@ -103,6 +120,7 @@ end
         confidence_levels::Vector{<:Float64}=Float64[],
         profile_types::Vector{<:AbstractProfileType}=AbstractProfileType[],
         methods::Vector{<:AbstractBivariateMethod}=AbstractBivariateMethod[],
+        hullmethod::AbstractBivariateHullMethod=MPPHullMethod(),
         t::Union{Vector, Missing}=missing,
         evaluate_predictions_for_samples::Bool=true,
         proportion_of_predictions_to_keep::Real=1.0)
@@ -114,6 +132,7 @@ function sample_bivariate_internal_points!(model::LikelihoodModel,
                                     confidence_levels::Vector{<:Float64}=Float64[],
                                     profile_types::Vector{<:AbstractProfileType}=AbstractProfileType[],
                                     methods::Vector{<:AbstractBivariateMethod}=AbstractBivariateMethod[],
+                                    hullmethod::AbstractBivariateHullMethod=MPPHullMethod(),
                                     t::Union{Vector, Missing}=missing,
                                     evaluate_predictions_for_samples::Bool=true,
                                     proportion_of_predictions_to_keep::Real=1.0)
@@ -144,7 +163,7 @@ function sample_bivariate_internal_points!(model::LikelihoodModel,
             end
         end
 
-        internal_points = sample_internal_points_single_row(model, row_ind, num_points)
+        internal_points = sample_internal_points_single_row(model, row_ind, num_points, hullmethod)
         update_biv_dict_internal!(model, row_ind, internal_points)
 
         if evaluate_predictions_for_samples && !sub_df[i, :not_evaluated_predictions]

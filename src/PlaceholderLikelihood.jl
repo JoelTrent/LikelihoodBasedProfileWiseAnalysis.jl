@@ -28,6 +28,8 @@ export EllipseMLEApprox, CoreLikelihoodModel, LikelihoodModel,
     AbstractBivariateMethod, AbstractBivariateVectorMethod, bivariate_methods,
     IterativeBoundaryMethod, RadialMLEMethod, RadialRandomMethod, SimultaneousMethod, Fix1AxisMethod,
     AnalyticalEllipseMethod, ContinuationMethod, 
+
+    AbstractBivariateHullMethod, ConvexHullMethod, ConcaveHullMethod, MPPHullMethod,
     
     AbstractSampleType, UniformGridSamples, UniformRandomSamples, LatinHypercubeSamples,
 
@@ -61,6 +63,7 @@ include("NLopt_optimiser.jl")
 
 # TYPES ###################################################################################
 include("types/bivariate_methods.jl")
+include("types/bivariate_hull_methods.jl")
 include("types/levelsets.jl")
 include("types/predictions.jl")
 include("types/profiletypes.jl")
@@ -101,6 +104,7 @@ include("dimensional_methods/bivariate_concave_hull.jl")
 # COVERAGE CHECKS #########################################################################
 include("coverage_checks/parameters/univariate.jl")
 include("coverage_checks/parameters/bivariate.jl")
+include("coverage_checks/parameters/bivariate_boundary.jl")
 
 # PLOT FUNCTIONS ##########################################################################
 function plot_univariate_profiles end

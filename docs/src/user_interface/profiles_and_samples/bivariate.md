@@ -8,10 +8,14 @@ Pages = ["bivariate.md"]
 bivariate_confidenceprofiles!
 ```
 
-## Sampling Internal Points
+## Sampling Internal Points From Boundaries
 
 ```@docs
 sample_bivariate_internal_points!
+AbstractBivariateHullMethod
+ConvexHullMethod
+ConcaveHullMethod
+MPPHullMethod
 ```
 
 ## Methods

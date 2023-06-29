@@ -296,7 +296,7 @@ function full_likelihood_sample!(model::LikelihoodModel,
     p = Progress(totaltasks; desc="Computing full likelihood samples: ",
                 dt=PROGRESS__METER__DT, enabled=show_progress, showspeed=true)
 
-    local sample_struct
+    local sample_struct::SampledConfidenceStruct
     @sync begin
         @async while take!(channel)
             next!(p)
