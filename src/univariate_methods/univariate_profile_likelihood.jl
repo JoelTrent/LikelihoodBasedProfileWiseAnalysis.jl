@@ -149,7 +149,6 @@ function univariate_confidenceinterval(univariate_optimiser::Function,
                                         additional_width::Real,
                                         channel::RemoteChannel)
 
-
     try
         interval = zeros(2)
         ll = zeros(2)
@@ -174,30 +173,39 @@ function univariate_confidenceinterval(univariate_optimiser::Function,
             bracket_r = [model.core.θmle[θi], model.core.θub[θi]]
         end
 
+        use_find_zero = true
         if univariate_optimiser == univariateψ_ellipse_unbounded
 
-            interval .= analytic_ellipse_loglike_1D_soln(θi, consistent.data_analytic, mle_targetll)
-            
-            if interval[1] >= bracket_l[1]
-                interval_points[θi,1] = interval[1]
-                univariate_optimiser(interval[1], p)
-                variablemapping!(@view(interval_points[:, 1]), p.ω_opt, θranges, ωranges)
-                ll[1] = mle_targetll
-            else
-                interval[1]=NaN 
-            end
-            put!(channel, 1)
+            output = analytic_ellipse_loglike_1D_soln(θi, consistent.data_analytic, mle_targetll)            
 
-            if interval[2] <= bracket_r[2]
-                interval_points[θi,2] = interval[2]
-                univariate_optimiser(interval[2], p)
-                variablemapping!(@view(interval_points[:, 2]), p.ω_opt, θranges, ωranges)
-                ll[2] = mle_targetll
-            else 
-                interval[2]=NaN
+            if !isnothing(output)
+                use_find_zero = false
+                interval .= output
+
+                if interval[1] >= bracket_l[1]
+                    interval_points[θi,1] = interval[1]
+                    univariate_optimiser(interval[1], p)
+                    variablemapping!(@view(interval_points[:, 1]), p.ω_opt, θranges, ωranges)
+                    ll[1] = mle_targetll
+                else
+                    interval[1]=NaN 
+                end
+                put!(channel, true)
+
+                if interval[2] <= bracket_r[2]
+                    interval_points[θi,2] = interval[2]
+                    univariate_optimiser(interval[2], p)
+                    variablemapping!(@view(interval_points[:, 2]), p.ω_opt, θranges, ωranges)
+                    ll[2] = mle_targetll
+                else 
+                    interval[2]=NaN
+                end
+                put!(channel, true)
             end
-            put!(channel, 1)
-        else
+
+        end
+
+        if use_find_zero
             # by definition, g(θmle[i],p) == abs(llstar) > 0, so only have to check one side of interval to make sure it brackets a zero
             g = univariate_optimiser(bracket_l[1], p)
             if g < 0.0

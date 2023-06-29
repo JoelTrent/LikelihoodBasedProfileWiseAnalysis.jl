@@ -95,7 +95,7 @@ function get_target_loglikelihood(model::LikelihoodModel,
                                     profile_type::AbstractProfileType,
                                     dof::Int)
 
-    (0.0 < confidence_level && confidence_level < 1.0) || throw(DomainError("confidence_level must be in the open interval (0,1)"))
+    (0.0 ≤ confidence_level && confidence_level < 1.0) || throw(DomainError("confidence_level must be in the interval [0,1)"))
 
     llstar = -quantile(Chisq(dof), confidence_level) / 2.0
 

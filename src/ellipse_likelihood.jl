@@ -13,7 +13,11 @@ w_1 =  w_1^* + \\sqrt{\\frac{-2 L^*}{Γ_i(θ^*)^{-1}}}
 ```
 """
 function analytic_ellipse_loglike_1D_soln(θIndex::Int, mleTuple::@NamedTuple{θmle::Vector{T}, Γmle::Matrix{T}}, targetll::T) where T<:Float64
-    sqrt_part = sqrt((-2 * targetll) / inv(mleTuple.Γmle[θIndex, θIndex]))
+
+    inv_Γmle_ii = inv(mleTuple.Γmle[θIndex, θIndex])
+    if inv_Γmle_ii > 0.0; return nothing end
+
+    sqrt_part = sqrt((-2 * targetll) / inv_Γmle_ii)
     return mleTuple.θmle[θIndex] - sqrt_part, mleTuple.θmle[θIndex] + sqrt_part
 end
 
