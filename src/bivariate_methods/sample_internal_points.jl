@@ -43,30 +43,8 @@ function sample_internal_points_single_row(bivariate_optimiser::Function,
             θranges=θranges, ωranges=ωranges, consistent=consistent, ω_opt=zeros(model.core.num_pars - 2))
     end
 
-    if hullmethod isa MPPHullMethod
-        boundary = conf_struct.confidence_boundary[[ind1, ind2], :]
-        if boundary_not_ordered
-            minimum_perimeter_polygon!(boundary)
-        end
-        n = size(boundary, 2)
-        mesh = SimpleMesh([(boundary[1, i], boundary[2, i]) for i in 1:n], [connect(tuple(1:n...))])
-
-    elseif hullmethod isa ConcaveHullMethod
-        point_union = hcat(conf_struct.confidence_boundary[[ind1, ind2], :], conf_struct.internal_points.points[[ind1, ind2], :])
-
-        num_boundary_points = size(conf_struct.confidence_boundary, 2)
-        ll_boundary = get_target_loglikelihood(model, confidence_level, EllipseApprox(), 2)
-        ll_values = vcat(fill(ll_boundary, num_boundary_points), conf_struct.internal_points.ll)
-
-        boundary = bivariate_concave_hull(point_union, ll_values, 0.8, 0.8, ll_boundary, LatinHypercubeSamples())
-        n = size(boundary, 2)
-        mesh = SimpleMesh([(boundary[1, i], boundary[2, i]) for i in 1:n], [connect(tuple(1:n...))])
-
-    elseif hullmethod isa ConvexHullMethod
-        point_union = hcat(conf_struct.confidence_boundary[[ind1, ind2], :], conf_struct.internal_points.points[[ind1, ind2], :])
-        pset = PointSet(point_union)
-        mesh = convexhull(pset)
-    end
+    mesh = construct_polygon_hull(model, [ind1, ind2], conf_struct, confidence_level,
+                                    boundary_not_ordered, hullmethod, false)
     
     internal_points = zeros(model.core.num_pars, num_points)
     ll = zeros(num_points)

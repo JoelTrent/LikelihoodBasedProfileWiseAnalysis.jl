@@ -1,5 +1,7 @@
 """
 
+Returns confidence intervals for the mean coverage using [`confint`](https://juliastats.org/HypothesisTests.jl/stable/methods/#StatsAPI.confint) from [HypothesisTests.jl](https://juliastats.org/HypothesisTests.jl/stable/)
+
 First it tests if the true interest parameter, given nuisance parameters, has a log-likelihood value within the confidence threshold and then check if it's inside our boundary polygon, as the straight edges of the polygon do not exactly represent the true boundary. 
 
 !!! danger "May not work correctly on bimodal confidence boundaries"
@@ -22,6 +24,8 @@ function check_bivariate_parameter_coverage(data_generator::Function,
     distributed_over_parameters::Bool=false)
 
     length(θtrue) == model.core.num_pars || throw(ArgumentError("θtrue must have the same length as the number of model parameters"))
+
+    (0.0 < coverage_estimate_confidence_level && coverage_estimate_confidence_level < 1.0) || throw(DomainError("coverage_estimate_confidence_level must be in the open interval (0,1)"))
 
     N > 0 || throw(DomainError("N must be greater than 0"))
 
@@ -86,11 +90,10 @@ function check_bivariate_parameter_coverage(data_generator::Function,
                 end
 
                 # check if boundary (defined as polygon with straight edges) contains θtrue[θi]
-                boundary = m_new.biv_profiles_dict[row_ind].confidence_boundary[[θindices...], :]
-
-                if m_new.biv_profiles_df[row_ind, :boundary_not_ordered]
-                    minimum_perimeter_polygon!(boundary)
-                end
+                conf_struct = m_new.biv_profiles_dict[row_ind]
+                boundary = construct_polygon_hull(m_new, [θindices...], conf_struct, confidence_level,
+                    m_new.biv_profiles_df[row_ind, :boundary_not_ordered], MPPHullMethod(), true)
+                
                 nodes = permutedims(boundary)
                 edges = zeros(Int, num_points, 2)
                 for i in 1:num_points-1; edges[i,:] .= i, i+1 end
@@ -108,8 +111,7 @@ function check_bivariate_parameter_coverage(data_generator::Function,
         end
 
     else
-        successes_bool = SharedArray{Bool}(len_θs, N)
-        successes_bool .= false
+        successes_bool = SharedArray{Bool}(zeros(Bool, len_θs, N))
         @sync begin
             # this task prints the progress bar
             @async while take!(channel)
@@ -132,8 +134,6 @@ function check_bivariate_parameter_coverage(data_generator::Function,
                     for row_ind in 1:m_new.num_biv_profiles
                         θindices = m_new.biv_profiles_df[row_ind, :θindices]
 
-                        θindices = m_new.biv_profiles_df[row_ind, :θindices]
-
                         ind1, ind2 = θindices
                         pointa .= θtrue[[ind1, ind2]]
                         newLb, newUb, initGuess, θranges, ωranges = init_nuisance_parameters(m_new, ind1, ind2)
@@ -152,11 +152,9 @@ function check_bivariate_parameter_coverage(data_generator::Function,
                         end
 
                         # check if boundary (defined as polygon with straight edges) contains θtrue[θi]
-                        boundary = m_new.biv_profiles_dict[row_ind].confidence_boundary[[θindices...], :]
-
-                        if m_new.biv_profiles_df[row_ind, :boundary_not_ordered]
-                            minimum_perimeter_polygon!(boundary)
-                        end
+                        conf_struct = m_new.biv_profiles_dict[row_ind]
+                        boundary = construct_polygon_hull(m_new, [θindices...], conf_struct, confidence_level,
+                            m_new.biv_profiles_df[row_ind, :boundary_not_ordered], MPPHullMethod(), true)
                         nodes = permutedims(boundary)
                         edges = zeros(Int, num_points, 2)
                         for j in 1:num_points-1
@@ -186,5 +184,5 @@ function check_bivariate_parameter_coverage(data_generator::Function,
         conf_ints[i, :] .= HypothesisTests.confint(HypothesisTests.BinomialTest(successes[i], N), level=coverage_estimate_confidence_level)
     end
 
-    return DataFrame(θnames=[model.core.θnames[[combo...]] for combo in θcombinations], θindices=θcombinations, coverage=coverage, coverage_lb=conf_ints[:, 1], coverage_ub=conf_ints[:, 2])
+    return DataFrame(θnames=[model.core.θnames[[combo...]] for combo in θcombinations], θindices=θcombinations, coverage=coverage, coverage_lb=conf_ints[:, 1], coverage_ub=conf_ints[:, 2], num_boundary_points=fill(num_points, len_θs))
 end
