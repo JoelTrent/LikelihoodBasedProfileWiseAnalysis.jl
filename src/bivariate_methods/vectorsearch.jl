@@ -46,8 +46,8 @@ function findNpointpairs_simultaneous!(p::NamedTuple,
 
             if save_internal_points
                 ll_values[Ninside] = g * 1.0
+                internal_all[[ind1, ind2], Ninside] .= x, y
                 if !biv_opt_is_ellipse_analytical
-                    internal_all[[ind1, ind2], Ninside] .= x, y
                     variablemapping!(@view(internal_all[:, Ninside]), p.ω_opt, p.θranges, p.ωranges)
                 end
             end
@@ -69,8 +69,8 @@ function findNpointpairs_simultaneous!(p::NamedTuple,
 
             if save_internal_points
                 ll_values[Ninside] = g * 1.0
+                internal_all[[ind1, ind2], Ninside] .= x, y
                 if !biv_opt_is_ellipse_analytical
-                    internal_all[[ind1, ind2], Ninside] .= x, y
                     variablemapping!(@view(internal_all[:, Ninside]), p.ω_opt, p.θranges, p.ωranges)
                 end
             end
@@ -117,10 +117,10 @@ function findNpointpairs_simultaneous!(p::NamedTuple,
     end
 
     if save_internal_points && biv_opt_is_ellipse_analytical
-        get_ωs_bivariate_ellipse_analytical!(internal_all, size(internal_all, 2),
+        get_ωs_bivariate_ellipse_analytical!(@view(internal_all[[ind1, ind2], :]), size(internal_all, 2),
                                                     p.consistent, ind1, ind2, 
                                                     model.core.num_pars, p.initGuess,
-                                                    p.θranges, p.ωranges)
+                                                    p.θranges, p.ωranges, internal_all)
     end
 
     if save_internal_points; ll_values .= ll_values .+ mle_targetll end
@@ -208,8 +208,8 @@ function findNpointpairs_radialrandom!(p::NamedTuple,
                 if save_internal_points && count_accepted == 1
                     internal_count += 1
                     ll_values[internal_count] = g_ll * 1.0
+                    internal_all[[ind1, ind2], internal_count] .= x, y
                     if !biv_opt_is_ellipse_analytical
-                        internal_all[[ind1, ind2], internal_count] .= x, y
                         variablemapping!(@view(internal_all[:, internal_count]), ω_opt, p.θranges, p.ωranges)
                     end
                 end
@@ -225,10 +225,11 @@ function findNpointpairs_radialrandom!(p::NamedTuple,
         ll_values = ll_values[1:internal_count] .+ mle_targetll
         
         if biv_opt_is_ellipse_analytical
-            internal_all = get_ωs_bivariate_ellipse_analytical!(internal[:, internal_unique], sum(internal_unique),
+            internal_all = internal_all[:, internal_unique]
+            get_ωs_bivariate_ellipse_analytical!(@view(internal_all[[ind1, ind2], :]), sum(internal_unique),
                                                                 p.consistent, ind1, ind2, 
                                                                 model.core.num_pars, p.initGuess,
-                                                                p.θranges, p.ωranges)
+                                                                p.θranges, p.ωranges, internal_all)
         else
             internal_all = internal_all[:, 1:internal_count]
         end
