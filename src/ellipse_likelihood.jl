@@ -14,10 +14,10 @@ w_1 =  w_1^* + \\sqrt{\\frac{-2 L^*}{Γ_i(θ^*)^{-1}}}
 """
 function analytic_ellipse_loglike_1D_soln(θIndex::Int, mleTuple::@NamedTuple{θmle::Vector{T}, Γmle::Matrix{T}}, targetll::T) where T<:Float64
 
-    inv_Γmle_ii = inv(mleTuple.Γmle[θIndex, θIndex])
-    if inv_Γmle_ii > 0.0; return nothing end
+    sqrt_inner = (-2 * targetll) /inv(mleTuple.Γmle[θIndex, θIndex])
+    if sqrt_inner < 0.0; return nothing end
 
-    sqrt_part = sqrt((-2 * targetll) / inv_Γmle_ii)
+    sqrt_part = sqrt(sqrt_inner)
     return mleTuple.θmle[θIndex] - sqrt_part, mleTuple.θmle[θIndex] + sqrt_part
 end
 
@@ -35,7 +35,7 @@ end
 """
     getMLE_hessian_and_covariance(f::Function, θmle::Vector{<:Float64})
 
-Computes the negative hessian of function `f` at `θmle` using [ForwardDiff.jl](https://juliadiff.org/ForwardDiff.jl/stable/user/api/#ForwardDiff.hessian) and it's inverse, returning both matrices.
+Computes the negative hessian of function `f` at `θmle` using [ForwardDiff.jl](https://juliadiff.org/ForwardDiff.jl/stable/user/api/#ForwardDiff.hessian) and it's pseudoinverse, returning both matrices.
 """
 function getMLE_hessian_and_covariance(f::Function, θmle::Vector{<:Float64})
 
@@ -44,7 +44,10 @@ function getMLE_hessian_and_covariance(f::Function, θmle::Vector{<:Float64})
     # if inverse fails then may have locally non-identifiable parameter OR parameter is
     # a delta distribution given data.
     # improves precision of inverse when variables have significantly different magnitudes.
-    Γmle = convert.(Float64, inv(BigFloat.(Hmle, precision=64))) 
+    # Γmle = convert.(Float64, inv(BigFloat.(Hmle, precision=64)))
+
+    # Hmle is hermitian / a normal matrix, so the pseudoinverse acts as a traditional inverse of Hmle (https://en.wikipedia.org/wiki/Moore%E2%80%93Penrose_inverse)
+    Γmle = pinv(Hmle)
     return Hmle, Γmle
 end
 

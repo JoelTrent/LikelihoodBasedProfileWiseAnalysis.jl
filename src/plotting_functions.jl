@@ -185,7 +185,7 @@ function plot_univariate_profiles_comparison(model::LikelihoodModel,
                                     ylim_scaler::Real=0.2;
                                     θs_to_plot::Vector=Int[],
                                     confidence_levels::Vector{<:Float64}=Float64[],
-                                    profile_types::Vector{<:AbstractProfileType}=[EllipseApprox(), LogLikelihood()], 
+                                    profile_types::Vector{<:AbstractProfileType}=AbstractProfileType[], 
                                     num_points_in_interval::Int=0,
                                     palette_to_use::Symbol=:Paired_6, 
                                     kwargs...)

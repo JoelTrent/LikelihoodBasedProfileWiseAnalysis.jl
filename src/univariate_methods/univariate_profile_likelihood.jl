@@ -176,11 +176,11 @@ function univariate_confidenceinterval(univariate_optimiser::Function,
         use_find_zero = true
         if univariate_optimiser == univariateψ_ellipse_unbounded
 
-            output = analytic_ellipse_loglike_1D_soln(θi, consistent.data_analytic, mle_targetll)            
+            out = analytic_ellipse_loglike_1D_soln(θi, consistent.data_analytic, mle_targetll)            
 
-            if !isnothing(output)
+            if !isnothing(out)
                 use_find_zero = false
-                interval .= output
+                interval .= out
 
                 if interval[1] >= bracket_l[1]
                     interval_points[θi,1] = interval[1]
