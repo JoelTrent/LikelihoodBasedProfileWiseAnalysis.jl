@@ -22,7 +22,7 @@ end
         confidence_level::Float64, 
         profile_type::AbstractProfileType)
 
-Returns updated interval brackets (`Float64` vectors of length two) if smaller or larger confidence level profiles exist for θi, such that the region to bracket over for the left and right sides of the confidence internval is smallest. Otherwise, returns empty brackets (`Float64[]`).
+Returns updated interval brackets (`Float64` vectors of length two) if smaller or larger confidence level profiles exist for θi, such that the region to bracket over for the left and right sides of the confidence interval is smallest. Otherwise, returns empty brackets (`Float64[]`).
 """
 function get_interval_brackets(model::LikelihoodModel, 
                                 θi::Int,

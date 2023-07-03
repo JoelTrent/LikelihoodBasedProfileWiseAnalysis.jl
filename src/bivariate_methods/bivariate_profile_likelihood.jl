@@ -107,7 +107,6 @@ function get_ωs_bivariate_ellipse_analytical!(boundary,
     
     if ismissing(samples_all_pars)
         samples_all_pars = zeros(num_pars, num_points)
-        println(size(boundary))
         samples_all_pars[[ind1, ind2], :] .= boundary
     end
 
