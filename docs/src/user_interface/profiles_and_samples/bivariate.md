@@ -39,5 +39,5 @@ To improve sampling performance, it may be worth finding bivariate boundaries us
 
 ```@docs
 CombinedBivariateMethod
-combine_bivariate_structs!
+combine_bivariate_boundaries!
 ```

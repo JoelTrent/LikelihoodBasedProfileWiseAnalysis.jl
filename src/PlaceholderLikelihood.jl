@@ -50,7 +50,7 @@ export initialiseLikelihoodModel,
     check_univariate_parameter_coverage,
 
     bivariate_confidenceprofiles!, sample_bivariate_internal_points!,
-    combine_bivariate_structs!,
+    combine_bivariate_boundaries!,
     check_bivariate_parameter_coverage, check_bivariate_boundary_coverage,
     
     dimensional_likelihood_sample!, bivariate_concave_hull,
@@ -98,7 +98,7 @@ include("bivariate_methods/MPP_TSP.jl")
 include("bivariate_methods/bivariate_concave_hull.jl")
 include("bivariate_methods/construct_polygon_hull.jl")
 include("bivariate_methods/sample_internal_points.jl")
-include("bivariate_methods/combine_bivariate_structs.jl")
+include("bivariate_methods/combine_bivariate_boundaries.jl")
 
 # SAMPLING METHODS ########################################################################
 include("dimensional_methods/full_likelihood_sampling.jl")

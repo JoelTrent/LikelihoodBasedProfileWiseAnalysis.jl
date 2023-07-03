@@ -17,6 +17,7 @@ end
         θcombination::Tuple{Int, Int},
         not_evaluated_internal_points::Bool, 
         not_evaluated_predictions::Bool,
+        boundary_not_ordered::Bool,
         confidence_level::Float64, 
         profile_type::AbstractProfileType,
         method::AbstractBivariateMethod, 

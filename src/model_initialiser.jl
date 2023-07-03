@@ -25,7 +25,7 @@ end
 Initialises the dictionary entry in `model.biv_profile_row_exists` for the key `((ind1, ind2), profile_type, method)`, where `(ind1, ind2)` is a combination in `θcombinations`, with a `DefaultDict` with key of type `Float64` (a confidence level) and default value of 0.
 """
 function init_biv_profile_row_exists!(model::LikelihoodModel, 
-                                        θcombinations::Vector{Vector{Int}},
+                                        θcombinations::Union{Vector{Vector{Int}},Vector{Tuple{Int,Int}}},
                                         profile_type::AbstractProfileType,
                                         method::AbstractBivariateMethod)
     for (ind1, ind2) in θcombinations

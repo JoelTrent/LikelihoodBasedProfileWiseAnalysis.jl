@@ -275,6 +275,7 @@ Returns a view of `df` that includes only valid rows ∈ `1:num_used_rows`, and 
 # Keyword Arguments
 - `for_prediction_generation`: a boolean specifying whether only rows which have not had predictions evaluated are allowed. As predictions do not need to be generated for rows which already have them evaluated. 
 - `for_prediction_plots`: a boolean specifying whether only rows which have had predictions evaluated are allowed. As prediction plots can only include rows which have evaluated predictions. 
+- `remove_combined_method`: a boolean specifiying whether rows with `method` of type [`CombinedBivariateMethod`](@ref) should be removed. Needed by [`combine_bivariate_boundaries!`](@ref) to ensure that combined boundaries are not removed from `df`.
 - `include_lower_confidence_levels`: a boolean specifying whether all confidence levels less than or equal to `confidence_levels` are allowed. Useful for prediction plots if a given set of bivariate profiles has few internal points evaluated, meaning some information about predictions may be missing. Bivariate profiles at lower confidence levels are by definition inside the desired confidence interval and may provide additional information on predictions.
 """
 function desired_df_subset(df::DataFrame, 
@@ -285,6 +286,7 @@ function desired_df_subset(df::DataFrame,
                             methods::Vector{<:AbstractBivariateMethod}=AbstractBivariateMethod[];
                             for_prediction_generation::Bool=false,
                             for_prediction_plots::Bool=false,
+                            remove_combined_method::Bool=false,
                             include_lower_confidence_levels::Bool=false)
 
     df_sub = @view(df[1:num_used_rows, :])    
@@ -311,6 +313,9 @@ function desired_df_subset(df::DataFrame,
     end
     if !isempty(methods)
         row_subset .= row_subset .& (typeof.(df_sub.method) .∈ Ref(typeof.(methods)))
+    end
+    if remove_combined_method
+        row_subset .= row_subset .& (typeof.(df_sub.method) .∉ Ref([CombinedBivariateMethod]))
     end
 
     return @view(df_sub[row_subset, :])

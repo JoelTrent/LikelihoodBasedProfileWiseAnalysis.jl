@@ -103,3 +103,9 @@ PlaceholderLikelihood.refine_search_directions!
 PlaceholderLikelihood.construct_polygon_hull
 PlaceholderLikelihood.bivariate_concave_hull
 ```
+
+## Merging Boundaries From Multiple Methods
+
+```@docs
+PlaceholderLikelihood.rebuild_bivariate_datastructures!
+```
