@@ -94,13 +94,13 @@ include("bivariate_methods/continuation.jl")
 include("bivariate_methods/iterativeboundary.jl")
 include("bivariate_methods/bivariate_profile_likelihood.jl")
 include("bivariate_methods/MPP_TSP.jl")
+include("bivariate_methods/bivariate_concave_hull.jl")
 include("bivariate_methods/construct_polygon_hull.jl")
 include("bivariate_methods/sample_internal_points.jl")
 
 # SAMPLING METHODS ########################################################################
 include("dimensional_methods/full_likelihood_sampling.jl")
 include("dimensional_methods/dimensional_likelihood_sampling.jl")
-include("dimensional_methods/bivariate_concave_hull.jl")
 
 # COVERAGE CHECKS #########################################################################
 include("coverage_checks/parameters/univariate.jl")
