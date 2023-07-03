@@ -280,6 +280,25 @@ using EllipseSampling
             @test isapprox(m.core.θlb, [-100.0, -50.0])
             @test isapprox(m.core.θub, [2.0, 4.0])
         end
+
+        @testset "combine_bivariate_boundaries_EllipseLikelihood" begin
+            m = initialiseLikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes, show_progress=false)
+
+            bivariate_confidenceprofiles!(m, 10)
+            bivariate_confidenceprofiles!(m, 10, method=SimultaneousMethod())
+            combine_bivariate_boundaries!(m)
+            @test m.num_biv_profiles == 1
+            @test length(m.biv_profiles_df.row_ind) == 1
+            @test length(keys(m.biv_profiles_dict)) == 1
+            @test haskey(m.biv_profiles_dict, 1) && size(m.biv_profiles_dict[1].confidence_boundary, 2) == 20
+
+            bivariate_confidenceprofiles!(m, 10, method=SimultaneousMethod())
+            @test length(m.biv_profiles_df.row_ind) == 2
+            combine_bivariate_boundaries!(m)
+            @test length(m.biv_profiles_df.row_ind) == 1
+            @test m.biv_profiles_df[1, :num_points] == 30
+            @test m.biv_profiles_df[1, :row_ind] == 1
+        end
     end
     
     # REAL LIKELIHOOD
