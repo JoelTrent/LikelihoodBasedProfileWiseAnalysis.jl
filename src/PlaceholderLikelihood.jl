@@ -26,8 +26,8 @@ export EllipseMLEApprox, CoreLikelihoodModel, LikelihoodModel,
     UnivariateConfidenceStruct, BivariateConfidenceStruct, SampledConfidenceStruct,
     
     AbstractBivariateMethod, AbstractBivariateVectorMethod, bivariate_methods,
-    IterativeBoundaryMethod, RadialMLEMethod, RadialRandomMethod, SimultaneousMethod, Fix1AxisMethod,
-    AnalyticalEllipseMethod, ContinuationMethod, 
+    CombinedBivariateMethod, IterativeBoundaryMethod, RadialMLEMethod, RadialRandomMethod, 
+    SimultaneousMethod, Fix1AxisMethod, AnalyticalEllipseMethod, ContinuationMethod,
 
     AbstractBivariateHullMethod, ConvexHullMethod, ConcaveHullMethod, MPPHullMethod,
     
@@ -50,6 +50,7 @@ export initialiseLikelihoodModel,
     check_univariate_parameter_coverage,
 
     bivariate_confidenceprofiles!, sample_bivariate_internal_points!,
+    combine_bivariate_structs!,
     check_bivariate_parameter_coverage, check_bivariate_boundary_coverage,
     
     dimensional_likelihood_sample!, bivariate_concave_hull,

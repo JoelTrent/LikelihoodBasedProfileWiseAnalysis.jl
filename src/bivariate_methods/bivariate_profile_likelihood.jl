@@ -187,7 +187,8 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
                                     bivariate_optimiser, model, 
                                     num_points, consistent, ind1, ind2,
                                     mle_targetll, save_internal_points, channel,
-                                    num_radial_directions=method.num_radial_directions)
+                                    num_radial_directions=method.num_radial_directions,
+                                    use_MLE_point=method.use_MLE_point)
 
         elseif method isa RadialMLEMethod
             boundary, internal = bivariate_confidenceprofile_vectorsearch(
@@ -268,7 +269,6 @@ Finds `num_points` `profile_type` boundary points at a specified `confidence_lev
 - `use_distributed`: boolean variable specifying whether to use a normal for loop or a `@distributed` for loop across combinations of interest parameters. The variable makes no difference if Distributed.jl is not being used - it's intended for use when simulating parameter confidence boundary coverage (see [`check_bivariate_parameter_coverage`](@ref)). 
 
 !!! note "existing_profiles meanings"
-
     - :ignore means profiles that already exist will not be recomputed even if they contain fewer `num_points` boundary points. 
     - :merge means profiles that already exist will be merged with profiles from the current algorithm run to reach `num_points`. If the existing profile already has at least `num_points` boundary points then that profile will not be recomputed. Otherwise, the specified method will be run starting from the difference between `num_points` and the number of points in the existing profile. The result of that method run will be merged with the existing profile.  
     - :overwrite means profiles that already exist will be overwritten, regardless of how many points they contain.
@@ -294,6 +294,8 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
                                         use_distributed::Bool=true)
                                     
     existing_profiles ∈ [:ignore, :merge, :overwrite] || throw(ArgumentError("existing_profiles can only take value :ignore, :merge or :overwrite"))
+
+    method isa CombinedBivariateMethod && throw(ArgumentError("CombinedBivariateMethod is not a valid method"))
 
     # need at least 3 boundary points for some algorithms to work
     num_points = max(3, num_points)

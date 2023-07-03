@@ -9,6 +9,8 @@ Supertype for bivariate boundary finding methods. Use `bivariate_methods()` for 
 
 [`AbstractBivariateVectorMethod`](@ref)
 
+[`CombinedBivariateMethod`](@ref)
+
 [`Fix1AxisMethod`](@ref)
 
 [`ContinuationMethod`](@ref)
@@ -39,6 +41,13 @@ Supertype for bivariate boundary finding methods that search between two distinc
 abstract type AbstractBivariateVectorMethod <: AbstractBivariateMethod end
 
 """
+    CombinedBivariateMethod()
+
+A method representing a [`BivariateConfidenceStruct`](@ref) that has been destructively merged from one or more boundaries found with a [`AbstractBivariateMethod`](@ref). Does not represent a method usable by [`bivariate_confidenceprofiles!`](@ref).
+"""
+struct CombinedBivariateMethod <: AbstractBivariateMethod end
+
+"""
     IterativeBoundaryMethod(initial_num_points::Int, 
         angle_points_per_iter::Int, 
         edge_points_per_iter::Int, 
@@ -46,7 +55,7 @@ abstract type AbstractBivariateVectorMethod <: AbstractBivariateMethod end
         ellipse_sqrt_distortion::Float64=1.0;
         use_ellipse::Bool=false)
 
-Method for iteratively improving an initial boundary of `initial_num_points`, found by pushing out from the MLE point in directions defined by either [`RadialMLEMethod`](@ref), `use_ellipse=true`, or [`RadialRandomMethod`], `use_ellipse=false` (see [`PlaceholderLikelihood.findNpointpairs_radialMLE!`](@ref), [`PlaceholderLikelihood.iterativeboundary_init`](@ref) and [`PlaceholderLikelihood.bivariate_confidenceprofile_iterativeboundary`](@ref)).
+Method for iteratively improving an initial boundary of `initial_num_points`, found by pushing out from the MLE point in directions defined by either [`RadialMLEMethod`](@ref), when `use_ellipse=true`, or [`RadialRandomMethod`], when `use_ellipse=false` (see [`PlaceholderLikelihood.findNpointpairs_radialMLE!`](@ref), [`PlaceholderLikelihood.iterativeboundary_init`](@ref) and [`PlaceholderLikelihood.bivariate_confidenceprofile_iterativeboundary`](@ref)).
 
 # Arguments
 - `initial_num_points`: a positive integer number of initial boundary points to find. 
@@ -56,7 +65,7 @@ Method for iteratively improving an initial boundary of `initial_num_points`, fo
 - `ellipse_sqrt_distortion`: a number ∈ [0.0,1.0]. Default is `0.01`. 
 
 # Keyword Arguments
-- `use_ellipse`: Whether to find `initial_num_points` by searching in directions defined by an ellipse approximation, as in [`RadialMLEMethod`](@ref), or , as in [`RadialRandomMethod`](@ref). Default is `false`.
+- `use_ellipse`: Whether to find `initial_num_points` by searching in directions defined by an ellipse approximation, as in [`RadialMLEMethod`](@ref), or as in [`RadialRandomMethod`](@ref). Default is `false`.
 
 # Details
 
@@ -195,6 +204,7 @@ Method for finding the bivariate boundary of a confidence profile by finding int
 
 # Arguments
 - `num_radial_directions`: an integer greater than zero. 
+- `use_MLE_point`: whether to use the MLE point as the first internal point found or not. Default is true (use).
 
 # Details
 
@@ -218,7 +228,7 @@ If a parameter bound is in the way of reaching the boundary in a given search di
 
 # Internal Points
 
-Finds a minimum of `div(num_points, num_radial_directions, RoundUp)` internal points.
+Finds a minimum of `div(num_points, num_radial_directions, RoundUp) - 1*use_MLE_point` internal points.
 
 # Supertype Hiearachy
 
@@ -226,9 +236,10 @@ Finds a minimum of `div(num_points, num_radial_directions, RoundUp)` internal po
 """
 struct RadialRandomMethod <: AbstractBivariateVectorMethod
     num_radial_directions::Int
-    function RadialRandomMethod(num_radial_directions::Int) 
+    use_MLE_point::Bool
+    function RadialRandomMethod(num_radial_directions::Int, use_MLE_point::Bool=true)
         num_radial_directions > 0 ||  throw(DomainError("num_radial_directions must be greater than zero")) 
-        return new(num_radial_directions)
+        return new(num_radial_directions, use_MLE_point)
     end
 end
 
@@ -423,7 +434,7 @@ end
 """
     bivariate_methods()
 
-Prints a list of available bivariate methods. Available bivariate methods include [`IterativeBoundaryMethod`](@ref), [`RadialRandomMethod`](@ref), [`RadialMLEMethod`](@ref), [`SimultaneousMethod`](@ref), [`Fix1AxisMethod`](@ref), [`ContinuationMethod`](@ref) and [`AnalyticalEllipseMethod`](@ref).
+Prints a list of available bivariate methods. Available bivariate methods include [`IterativeBoundaryMethod`](@ref), [`RadialRandomMethod`](@ref), [`RadialMLEMethod`](@ref), [`SimultaneousMethod`](@ref), [`Fix1AxisMethod`](@ref), [`ContinuationMethod`](@ref) and [`AnalyticalEllipseMethod`](@ref). Note: [`CombinedBivariateMethod`](@ref) represents a destructive merge of the boundary structs of one or more methods and is not a valid method for [`bivariate_confidenceprofiles!`](@ref).
 """
 function bivariate_methods()
     methods = [IterativeBoundaryMethod, RadialRandomMethod, RadialMLEMethod, SimultaneousMethod, Fix1AxisMethod, ContinuationMethod, AnalyticalEllipseMethod]

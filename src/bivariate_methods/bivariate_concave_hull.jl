@@ -1,5 +1,19 @@
-function bivariate_concave_hull(points::AbstractArray{Float64}, ll::Vector{<:Float64}, min_proportion_to_keep::Real, min_scaling_from_desired_ll::Real, target_ll::Float64,
-    sample_type::AbstractSampleType)
+"""
+    bivariate_concave_hull(points::AbstractArray{Float64}, 
+        ll::Vector{<:Float64},
+        min_proportion_to_keep::Real, 
+        min_scaling_from_desired_ll::Real, 
+        target_ll::Float64,
+        sample_type::AbstractSampleType=LatinHypercubeSamples())
+
+The implementation of [`ConcaveHullMethod()`](@ref), largely intended for use with dimensional sampling point clouds, but available for use with other methods as well. Uses a heuristic defined number of neighbours with the concave hull algorithm from [ConcaveHull.jl](https://github.com/lstagner/ConcaveHull.jl) on the collection of points given by both boundary and saved internal points, returning the approximate boundary polygon hull as a 2*n array.
+"""
+function bivariate_concave_hull(points::AbstractArray{Float64}, 
+                                ll::Vector{<:Float64},
+                                min_proportion_to_keep::Real, 
+                                min_scaling_from_desired_ll::Real, 
+                                target_ll::Float64,
+                                sample_type::AbstractSampleType=LatinHypercubeSamples())
 
     (0.0 < min_proportion_to_keep && min_proportion_to_keep ≤ 1.0) || throw(DomainError("min_proportion_to_keep must be in the interval (0.0,1.0]"))
 
@@ -42,6 +56,16 @@ function bivariate_concave_hull(points::AbstractArray{Float64}, ll::Vector{<:Flo
     return hull_points
 end
 
+"""
+    bivariate_concave_hull(sampled_struct::SampledConfidenceStruct, 
+        θindices::Vector{Int},
+        min_proportion_to_keep::Real, 
+        min_scaling_from_desired_ll::Real, 
+        target_ll::Float64, 
+        sample_type::AbstractSampleType)
+
+Method which unpacks a `sampled_struct` into the format required to call the other method of [`PlaceholderLikelihood.bivariate_concave_hull`](@ref).
+"""
 function bivariate_concave_hull(sampled_struct::SampledConfidenceStruct, θindices::Vector{Int},
     min_proportion_to_keep::Real, min_scaling_from_desired_ll::Real, target_ll::Float64, sample_type::AbstractSampleType)
 

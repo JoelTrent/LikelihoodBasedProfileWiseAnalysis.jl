@@ -96,3 +96,10 @@ PlaceholderLikelihood.star_obj
 PlaceholderLikelihood.boundary_smoother!
 PlaceholderLikelihood.refine_search_directions!
 ```
+
+## Sampling Internal Points From Boundaries
+
+```@docs
+PlaceholderLikelihood.construct_polygon_hull
+PlaceholderLikelihood.bivariate_concave_hull
+```
