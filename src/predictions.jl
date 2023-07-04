@@ -133,16 +133,18 @@ end
 """
 """
 function generate_predictions_univariate!(model::LikelihoodModel,
-                                            t::Vector,
+                                            t::AbstractVector,
                                             proportion_to_keep::Real;
                                             confidence_levels::Vector{<:Float64}=Float64[],
                                             profile_types::Vector{<:AbstractProfileType}=AbstractProfileType[],
-                                            show_progress=model.show_progress)
+                                            overwrite_predictions::Bool=false,
+                                            show_progress::Bool=model.show_progress)
 
     check_prediction_function_exists(model) || return nothing
 
     (0.0 <= proportion_to_keep <= 1.0) || throw(DomainError("proportion_to_keep must be in the interval (0.0,1.0)"))
-    sub_df = desired_df_subset(model.uni_profiles_df, model.num_uni_profiles, Int[], confidence_levels, profile_types, for_prediction_generation=true)
+    sub_df = desired_df_subset(model.uni_profiles_df, model.num_uni_profiles, Int[], confidence_levels, profile_types, 
+                                for_prediction_generation=!overwrite_predictions)
 
     if nrow(sub_df) < 1
         return nothing
@@ -176,17 +178,19 @@ function generate_predictions_univariate!(model::LikelihoodModel,
 end
 
 function generate_predictions_bivariate!(model::LikelihoodModel,
-                                            t::Vector,
+                                            t::AbstractVector,
                                             proportion_to_keep::Real;
                                             confidence_levels::Vector{<:Float64}=Float64[],
                                             profile_types::Vector{<:AbstractProfileType}=AbstractProfileType[],
                                             methods::Vector{<:AbstractBivariateMethod}=AbstractBivariateMethod[],
-                                            show_progress=model.show_progress)
+                                            overwrite_predictions::Bool=false,
+                                            show_progress::Bool=model.show_progress)
 
     check_prediction_function_exists(model) || return nothing
     
     (0.0 <= proportion_to_keep <= 1.0) || throw(DomainError("proportion_to_keep must be in the interval (0.0,1.0)"))
-    sub_df = desired_df_subset(model.biv_profiles_df, model.num_biv_profiles, Tuple{Int, Int}[], confidence_levels, profile_types, methods, for_prediction_generation=true)
+    sub_df = desired_df_subset(model.biv_profiles_df, model.num_biv_profiles, Tuple{Int, Int}[], 
+                                confidence_levels, profile_types, methods, for_prediction_generation=!overwrite_predictions)
 
     if nrow(sub_df) < 1
         return nothing
@@ -221,16 +225,18 @@ function generate_predictions_bivariate!(model::LikelihoodModel,
 end
 
 function generate_predictions_dim_samples!(model::LikelihoodModel,
-                                            t::Vector,
+                                            t::AbstractVector,
                                             proportion_to_keep::Real;
                                             confidence_levels::Vector{<:Float64}=Float64[],
                                             sample_types::Vector{<:AbstractSampleType}=AbstractSampleType[],
-                                            show_progress=model.show_progress)
+                                            overwrite_predictions::Bool=false,
+                                            show_progress::Bool=model.show_progress)
 
     check_prediction_function_exists(model) || return nothing
     
     (0.0 <= proportion_to_keep <= 1.0) || throw(DomainError("proportion_to_keep must be in the interval (0.0,1.0)"))
-    sub_df = desired_df_subset(model.dim_samples_df, model.num_dim_samples, confidence_levels, sample_types, for_prediction_generation=true)
+    sub_df = desired_df_subset(model.dim_samples_df, model.num_dim_samples, confidence_levels, sample_types, 
+                                for_prediction_generation=!overwrite_predictions)
 
     if nrow(sub_df) < 1
         return nothing

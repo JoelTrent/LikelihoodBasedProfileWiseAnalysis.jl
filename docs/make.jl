@@ -28,6 +28,7 @@ makedocs(;
                 "Dimensional Samples" => "user_interface/profiles_and_samples/dimensional.md"],
             "Predictions" => "user_interface/predictions.md",
             "Plots" => "user_interface/plots.md",
+            "Saving and Loading LikelihoodModels"=> "user_interface/saving_and_loading.md",
             "Simulated Coverage Checks" => 
                 ["Parameter Confidence Intervals" => "user_interface/coverage/univariate_intervals.md"] ],
         "Internal Library" => 

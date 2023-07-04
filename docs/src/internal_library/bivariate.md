@@ -107,5 +107,6 @@ PlaceholderLikelihood.bivariate_concave_hull
 ## Merging Boundaries From Multiple Methods
 
 ```@docs
+PlaceholderLikelihood.predictions_can_be_merged
 PlaceholderLikelihood.rebuild_bivariate_datastructures!
 ```

@@ -282,7 +282,8 @@ using EllipseSampling
         end
 
         @testset "combine_bivariate_boundaries_EllipseLikelihood" begin
-            m = initialiseLikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes, show_progress=false)
+            function predict_func(θ, data, t=[1.5]); return sum(θ) .* t end # exact output is not important here
+            m = initialiseLikelihoodModel(PlaceholderLikelihood.ellipse_loglike, predict_func, data, θnames, θG, lb, ub, par_magnitudes, show_progress=false)
 
             bivariate_confidenceprofiles!(m, 10)
             bivariate_confidenceprofiles!(m, 10, method=SimultaneousMethod())
@@ -298,6 +299,20 @@ using EllipseSampling
             @test length(m.biv_profiles_df.row_ind) == 1
             @test m.biv_profiles_df[1, :num_points] == 30
             @test m.biv_profiles_df[1, :row_ind] == 1
+
+            generate_predictions_bivariate!(m, [1.2], 1.0)
+            bivariate_confidenceprofiles!(m, 10, method=SimultaneousMethod())
+            combine_bivariate_boundaries!(m, not_evaluated_predictions=true)
+            @test length(m.biv_profiles_df.row_ind) == 2
+            combine_bivariate_boundaries!(m, not_evaluated_predictions=false)
+            @test length(m.biv_profiles_df.row_ind) == 2
+
+            generate_predictions_bivariate!(m, [1.2, 2.4], 1.0)
+            combine_bivariate_boundaries!(m, not_evaluated_predictions=false)
+            @test length(m.biv_profiles_df.row_ind) == 2
+            generate_predictions_bivariate!(m, [1.2], 1.0, overwrite_predictions=true, methods=[SimultaneousMethod()])
+            combine_bivariate_boundaries!(m, not_evaluated_predictions=false)
+            @test length(m.biv_profiles_df.row_ind) == 1
         end
     end
     

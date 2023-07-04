@@ -223,14 +223,14 @@ function initialiseLikelihoodModel(loglikefunction::Function,
     num_biv_profiles = 0
     num_dim_samples = 0
 
-    uni_profiles_df = isnan(uni_row_prealloaction_size) ? init_uni_profiles_df(num_pars) : init_uni_profiles_df(uni_row_prealloaction_size)
+    uni_profiles_df = isnan(uni_row_prealloaction_size) ? init_uni_profiles_df(1) : init_uni_profiles_df(uni_row_prealloaction_size)
     # if zero, is invalid row
     uni_profile_row_exists = Dict{Tuple{Int, AbstractProfileType}, DefaultDict{Float64, Int}}()    
     # uni_profile_row_exists = DefaultDict{Tuple{Int, Float64, AbstractProfileType}, Int}(0)
     uni_profiles_dict = Dict{Int, UnivariateConfidenceStruct}()
 
     num_combinations = binomial(num_pars, 2)
-    biv_profiles_df = isnan(biv_row_preallocation_size) ? init_biv_profiles_df(num_combinations) : init_biv_profiles_df(biv_row_preallocation_size)
+    biv_profiles_df = isnan(biv_row_preallocation_size) ? init_biv_profiles_df(1) : init_biv_profiles_df(biv_row_preallocation_size)
     # if zero, is invalid row
     biv_profile_row_exists = Dict{Tuple{Tuple{Int, Int}, AbstractProfileType, AbstractBivariateMethod}, DefaultDict{Float64, Int}}()
     biv_profiles_dict = Dict{Int, BivariateConfidenceStruct}()

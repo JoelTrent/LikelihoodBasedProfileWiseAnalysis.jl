@@ -8,6 +8,7 @@ Pages = ["initialisation.md"]
 initialiseLikelihoodModel
 LikelihoodModel
 CoreLikelihoodModel
+BaseLikelihoodModel
 ```
 
 ## Ellipse Approximation

@@ -8,7 +8,7 @@ Warns via a message if any of the bounds returned given the provided forward tra
 """
 function checkforInf(x::AbstractVector{<:Real})
     if any(isinf.(x))
-        @warn "the specified transformation causes some of the returned bounds to be +/-Inf. It is recommended to prevent this from occurring by altering the initial bounds."
+        @warn "the specified transformation causes some of the returned bounds to be +/-Inf. Altering the initial bounds is recommended to prevent this from occurring."
     end
     return nothing
 end

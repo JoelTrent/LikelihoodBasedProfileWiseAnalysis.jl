@@ -20,7 +20,7 @@ end
     CoreLikelihoodModel(loglikefunction::Function, 
         predictfunction::Union{Function, Missing}, 
         data::Union{Tuple, NamedTuple}, 
-        θnames::Vector{<:Symbol}, 
+        θnames::AbstractVector
         θname_to_index::Dict{Symbol, Int}, 
         θlb::AbstractVector{<:Real}, 
         θub::AbstractVector{<:Real}, 
@@ -54,7 +54,7 @@ struct CoreLikelihoodModel
     loglikefunction::Function
     predictfunction::Union{Function, Missing}
     data::Union{Tuple, NamedTuple}
-    θnames::Vector{<:Symbol}
+    θnames::AbstractVector
     θname_to_index::Dict{Symbol, Int}
     θlb::AbstractVector{<:Real}
     θub::AbstractVector{<:Real}
@@ -66,7 +66,38 @@ struct CoreLikelihoodModel
 end
 
 """
-    LikelihoodModel(core::CoreLikelihoodModel, 
+    BaseLikelihoodModel(data::Union{Tuple, NamedTuple}, 
+        θnames::AbstractVector,
+        θname_to_index::Dict{Symbol, Int}, 
+        θlb::AbstractVector{<:Real}, 
+        θub::AbstractVector{<:Real}, 
+        θmagnitudes::AbstractVector{<:Real}, 
+        θmle::Vector{<:Float64}, 
+        ymle::Array{<:Real}, 
+        maximisedmle::Float64, 
+        num_pars::Int)
+
+Version of [`CoreLikelihoodModel`](@ref) without functions, allowing loading of the model struct without those functions defined.
+
+# Supertype Hiearachy
+
+`BaseLikelihoodModel <: Any`
+"""
+struct BaseLikelihoodModel
+    data::Union{Tuple, NamedTuple}
+    θnames::AbstractVector
+    θname_to_index::Dict{Symbol, Int}
+    θlb::AbstractVector{<:Real}
+    θub::AbstractVector{<:Real}
+    θmagnitudes::AbstractVector{<:Real}
+    θmle::Vector{<:Float64}
+    ymle::Array{<:Real}
+    maximisedmle::Float64
+    num_pars::Int
+end
+
+"""
+    LikelihoodModel(core::Union{CoreLikelihoodModel, BaseLikelihoodModel}, 
         ellipse_MLE_approx::Union{Missing, EllipseMLEApprox},
         num_uni_profiles::Int, 
         num_biv_profiles::Int, 
@@ -85,11 +116,11 @@ end
         dim_predictions_dict::Dict{Int, AbstractPredictionStruct},
         show_progress::Bool)
 
-Struct containing all the information required to compute profiles, samples and predictions. Created by [`initialiseLikelihoodModel`](@ref).
+Mutable struct containing all the information required to compute profiles, samples and predictions. Created by [`initialiseLikelihoodModel`](@ref).
 
 # Fields
-- `core`: a [`CoreLikelihoodModel`] struct.
-- `ellipse_MLE_approx`: a [`EllipseMLEApprox`] struct OR a missing value if the ellipse approximation of the log-likelihood at the MLE point has not been evaluated yet. 
+- `core`: a [`CoreLikelihoodModel`](@ref) or [`BaseLikelihoodModel`](@ref) struct.
+- `ellipse_MLE_approx`: a [`EllipseMLEApprox`](@ref) struct OR a missing value if the ellipse approximation of the log-likelihood at the MLE point has not been evaluated yet. 
 - `num_uni_profiles`: the number of different univariate profiles that have been evaluated (distinct combinations of different confidence levels, [`AbstractProfileType`](@ref) structs and single interest parameters). Specifies the number of valid rows in `uni_profiles_df`.  
 - `num_biv_profiles`: the number of different bivariate profiles that have been evaluated (distinct combinations of different confidence levels, [`AbstractProfileType`](@ref) structs, [`AbstractBivariateMethod`](@ref) structs and two interest parameters). Specifies the number of valid rows in `biv_profiles_df`.  
 - `num_dim_samples`: the number of different dimensional profiles that have been evaluated (distinct combinations of different confidence levels, [`AbstractProfileType`](@ref) structs, [`AbstractSampleType`](@ref) structs and sets of interest parameters). Specifies the number of valid rows in `dim_samples_df`.  
@@ -99,12 +130,12 @@ Struct containing all the information required to compute profiles, samples and 
 - `uni_profile_row_exists`: a dictionary containing information on whether a row in `uni_profiles_df` exists for a given combination of interest parameter, [`AbstractProfileType`](@ref) and confidence level. If it does exist, it's value will be the row index in `uni_profiles_df` otherwise it will be `0`.
 - `biv_profile_row_exists`: a dictionary containing information on whether a row in `biv_profiles_df` exists for a given combination of two interest parameters, [`AbstractProfileType`](@ref), [`AbstractBivariateMethod`](@ref) and confidence level. If it does exist, it's value will be the row index in `biv_profiles_df` otherwise it will be `0`.
 - `dim_samples_row_exists`: a dictionary containing information on whether a row in `dim_samples_df` exists for a given combination of interest parameter, [`AbstractProfileType`](@ref), [`AbstractSampleType`](@ref) and confidence level. If it does exist, it's value will be the row index in `dim_samples_df` otherwise it will be `0`.
-- `uni_profiles_dict`: a dictionary with keys of type Integer and values of type [`UnivariateConfidenceStruct`] containing the profile for each valid row in `uni_profiles_df`. The row index of `uni_profiles_df` is the key for the corresponding profile.
-- `biv_profiles_dict`: a dictionary with keys of type Integer and values of type [`BivariateConfidenceStruct`] containing the profile for each valid row in `biv_profiles_df`. The row index of `biv_profiles_df` is the key for the corresponding profile.
-- `dim_samples_dict`: a dictionary with keys of type Integer and values of type [`SampledConfidenceStruct`] containing the profile for each valid row in `dim_samples_df`. The row index of `dim_samples_df` is the key for the corresponding profile.
-- `uni_predictions_dict`: a dictionary with keys of type Integer and values of type [`PredictionStruct`] (@ref) containing the predictions from the profiles in `uni_profiles_dict` for each valid row in `uni_profiles_df`. The row index of `uni_profiles_df` is the key for the corresponding prediction, if that prediction has been calculated using [`generate_predictions_univariate!`](@ref). 
-- `biv_predictions_dict`: a dictionary with keys of type Integer and values of type [`PredictionStruct`] (@ref) containing the predictions from the profiles in `biv_profiles_dict` for each valid row in `biv_profiles_df`. The row index of `biv_profiles_df` is the key for the corresponding prediction, if that prediction has been calculated using [`generate_predictions_bivariate!`](@ref). 
-- `dim_predictions_dict`: a dictionary with keys of type Integer and values of type [`PredictionStruct`] (@ref) containing the predictions from the profiles in `dim_samples_dict` for each valid row in `dim_samples_df`. The row index of `dim_samples_df` is the key for the corresponding prediction, if that prediction has been calculated using [`generate_predictions_dim_samples!`](@ref). 
+- `uni_profiles_dict`: a dictionary with keys of type Integer and values of type [`UnivariateConfidenceStruct`](@ref) containing the profile for each valid row in `uni_profiles_df`. The row index of `uni_profiles_df` is the key for the corresponding profile.
+- `biv_profiles_dict`: a dictionary with keys of type Integer and values of type [`BivariateConfidenceStruct`](@ref) containing the profile for each valid row in `biv_profiles_df`. The row index of `biv_profiles_df` is the key for the corresponding profile.
+- `dim_samples_dict`: a dictionary with keys of type Integer and values of type [`SampledConfidenceStruct`](@ref) containing the profile for each valid row in `dim_samples_df`. The row index of `dim_samples_df` is the key for the corresponding profile.
+- `uni_predictions_dict`: a dictionary with keys of type Integer and values of type [`PredictionStruct`](@ref) containing the predictions from the profiles in `uni_profiles_dict` for each valid row in `uni_profiles_df`. The row index of `uni_profiles_df` is the key for the corresponding prediction, if that prediction has been calculated using [`generate_predictions_univariate!`](@ref). 
+- `biv_predictions_dict`: a dictionary with keys of type Integer and values of type [`PredictionStruct`](@ref) containing the predictions from the profiles in `biv_profiles_dict` for each valid row in `biv_profiles_df`. The row index of `biv_profiles_df` is the key for the corresponding prediction, if that prediction has been calculated using [`generate_predictions_bivariate!`](@ref). 
+- `dim_predictions_dict`: a dictionary with keys of type Integer and values of type [`PredictionStruct`](@ref) containing the predictions from the profiles in `dim_samples_dict` for each valid row in `dim_samples_df`. The row index of `dim_samples_df` is the key for the corresponding prediction, if that prediction has been calculated using [`generate_predictions_dim_samples!`](@ref). 
 - `show_progress`: a boolean specifying whether to show the progress of profile methods with respect to sets of interest parameter(s).
 
 # Supertype Hiearachy
@@ -112,7 +143,7 @@ Struct containing all the information required to compute profiles, samples and 
 `LikelihoodModel <: Any`
 """
 mutable struct LikelihoodModel
-    core::CoreLikelihoodModel
+    core::Union{CoreLikelihoodModel,BaseLikelihoodModel}
     ellipse_MLE_approx::Union{Missing, EllipseMLEApprox}
 
     num_uni_profiles::Int

@@ -1,4 +1,24 @@
 """
+    predictions_can_be_merged(model::LikelihoodModel, rows::AbstractVector{<:Int})
+
+Returns true if all the prediction struct arrays have the same size in the 1st (and 3rd if relevant) dimensions. Return false otherwise.
+"""
+function predictions_can_be_merged(model::LikelihoodModel, combo_row::Int, rows::AbstractVector{<:Int})
+
+    all_rows = combo_row != 0 ? vcat([combo_row], rows) : rows .* 1
+    expected_size = size(model.biv_predictions_dict[all_rows[1]].extrema)
+    
+    for row in all_rows[2:end]
+        if expected_size != size(model.biv_predictions_dict[row].extrema)
+            return false, (all_rows[1], row)
+        end
+    end
+
+    return true, (0, 0)
+end
+
+
+"""
     rebuild_bivariate_datastructures!(model::LikelihoodModel)
 
 Rebuilds all the bivariate datastructures so that the :row_ind of rows in `model.biv_profiles_df` begins at 1 and increases in increments of 1, updating dictionary keys with the new row indexes. 
@@ -44,6 +64,9 @@ Combines the `confidence_level` bivariate boundaries of `profile_type` found usi
 - `profile_type`: the profile type of boundaries to combine. Default is `LogLikelihood()` ([`LogLikelihood`](@ref)).
 - `methods`: a vector of methods of type [`AbstractBivariateMethod`](@ref) for combining boundaries found using those method types. `methods` should not contain [`CombinedBivariateMethod`](@ref), but the case where it is included in `methods` is handled (it will be removed from the vector). Default is AbstractBivariateMethod[] (boundaries found using all methods are combined).
 - `not_evaluated_predictions`: a boolean specifiying whether to combine only boundaries that have either had or not had predictions evaluated. If predictions are evaluated for the combined struct (if it exists) but not for the rows to combine with it, they will not be combined, and vice versa. Default is true.
+
+!!! info "Combining predictions"
+    If predictions have been evaluated: the time points at which predictions have been evaluated at must be the same for all of the boundaires that are being combined.
 """
 function combine_bivariate_boundaries!(model::LikelihoodModel;
                                         confidence_level::Float64=0.95,
@@ -98,6 +121,17 @@ function combine_bivariate_boundaries!(model::LikelihoodModel;
 
         desired_rows = sub_df.θindices .== Ref(θcombinations[i])
         rows = rows_to_combine[desired_rows]
+
+        if !not_evaluated_predictions
+            merge_allowed, error_rows = predictions_can_be_merged(model, combo_row, rows)
+            if !merge_allowed
+                @warn string("the boundaries for parameter combination ", θcombinations[i], 
+                                " could not be combined because the evaluated predictions of bivariate profile row ", 
+                                error_rows[1], " and ", error_rows[2], " have different dimensions and cannot be safely merged")
+                continue
+            end
+        end
+        
         row_was_combined[rows] .= true
         for row in rows
             model.biv_profile_row_exists[(θcombinations[i], profile_type, model.biv_profiles_df[row, :method])][confidence_level] = 0

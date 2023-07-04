@@ -18,7 +18,7 @@ using ProgressMeter
 const global PROGRESS__METER__DT = 1.0
 
 # TYPES ###################################################################################
-export EllipseMLEApprox, CoreLikelihoodModel, LikelihoodModel, 
+export EllipseMLEApprox, CoreLikelihoodModel, BaseLikelihoodModel, LikelihoodModel,
 
     AbstractProfileType, AbstractEllipseProfileType, LogLikelihood, EllipseApprox, EllipseApproxAnalytical,
     
@@ -57,7 +57,10 @@ export initialiseLikelihoodModel,
     full_likelihood_sample!,
 
     add_prediction_function!, check_prediction_function_exists,
-    generate_predictions_univariate!, generate_predictions_bivariate!, generate_predictions_dim_samples!
+    generate_predictions_univariate!, generate_predictions_bivariate!,
+    generate_predictions_dim_samples!,
+
+    trim_model_dfs!, remove_functions_from_core!, add_loglikelihood_function!
 
 # OPTIMISER ###############################################################################
 include("NLopt_optimiser.jl")
@@ -79,6 +82,7 @@ include("common_profile_likelihood.jl")
 include("ellipse_likelihood.jl")
 include("predictions.jl")
 include("nuisance_parameters_and_array_mapping.jl")
+include("loading.jl")
 
 # UNIVARIATE METHODS ######################################################################
 include("univariate_methods/loglikelihood_functions.jl")
