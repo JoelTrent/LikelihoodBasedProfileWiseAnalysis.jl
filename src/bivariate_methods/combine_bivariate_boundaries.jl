@@ -54,7 +54,7 @@ end
         methods::Vector{<:AbstractBivariateMethod}=AbstractBivariateMethod[],
         not_evaluated_predictions::Bool=true)
 
-Combines the `confidence_level` bivariate boundaries of `profile_type` found using `methods` into a single [`CombinedBivariateMethod`] boundary for each interest parameter, modifying `model` destructively in place. Rows of `model.biv_profiles_df` to combine are found using [`PlaceholderLikelihood.desired_df_subset`s](@ref). Dictionary entries and dataframe rows of boundaries that have beeen combined will be deleted and the datastructures will be rebuilt according to the new row indices of `model.biv_profiles_df`. 
+Combines the `confidence_level` bivariate boundaries of `profile_type` found using `methods` into a single [`CombinedBivariateMethod`](@ref) boundary for each interest parameter, modifying `model` destructively in place. Rows of `model.biv_profiles_df` to combine are found using [`PlaceholderLikelihood.desired_df_subset`](@ref). Dictionary entries and dataframe rows of boundaries that have beeen combined will be deleted and the datastructures will be rebuilt according to the new row indices of `model.biv_profiles_df`. 
 
 # Arguments
 - `model`: a [`LikelihoodModel`](@ref) containing model information, saved profiles and predictions.
@@ -62,7 +62,7 @@ Combines the `confidence_level` bivariate boundaries of `profile_type` found usi
 # Keyword Arguments
 - `confidence_level`: a number ∈ (0.0, 1.0) for the confidence level of `profile_type` boundaries to combine. Default is 0.95 (95%).
 - `profile_type`: the profile type of boundaries to combine. Default is `LogLikelihood()` ([`LogLikelihood`](@ref)).
-- `methods`: a vector of methods of type [`AbstractBivariateMethod`](@ref) for combining boundaries found using those method types. `methods` should not contain [`CombinedBivariateMethod`](@ref), but the case where it is included in `methods` is handled (it will be removed from the vector). Default is AbstractBivariateMethod[] (boundaries found using all methods are combined).
+- `methods`: a vector of methods of type [`AbstractBivariateMethod`](@ref) for combining boundaries found using those method types. `methods` should not contain [`CombinedBivariateMethod`](@ref), but the case where it is included in `methods` is handled (it will be removed from the vector). Default is `AbstractBivariateMethod[]` (boundaries found using all methods are combined).
 - `not_evaluated_predictions`: a boolean specifiying whether to combine only boundaries that have either had or not had predictions evaluated. If predictions are evaluated for the combined struct (if it exists) but not for the rows to combine with it, they will not be combined, and vice versa. Default is true.
 
 !!! info "Combining predictions"

@@ -1,9 +1,18 @@
-function update_targetll!(p::NamedTuple, 
-                            target_confidence_ll::Float64)
+"""
+    update_targetll!(p::NamedTuple, target_confidence_ll::Float64)
+
+Updates `p.targetll` to `target_confidence_level`, returning p. 
+"""
+function update_targetll!(p::NamedTuple, target_confidence_ll::Float64)
     p = @set p.targetll=target_confidence_ll
     return p
 end
 
+"""
+    normal_vector_i_2d!(gradient_i, index, points)
+
+First order finite difference approximation of the normal vector at a point, using the location of the point on each side of it to construct a line and find the vector normal to the line, saving these in place in `gradient_i`.
+"""
 function normal_vector_i_2d!(gradient_i, index, points)
     if index == 1
         gradient_i .= [(points[2,2]-points[2,end]), -(points[1,2]-points[1,end])]
@@ -16,19 +25,24 @@ function normal_vector_i_2d!(gradient_i, index, points)
 end
 
 """
-start_level_set only has two rows. Within this function we keep track of both the 2d points on the boundary - as this is all that needs to be known to get to the next point
+    continuation_line_search!(p::NamedTuple, 
+        point_is_on_bounds::BitVector,
+        bivariate_optimiser::Function, 
+        model::LikelihoodModel, 
+        num_points::Int,
+        ind1::Int, 
+        ind2::Int,
+        target_confidence_ll::Float64, 
+        search_directions::Matrix{Float64},
+        start_level_set_2D::Matrix{Float64}, 
+        channel::RemoteChannel;
+        start_level_set_all::Matrix{Float64}=zeros(0,0),
+        level_set_not_smoothed::Bool=true,
+        is_a_zero::BitVector=falses(num_points))
 
-For a given level set to get to, that's larger than all points in current level set. 
-* Find normal direction at each point (either using ForwardDiff or a first order approximation)
-* Check where this normal direction intersects bounds and ensure that the next level set is bracketed by current point and point on boundary
-* If a bracket between current point and point on boundary does not exist the level set point recorded will be the point on the boundary
-* init guess for nuisance parameters should be their value at current point
-* using vector search bivariate function as input to find_zero(), using Order0 method, with starting guess of ψ=0
-* record point at that level set
+Implementation of the outward 'continuation' search of [`ContinuationMethod`](@ref) for getting from a lower log-likelihood threshold level set to a higher level set. 
 
-p and point_is_on_bounds is mutated by this function.
-
-LATER: Update to allow specification of alternate method to find_zero(), e.g. Order8 OR alternate method using NLsolve (and LineSearches) in "2DGradientLinesearchTests.jl" which is gradient based.
+`p`, `point_is_on_bounds` and `search_directions` are mutated by this function.
 """
 function continuation_line_search!(p::NamedTuple, 
                                     point_is_on_bounds::BitVector,
@@ -183,6 +197,21 @@ function continuation_line_search!(p::NamedTuple,
     return target_level_set_2D, target_level_set_all
 end
 
+"""
+    continuation_inwards_radial_search!(p::NamedTuple, 
+        bivariate_optimiser::Function, 
+        model::LikelihoodModel, 
+        num_points::Int, 
+        ind1::Int, 
+        ind2::Int, 
+        target_confidence_ll::Float64,
+        search_directions::Matrix{Float64},
+        start_level_set_2D::Matrix{Float64},
+        is_a_zero::BitVector,
+        channel::RemoteChannel)
+
+Implementation of the inwards radial search for an initial level set at `target_confidence_ll` given an initial ellipse solution for [`ContinuationMethod`](@ref). The `search_directions` for each point is a vector between the maximum likelihood estimate point in interest parameter space and the ellipse solution.
+"""
 function continuation_inwards_radial_search!(p::NamedTuple, 
                                                 bivariate_optimiser::Function, 
                                                 model::LikelihoodModel, 
@@ -241,19 +270,29 @@ function continuation_inwards_radial_search!(p::NamedTuple,
 end
 
 """
+    initial_continuation_solution!(p::NamedTuple, 
+        bivariate_optimiser::Function, 
+        model::LikelihoodModel, 
+        num_points::Int, 
+        ind1::Int, 
+        ind2::Int,
+        profile_type::AbstractProfileType,
+        ellipse_confidence_level::Float64,
+        target_confidence_ll::Float64,
+        ellipse_start_point_shift::Float64, 
+        channel::RemoteChannel)
 
-The initial ellipse solution also should be in feasible region: contained within bounds specified for interest parameters. WARN if it is not - may cause some unexpected behaviour if the parameter is meant to be ≥ 0, yet is allowed to start there in the initial ellipse solution.
 
-Find extrema of true log likelihoods of initial ellipse solution
-3 cases: 
-Case 1 is preferred. Warnings will be raised for both Case 2 and 3
-Case 1: If min ll > than target ll of smallest target confidence level (preferred approach atm). Then line search from initial ellipse to ll boundary defined by min ll and this is the starting continuation solution. Line search in direction specified by forward diff at point
+Finds the initial continuation level set of [`ContinuationMethod`](@ref).
 
-Case 2: If max ll < than target ll of smallest target confidence level. Line search radially towards the mle solution from the ellipse to the smallest target confidence level boundary and this is the starting continuation solution. In case two, this counts as a 'level set'.
+The initial ellipse solution found using [EllipseSampling.jl](https://joeltrent.github.io/EllipseSampling.jl/stable/) should be in the feasible region, contained within the bounds specified for interest parameters. A warning is raised if it is not - it may cause some unexpected behaviour if the parameter is meant to be ≥ 0, yet is allowed to start there in the initial ellipse solution.
 
-Case 3: If min ll and max ll bracket the smallest target confidence level. Then line search radially towards the mle solution from initial ellipse to ll boundary defined by max ll and this is the starting continuation solution.
+We use the extrema of the true log likelihoods (for `profile_type`) of the initial ellipse solution to decide how we search for the first level set. We have three cases, where case one is preferred and warnings are raised for both case two and three.
+1. If min ll > than target ll of the target confidence level. Then line search from initial ellipse to ll boundary defined by min ll and this is the starting continuation solution. Line search radially from the MLE point.
 
-For both Case 2 and 3, could use gradient at initial elipse point rather than going radially towards the mle, but in my opinion may not be able to find the log likelihood boundary.
+2. If max ll < than target ll of the target confidence level. Line search radially towards the MLE point from the ellipse to the target confidence level boundary and this is the final continuation solution.
+
+3. If min ll and max ll bracket the target confidence level. Then line search radially towards the mle solution from initial ellipse to ll boundary defined by max ll and this is the starting continuation solution.
 """
 function initial_continuation_solution!(p::NamedTuple, 
                                         bivariate_optimiser::Function, 
@@ -352,7 +391,24 @@ function initial_continuation_solution!(p::NamedTuple,
 end
 
 """
-bivariate_optimiser is the optimiser to use with find_zero
+    bivariate_confidenceprofile_continuation(bivariate_optimiser::Function, 
+        model::LikelihoodModel, 
+        num_points::Int, 
+        consistent::NamedTuple, 
+        ind1::Int, 
+        ind2::Int,
+        profile_type::AbstractProfileType,
+        ellipse_confidence_level::Float64, 
+        target_confidence_level::Float64,
+        ellipse_start_point_shift::Float64,
+        num_level_sets::Int,
+        level_set_spacing::Symbol,
+        mle_targetll::Float64,
+        save_internal_points::Bool,
+        channel::RemoteChannel
+        )
+
+Implementation of [`ContinuationMethod`](@ref).
 """
 function bivariate_confidenceprofile_continuation(bivariate_optimiser::Function, 
                                                     model::LikelihoodModel, 
@@ -388,12 +444,6 @@ function bivariate_confidenceprofile_continuation(bivariate_optimiser::Function,
                     ω_opt=zeros(model.core.num_pars-2))
     end
 
-    # PERHAPS HAVE DIFFERENT VERSIONS DEPENDING ON WHETHER ForwardDiff or 1st Order Approx IS USED FOR NORMAL DIRECTIONS? ForwardDiff version can easily parallelise across points, if consider each point separately and find next point on level set. Vs 1st order approx requires knowledge of the points on either side of it on the level set, so would parallelise across points within a single level set, which is probs not as good. 
-
-    # Specify x number of level sets to pass through.
-    # Specify target level set(s) to reach (pass through) and/or record.
-    # Specify confidence level of initial ellipse guess.
-
     initial_target_ll = get_target_loglikelihood(model, target_confidence_level,
                                                  EllipseApproxAnalytical(), 2)
 
@@ -404,8 +454,6 @@ function bivariate_confidenceprofile_continuation(bivariate_optimiser::Function,
                                         model, num_points, ind1, ind2, profile_type,
                                         ellipse_confidence_level, initial_target_ll, 
                                         ellipse_start_point_shift, channel)
-
-    # display(scatter(current_level_set_2D[1,:], current_level_set_2D[2,:], legend=false, markeropacity=0.4))
 
     if initial_ll == initial_target_ll
         return current_level_set_all

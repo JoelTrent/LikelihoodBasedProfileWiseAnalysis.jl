@@ -26,5 +26,4 @@ PlaceholderLikelihood.add_uni_profiles_rows!
 PlaceholderLikelihood.set_uni_profiles_row!
 PlaceholderLikelihood.get_univariate_opt_func
 PlaceholderLikelihood.univariate_confidenceinterval
-PlaceholderLikelihood.univariate_confidenceinterval_master
 ```

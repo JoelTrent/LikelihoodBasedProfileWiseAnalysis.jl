@@ -30,7 +30,8 @@ makedocs(;
             "Plots" => "user_interface/plots.md",
             "Saving and Loading LikelihoodModels"=> "user_interface/saving_and_loading.md",
             "Simulated Coverage Checks" => 
-                ["Parameter Confidence Intervals" => "user_interface/coverage/univariate_intervals.md"] ],
+                ["Parameter Confidence Intervals" => "user_interface/coverage/univariate_intervals.md",
+                "Bivariate Parameter Confidence Boundaries" => "user_interface/coverage/bivariate_boundaries.md"]],
         "Internal Library" => 
             ["Common Functions" => "internal_library/common.md",
             "Initialisation" => "internal_library/initialisation.md",

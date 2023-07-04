@@ -1,3 +1,17 @@
+"""
+    findNpointpairs_fix1axis!(p::NamedTuple, 
+        bivariate_optimiser::Function, 
+        model::LikelihoodModel, 
+        num_points::Int, 
+        i::Int, 
+        j::Int,
+        mle_targetll::Float64,
+        save_internal_points::Bool,
+        biv_opt_is_ellipse_analytical::Bool,
+        channel::RemoteChannel)
+
+Implementation of finding pairs of points that bracket the bivariate confidence boundary for [`Fix1AxisMethod`](@ref).
+"""
 function findNpointpairs_fix1axis!(p::NamedTuple, 
                                     bivariate_optimiser::Function, 
                                     model::LikelihoodModel, 
@@ -98,6 +112,19 @@ function findNpointpairs_fix1axis!(p::NamedTuple,
     return x_vec, y_vec, internal_all, ll_values
 end
 
+"""
+    bivariate_confidenceprofile_fix1axis(bivariate_optimiser::Function, 
+        model::LikelihoodModel, 
+        num_points::Int, 
+        consistent::NamedTuple, 
+        ind1::Int, 
+        ind2::Int,
+        mle_targetll::Float64,
+        save_internal_points::Bool, 
+        channel::RemoteChannel)
+
+Implementation of [`Fix1AxisMethod`](@ref).
+"""
 function bivariate_confidenceprofile_fix1axis(bivariate_optimiser::Function, 
                                                 model::LikelihoodModel, 
                                                 num_points::Int, 

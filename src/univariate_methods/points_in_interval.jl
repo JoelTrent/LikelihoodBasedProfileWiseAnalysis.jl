@@ -33,7 +33,7 @@ end
         current_interval_points::PointsAndLogLikelihood,
         additional_width::Real=0.0)
 
-Method for getting `num_points_in_interval` points inside a confidence interval for parameter `θi`, directly called by [`PlaceholderLikelihood.univariate_confidenceinterval`](@ref) and called via it's other method for [`get_points_in_interval`](@ref). Optionally adds `additional_width` outside of the confidence interval, so long as a parameter bound is not reached. If a bound is reached, up until the bound will be considered instead.
+Method for getting `num_points_in_interval` points inside a confidence interval for parameter `θi`, directly called by [`PlaceholderLikelihood.univariate_confidenceinterval`](@ref) and called via it's other method for [`get_points_in_interval!`](@ref). Optionally adds `additional_width` outside of the confidence interval, so long as a parameter bound is not reached. If a bound is reached, up until the bound will be considered instead.
 """
 function get_points_in_interval_single_row(univariate_optimiser::Function, 
                                 model::LikelihoodModel,
@@ -129,7 +129,7 @@ end
         num_points_in_interval::Int,
         additional_width::Real)
 
-Alternate method called by [`get_points_in_interval`](@ref).
+Alternate method called by [`get_points_in_interval!`](@ref).
 """
 function get_points_in_interval_single_row(model::LikelihoodModel,
                                 uni_row_number::Int,

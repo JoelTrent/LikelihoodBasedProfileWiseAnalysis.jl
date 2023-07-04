@@ -1,12 +1,28 @@
 # functions for the RadialRandomMethod, RadialMLEMethod and SimultaneousMethod methods
 
+"""
+    generatepoint(model::LikelihoodModel, ind1::Int, ind2::Int)
+
+Generates a uniform random x and y value between the lower and upper bounds for the parameters at `ind1` and `ind2`.
+"""
 function generatepoint(model::LikelihoodModel, ind1::Int, ind2::Int)
     return rand(Uniform(model.core.θlb[ind1], model.core.θub[ind1])), rand(Uniform(model.core.θlb[ind2], model.core.θub[ind2]))
 end
 
-# function findNpointpairs(p, N, lb, ub, ind1, ind2; maxIters)
 """
-At later stage, implement with maxIters in the event that either the user-specified bounds don't contain internal points (or similarly external points) for a given confidence region (i.e. bounds either don't contain the 2D boundary at a confidence level OR the 2D boundary at a confidence level contains the bounds)
+    findNpointpairs_simultaneous!(p::NamedTuple, 
+        bivariate_optimiser::Function, 
+        model::LikelihoodModel, 
+        num_points::Int, 
+        ind1::Int, 
+        ind2::Int,
+        mle_targetll::Float64,
+        save_internal_points::Bool,
+        biv_opt_is_ellipse_analytical::Bool,
+        min_proportion_unique::Real,
+        use_MLE_point::Bool)
+
+Implementation of finding pairs of points that bracket the bivariate confidence boundary for [`SimultaneousMethod`](@ref).
 """
 function findNpointpairs_simultaneous!(p::NamedTuple, 
                                         bivariate_optimiser::Function, 
@@ -128,6 +144,11 @@ function findNpointpairs_simultaneous!(p::NamedTuple,
     return internal, internal_all, ll_values, external
 end
 
+"""
+    find_m_spaced_radialdirections(num_directions::Int; start_point_shift::Float64=rand())
+
+Returns `num_directions` equally spaced anticlockwise angles between 0 and 2pi which are shifted by `start_point_shift * 2.0 / convert(Float64, num_directions)`.
+"""
 function find_m_spaced_radialdirections(num_directions::Int; start_point_shift::Float64=rand())
     radial_dirs = zeros(num_directions)
     radial_dirs .= (start_point_shift * 2.0 / convert(Float64, num_directions)) .+ collect(LinRange(1e-12, 2.0, num_directions+1))[1:end-1]
@@ -135,7 +156,21 @@ function find_m_spaced_radialdirections(num_directions::Int; start_point_shift::
 end
 
 """
-Distorts uniformly spaced angles on a circle to angles on an ellipse representative of the relative magnitude of each parameter. If the magnitude of a parameter is a NaN value (i.e. either bound is Inf), then the relative magnitude is set to 1.0, as no information is known about its magnitude.
+    findNpointpairs_radialrandom!(p::NamedTuple, 
+        bivariate_optimiser::Function, 
+        model::LikelihoodModel, 
+        num_points::Int, 
+        num_directions::Int, 
+        ind1::Int, 
+        ind2::Int,
+        mle_targetll::Float64,
+        save_internal_points::Bool,
+        biv_opt_is_ellipse_analytical::Bool, 
+        use_MLE_point::Bool)
+
+Implementation of finding pairs of points that bracket the bivariate confidence boundary for [`RadialRandomMethod`](@ref).
+
+Distorts uniformly spaced anticlockwise angles on a circle using [`PlaceholderLikelihood.find_m_spaced_radialdirections`](@ref) to angles on an ellipse representative of the relative magnitude of each parameter. If the magnitude of a parameter is a NaN value (i.e. either bound is Inf), then the relative magnitude is set to 1.0, as no information is known about its magnitude.
 """
 function findNpointpairs_radialrandom!(p::NamedTuple, 
                                     bivariate_optimiser::Function, 
@@ -243,6 +278,21 @@ function findNpointpairs_radialrandom!(p::NamedTuple,
     return internal, internal_all, ll_values, external
 end
 
+"""
+    findNpointpairs_radialMLE!(p::NamedTuple, 
+        bivariate_optimiser::Function, 
+        model::LikelihoodModel, 
+        num_points::Int, 
+        ind1::Int, 
+        ind2::Int,
+        ellipse_confidence_level::Float64,
+        ellipse_start_point_shift::Float64,
+        ellipse_sqrt_distortion::Float64)
+
+Implementation of finding pairs of points that bracket the bivariate confidence boundary for [`RadialMLEMethod`](@ref).
+
+Search directions from the MLE point are given by points placed on a ellipse approximation around the point using [`generate_N_clustered_points`](https://joeltrent.github.io/EllipseSampling.jl/stable/user_interface/#EllipseSampling.generate_N_clustered_points) from [EllipseSampling.jl](https://joeltrent.github.io/EllipseSampling.jl/stable). 
+"""
 function findNpointpairs_radialMLE!(p::NamedTuple, 
                                     bivariate_optimiser::Function, 
                                     model::LikelihoodModel, 
@@ -295,6 +345,25 @@ function findNpointpairs_radialMLE!(p::NamedTuple,
     return internal, internal_all, ll_values, external, point_is_on_bounds, bound_warning
 end
 
+"""
+    bivariate_confidenceprofile_vectorsearch(bivariate_optimiser::Function, 
+        model::LikelihoodModel, 
+        num_points::Int, 
+        consistent::NamedTuple, 
+        ind1::Int, 
+        ind2::Int,
+        mle_targetll::Float64,
+        save_internal_points::Bool,
+        channel::RemoteChannel;
+        num_radial_directions::Int=0,
+        min_proportion_unique::Real=1.0,
+        use_MLE_point::Bool=false,
+        ellipse_confidence_level::Float64=-1.0,
+        ellipse_start_point_shift::Float64=0.0,
+        ellipse_sqrt_distortion::Float64=0.0)
+
+Implementation of [`AbstractBivariateVectorMethod`] boundary search methods [`SimultaneousMethod`](@ref), [`RadialMLEMethod`](@ref) and [`RadialRandomMethod`](@ref).
+"""
 function bivariate_confidenceprofile_vectorsearch(bivariate_optimiser::Function, 
                                                     model::LikelihoodModel, 
                                                     num_points::Int, 

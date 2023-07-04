@@ -27,6 +27,7 @@ ContinuationMethod
 
 ```@docs
 sample_bivariate_internal_points!
+bivariate_hull_methods
 AbstractBivariateHullMethod
 ConvexHullMethod
 ConcaveHullMethod

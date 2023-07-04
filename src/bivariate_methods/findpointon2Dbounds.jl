@@ -1,3 +1,15 @@
+"""
+    findpointonbounds(model::LikelihoodModel, 
+        internalpoint::Vector{<:Float64}, 
+        direction_πradians::Float64, 
+        cosDir::Float64, 
+        sinDir::Float64, 
+        ind1::Int, 
+        ind2::Int,
+        returnboundindex::Bool=false)
+
+Given an `internalpoint` and direction in radians (defined as anticlockwise rotation from the x-axis) from this point, returns the first point on the 2D bounds encountered in that direction from `internalpoint`. Returns which bound the point is on if `returnboundindex = true`.
+"""
 function findpointonbounds(model::LikelihoodModel, 
                             internalpoint::Vector{<:Float64}, 
                             direction_πradians::Float64, 
@@ -45,6 +57,18 @@ function findpointonbounds(model::LikelihoodModel,
     return boundpoint
 end
 
+"""
+    findpointonbounds(model::LikelihoodModel, 
+        internalpoint::Vector{<:Float64}, 
+        direction_πradians::Float64, 
+        cosDir::Float64, 
+        sinDir::Float64, 
+        ind1::Int, 
+        ind2::Int,
+        returnboundindex::Bool=false)
+
+Alternate method for [`PlaceholderLikelihood.findpointonbounds`](@ref) which specifies the direction from `internalpoint` as a vector rather than an angle in radians. 
+"""
 function findpointonbounds(model::LikelihoodModel, 
                             internalpoint::Vector{<:Float64}, 
                             direction2D::AbstractVector{Float64}, 

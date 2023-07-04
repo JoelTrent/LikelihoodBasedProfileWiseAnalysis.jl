@@ -29,7 +29,7 @@ export EllipseMLEApprox, CoreLikelihoodModel, BaseLikelihoodModel, LikelihoodMod
     CombinedBivariateMethod, IterativeBoundaryMethod, RadialMLEMethod, RadialRandomMethod, 
     SimultaneousMethod, Fix1AxisMethod, AnalyticalEllipseMethod, ContinuationMethod,
 
-    AbstractBivariateHullMethod, ConvexHullMethod, ConcaveHullMethod, MPPHullMethod,
+    AbstractBivariateHullMethod, bivariate_hull_methods, ConvexHullMethod, ConcaveHullMethod, MPPHullMethod,
     
     AbstractSampleType, UniformGridSamples, UniformRandomSamples, LatinHypercubeSamples,
 

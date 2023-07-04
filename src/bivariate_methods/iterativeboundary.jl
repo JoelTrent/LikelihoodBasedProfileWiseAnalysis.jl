@@ -1,7 +1,16 @@
 """
-Distorts uniformly spaced angles on a circle to angles on an ellipse representative of the relative magnitude of each parameter. If the magnitude of a parameter is a NaN value (i.e. either bound is Inf), then the relative magnitude is set to 1.0, as no information is known about its magnitude.
+    findNpointpairs_radialMLE!(p::NamedTuple, 
+        bivariate_optimiser::Function, 
+        model::LikelihoodModel, 
+        num_points::Int, 
+        ind1::Int, 
+        ind2::Int,
+        bound_warning::Bool,
+        radial_start_point_shift::Float64)
 
-Angles are anticlockwise
+Implementation of finding pairs of points that bracket the bivariate confidence boundary for [`IterativeBoundaryMethod`](@ref), searching radially from the MLE point for points on the bounds, in search directions similar to those used by [`RadialRandomMethod`](@ref). If a point on the bounds is inside the confidence boundary, that point will represent the boundary in that search direction.
+
+Search directions are given by distorting uniformly spaced anticlockwise angles on a circle to angles on an ellipse representative of the relative magnitude of each parameter. If the magnitude of a parameter is a NaN value (i.e. either bound is Inf), then the relative magnitude is set to 1.0, as no information is known about its magnitude.
 """
 function findNpointpairs_radialMLE!(p::NamedTuple, 
                                     bivariate_optimiser::Function, 
@@ -89,6 +98,11 @@ function internal_angle_from_pi!(vertex_internal_angle_objs, indexes::UnitRange,
     return nothing
 end
 
+"""
+    internal_angle_from_pi(index::Int, boundary, edge_clock, edge_anti, relative_magnitude)
+
+Alternate method of [`PlaceholderLikelihood.internal_angle_from_pi`](@ref) for the internal angle at only one vertex.
+"""
 function internal_angle_from_pi(index::Int, boundary, edge_clock, edge_anti, relative_magnitude)
     if index == edge_clock[index] && index == edge_anti[index]
         return 0.0
@@ -97,6 +111,25 @@ function internal_angle_from_pi(index::Int, boundary, edge_clock, edge_anti, rel
                                         (boundary[:,edge_anti[index]] .- boundary[:, index])./ SA[relative_magnitude, 1.0]) 
 end
 
+"""
+    iterativeboundary_init(bivariate_optimiser::Function, 
+        model::LikelihoodModel, 
+        num_points::Int, 
+        p::NamedTuple, 
+        ind1::Int, 
+        ind2::Int,
+        initial_num_points::Int,
+        biv_opt_is_ellipse_analytical::Bool,
+        radial_start_point_shift::Float64,
+        ellipse_sqrt_distortion::Float64,
+        use_ellipse::Bool,
+        save_internal_points::Bool,
+        channel::RemoteChannel)
+
+Finds the initial boundary of [`IterativeBoundaryMethod`](@ref), containing `initial_num_points`, returning it and initialised parameter values. 
+
+If `initial_num_points` is equal to `num_points` then the desired number of boundary points have been found. If `use_ellipse = true` the boundary will be equivalent to the boundary found by [`RadialMLEMethod`](@ref) with the same parameter settings - it's value informs the method of [`PlaceholderLikelihood.findNpointpairs_radialMLE!`](@ref) used.
+"""
 function iterativeboundary_init(bivariate_optimiser::Function, 
                                 model::LikelihoodModel, 
                                 num_points::Int, 
@@ -209,7 +242,6 @@ function iterativeboundary_init(bivariate_optimiser::Function,
   
     angle_heap = TrackingHeap(Float64, S=NoTrainingWheels, O=MaxHeapOrder, N = 2, init_val_coll=vertex_internal_angle_objs)
 
-
     return false, boundary, boundary_all, internal_all, ll_values, internal_count, point_is_on_bounds, edge_anti_on_bounds, bound_warning, mle_point, num_vertices, edge_clock, edge_anti, edge_heap, angle_heap, relative_magnitude
 end
 
@@ -236,9 +268,7 @@ end
         bound_warning::Bool, 
         save_internal_points::Bool)
 
-
-    
-
+Method for trying to find a new boundary point for [`IterativeBoundaryMethod`](@ref) given a starting boundary polygon. Returns whether finding a new point was successful.
 """
 function newboundarypoint!(p::NamedTuple,
                             point_is_on_bounds::BitVector,
@@ -396,6 +426,22 @@ function newboundarypoint!(p::NamedTuple,
     return num_vertices, internal_count, failure, bound_warning, 0
 end
 
+"""
+    heapupdates_success!(edge_heap::TrackingHeap,
+        angle_heap::TrackingHeap, 
+        edge_clock::Vector{Int},
+        edge_anti::Vector{Int},
+        point_is_on_bounds::BitVector,
+        edge_anti_on_bounds::BitVector,
+        boundary::Matrix{Float64},
+        num_vertices::Int,
+        vi::Int, 
+        adj_vertex::Int,
+        relative_magnitude::Float64,
+        clockwise_from_vi=false)
+
+If finding a new boundary point for [`IterativeBoundaryMethod`](@ref) was successful, update the datastructures that represent the boundary as required.        
+"""
 function heapupdates_success!(edge_heap::TrackingHeap,
                         angle_heap::TrackingHeap, 
                         edge_clock::Vector{Int},
@@ -458,6 +504,21 @@ function heapupdates_success!(edge_heap::TrackingHeap,
     return nothing
 end
 
+"""
+    polygon_break_and_rejoin!(edge_clock::Vector{Int},
+        edge_anti::Vector{Int},
+        ve1::Int,
+        ve2::Int,
+        opposite_edge_ve1::Int,
+        opposite_edge_ve2::Int,
+        model::LikelihoodModel,
+        ind1::Int, 
+        ind2::Int)
+
+If finding a new boundary point was not successful, breaks and rejoins the boundary polygon as required to remove the vertices from the main polygon that are likely to be on a distinct level set (boundary).
+
+Display an info message if only one vertex was seperated, as that vertex can no longer be used to find additional points within the algorithm.
+"""
 function polygon_break_and_rejoin!(edge_clock::Vector{Int},
                                     edge_anti::Vector{Int},
                                     ve1::Int,
@@ -485,11 +546,26 @@ function polygon_break_and_rejoin!(edge_clock::Vector{Int},
 end
 
 """
-This function is used in the event that no boundary points are found using [`newboundarypoint`](@ref). Failure means it is likely that multiple level sets exist. If so, we break the edges of the candidate point and `e_intersect` and reconnect the vertexes such that we now have multiple boundary polygons.
+    heapupdates_failure!(edge_heap::TrackingHeap,
+        angle_heap::TrackingHeap, 
+        edge_clock::Vector{Int},
+        edge_anti::Vector{Int},
+        point_is_on_bounds::BitVector,
+        boundary::Matrix{Float64},
+        num_vertices::Int,
+        ve1::Int,
+        ve2::Int,
+        opposite_edge_ve1::Int,
+        model::LikelihoodModel,
+        ind1::Int, 
+        ind2::Int,
+        relative_magnitude::Float64)
+
+If finding a new boundary point for [`IterativeBoundaryMethod`](@ref) was not successful, update the datastructures that represent the boundary as required. Failure means it is likely that multiple level sets exist. If so, break the edges of the candidate point and `e_intersect` and reconnect the vertexes such that there are now have multiple boundary polygons.
 		
-If we only have one or two points on one of these boundary polygons we will display an info message as no additional points can be found from the method directly.
+If there are only one or two points on one of these boundary polygons, display an info message as no additional points can be found from the method directly.
 		
-If we have three or more points on these boundary polygons, then there should be no problems finding other parts of these polygons.
+If there are three or more points on these boundary polygons, then there should be no problems finding other parts of these polygons.
 
 If the largest polygon has less than two points the method will display a warning message and terminate, returning the boundary found up until then. 
 """
@@ -554,6 +630,25 @@ function heapupdates_failure!(edge_heap::TrackingHeap,
     return false, nothing
 end
 
+"""
+    bivariate_confidenceprofile_iterativeboundary(bivariate_optimiser::Function, 
+        model::LikelihoodModel, 
+        num_points::Int, 
+        consistent::NamedTuple, 
+        ind1::Int, 
+        ind2::Int,
+        initial_num_points::Int,
+        angle_points_per_iter::Int,
+        edge_points_per_iter::Int,
+        radial_start_point_shift::Float64,
+        ellipse_sqrt_distortion::Float64,
+        use_ellipse::Bool,
+        mle_targetll::Float64,
+        save_internal_points::Bool,
+        channel::RemoteChannel)
+
+Implementation of [`IterativeBoundaryMethod`](@ref).
+"""
 function bivariate_confidenceprofile_iterativeboundary(bivariate_optimiser::Function, 
                                                 model::LikelihoodModel, 
                                                 num_points::Int, 

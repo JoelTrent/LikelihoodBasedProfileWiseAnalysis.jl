@@ -21,14 +21,17 @@ function analytic_ellipse_loglike_1D_soln(θIndex::Int, mleTuple::@NamedTuple{θ
     return mleTuple.θmle[θIndex] - sqrt_part, mleTuple.θmle[θIndex] + sqrt_part
 end
 
+"""
+    ellipse_loglike(θ::Vector, mleTuple::@NamedTuple{θmle::Vector{T}, Hmle::Matrix{T}}) where T<:Float64
+"""
 function ellipse_loglike(θ::Vector, mleTuple::@NamedTuple{θmle::Vector{T}, Hmle::Matrix{T}}) where T<:Float64
     return -0.5 * ((θ - mleTuple.θmle)' * mleTuple.Hmle * (θ - mleTuple.θmle))
 end
 
 """
-    ellipse_like(θ::Vector{T}, mleTuple::@NamedTuple{θmle::Vector{T}, Hmle::Matrix{T}}) where T<:Real
+    ellipse_like(θ::Vector{T}, mleTuple::@NamedTuple{θmle::Vector{T}, Hmle::Matrix{T}}) where T<:Float64
 """
-function ellipse_like(θ::Vector{T}, mleTuple::@NamedTuple{θmle::Vector{T}, Hmle::Matrix{T}}) where T<:Real
+function ellipse_like(θ::Vector{T}, mleTuple::@NamedTuple{θmle::Vector{T}, Hmle::Matrix{T}}) where T<:Float64
     return exp(ellipse_loglike(θ, mleTuple))
 end
 
@@ -70,7 +73,7 @@ end
 """
     check_ellipse_approx_exists!(model::LikelihoodModel)
 
-Checks if the ellipse approximation at the maximum likelihood estimate has been created and if not creates it using [`getMLE_ellipse_approximation`](@ref), modifying `model` in place.
+Checks if the ellipse approximation at the maximum likelihood estimate has been created and if not creates it using [`getMLE_ellipse_approximation!`](@ref), modifying `model` in place.
 """
 function check_ellipse_approx_exists!(model::LikelihoodModel)
     if ismissing(model.ellipse_MLE_approx)

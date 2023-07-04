@@ -87,7 +87,7 @@ The method is implemented as follows:
     1. Peek at the top vertex of the angle heap.
     2. Place a candidate point in the middle of the edge connected to this vertex that has the larger angle at the vertex the edge connects to. This is so we explore the worse defined region of the boundary.
     3. Use this candidate to find a new boundary point (see below).
-    4. If found a new boundary point, break edge we placed candidate on and replace with edges to the new boundary point, updating angle and edge length objectives in the tracked heap (see [`PlaceholderLikelihood.heapupdates_success!`](@ref)). Else break our polygon into multiple polygons (see [`PlaceholderLikelihood.heapupdates_failure`](@ref)).
+    4. If found a new boundary point, break edge we placed candidate on and replace with edges to the new boundary point, updating angle and edge length objectives in the tracked heap (see [`PlaceholderLikelihood.heapupdates_success!`](@ref)). Else break our polygon into multiple polygons (see [`PlaceholderLikelihood.heapupdates_failure!`](@ref)).
 4. For `edge_points_per_iter` points:
     1. Peek at the top edge of the edge heap.
     2. Place a candidate point in the middle of this edge.
@@ -200,7 +200,7 @@ end
 """
     RadialRandomMethod(num_radial_directions::Int)
 
-Method for finding the bivariate boundary of a confidence profile by finding internal boundary points using a uniform random distribution on provided bounds and choosing `num_radial_directions` to explore from these points (see [`PlaceholderLikelihood.findNpointpairs_radialRandom!`](@ref) and [`PlaceholderLikelihood.bivariate_confidenceprofile_vectorsearch`](@ref)).
+Method for finding the bivariate boundary of a confidence profile by finding internal boundary points using a uniform random distribution on provided bounds and choosing `num_radial_directions` to explore from these points (see [`PlaceholderLikelihood.findNpointpairs_radialrandom!`](@ref) and [`PlaceholderLikelihood.bivariate_confidenceprofile_vectorsearch`](@ref)).
 
 # Arguments
 - `num_radial_directions`: an integer greater than zero. 
@@ -384,7 +384,7 @@ Kept available for completeness but not recommended for use. A previous implemen
 
 # Details
 
-The method finds an initial boundary at a low confidence level close to the `ellipse_confidence_level` (see [`initial_continuation_solution!`](@ref)). Then it 'continues' this initial boundary sequentially to `num_level_sets` higher confidence level boundaries until the desired confidence level is reached. 
+The method finds an initial boundary at a low confidence level close to the `ellipse_confidence_level` (see [`initial_continuation_solution!`](@ref)). Then it 'continues' this initial boundary sequentially to `num_level_sets` higher confidence level boundaries until the desired confidence level is reached. If a user defined bound is in the way of a level set point reaching the next level set, that point is frozen on the bounds for all subsequent level sets. 
 
 Presently this continuation is done by finding a point inside the boundary that is as close as possible to being a point that makes the boundary a [star domain](https://en.wikipedia.org/wiki/Star_domain) and is close to the centre of the area of the boundary in the x and y axes. We refer to this point as a 'star point', or a point that can see all the points on the boundary, without being blocked by an edge. We use a heuristic to estimate this, sampling points within the boundary and using these to produce kmeans, of which one is hopefully a star point and at the centre of the boundary. 
 

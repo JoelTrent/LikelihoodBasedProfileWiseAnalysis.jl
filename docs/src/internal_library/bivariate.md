@@ -10,11 +10,9 @@ Pages = ["bivariate.md"]
 PlaceholderLikelihood.bivariateψ!
 PlaceholderLikelihood.bivariateψ_vectorsearch!
 PlaceholderLikelihood.bivariateψ_continuation!
-PlaceholderLikelihood.bivariateψ_gradient!
 PlaceholderLikelihood.bivariateψ_ellipse_analytical
 PlaceholderLikelihood.bivariateψ_ellipse_analytical_vectorsearch
 PlaceholderLikelihood.bivariateψ_ellipse_analytical_continuation
-PlaceholderLikelihood.bivariateψ_ellipse_analytical_gradient
 PlaceholderLikelihood.bivariateψ_ellipse_unbounded
 ```
 
@@ -78,7 +76,7 @@ For [`Fix1AxisMethod`](@ref).
 
 ```@docs
 PlaceholderLikelihood.findNpointpairs_fix1axis!
-PlaceholderLikelihood.bivariate_confidenceprofile_fix1axis!
+PlaceholderLikelihood.bivariate_confidenceprofile_fix1axis
 ```
 
 ## Continuation Method
@@ -102,6 +100,8 @@ PlaceholderLikelihood.refine_search_directions!
 ```@docs
 PlaceholderLikelihood.construct_polygon_hull
 PlaceholderLikelihood.bivariate_concave_hull
+PlaceholderLikelihood.update_biv_dict_internal!
+PlaceholderLikelihood.sample_internal_points_single_row
 ```
 
 ## Merging Boundaries From Multiple Methods

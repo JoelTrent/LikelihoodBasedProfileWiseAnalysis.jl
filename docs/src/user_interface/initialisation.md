@@ -4,8 +4,15 @@
 Pages = ["initialisation.md"]
 ```
 
+## Model Initialisation
+
 ```@docs
 initialiseLikelihoodModel
+```
+
+## Model Representation
+
+```@docs
 LikelihoodModel
 CoreLikelihoodModel
 BaseLikelihoodModel
