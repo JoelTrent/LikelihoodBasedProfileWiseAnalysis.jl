@@ -146,7 +146,6 @@ function get_points_in_interval_single_row(model::LikelihoodModel,
 end
 
 """
-
     get_points_in_interval!(model::LikelihoodModel, 
         num_points_in_interval::Int; 
         confidence_levels::Vector{<:Float64}=Float64[], 
@@ -160,8 +159,8 @@ Evaluate and save `num_points_in_interval` linearly spaced points between the co
 - `num_points_in_interval`: an integer number of points to evaluate within the confidence interval. Points are linearly spaced in the interval and have their optimised log-likelihood value recorded. Useful for plots that visualise the confidence interval or for predictions from univariate profiles. 
 
 # Keyword Arguments
-- `confidence_levels`: a vector of confidence levels or a `Float64` of a single confidence level. If empty, all confidence levels of univariate profiles will be considered for finding interval points. Otherwise, only confidence levels of univariate profiles in `confidence_levels` will be considered.
-- `profile_types`: a vector of `AbstractProfileType` structs. If empty, all profile types of univariate profiles are considered. Otherwise, only univariate profiles with matching profile types will be considered.
+- `confidence_levels`: a vector of confidence levels. If empty, all confidence levels of univariate profiles will be considered for finding interval points. Otherwise, only confidence levels of univariate profiles in `confidence_levels` will be considered. Default is `Float64[]` (any confidence level).
+- `profile_types`: a vector of `AbstractProfileType` structs. If empty, all profile types of univariate profiles are considered. Otherwise, only univariate profiles with matching profile types will be considered. Default is `AbstractProfileType[]` (any profile type).
 - `additional_width`: a `Real` number greater than or equal to zero. Specifies the additional width to optionally evaluate outside the confidence interval's width. Half of this additional width will be placed on either side of the confidence interval. If the additional width goes outside a bound on the parameter, only up to the bound will be considered. The spacing of points in the additional width will try to match the spacing of points evaluated inside the interval. Useful for plots that visualise the confidence interval as it shows the trend of the log-likelihood profile outside the interval range. Default is 0.0.
 
 # Details
