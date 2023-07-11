@@ -96,6 +96,13 @@ function valid_points(model::LikelihoodModel,
     return grid[:,valid_point], valid_ll_values
 end
 
+"""
+    check_if_bounds_supplied(model::LikelihoodModel,
+        lb::AbstractVector{<:Real},
+        ub::AbstractVector{<:Real})
+
+Returns the model bounds on full parameter space if lb and ub are empty, and lb and ub otherwise.  
+"""
 function check_if_bounds_supplied(model::LikelihoodModel,
                                     lb::AbstractVector{<:Real},
                                     ub::AbstractVector{<:Real})
@@ -112,7 +119,21 @@ function check_if_bounds_supplied(model::LikelihoodModel,
     return lb, ub
 end
 
-# Uniform grids
+"""
+    uniform_grid(model::LikelihoodModel,
+        points_per_dimension::Union{Int, Vector{Int}},
+        confidence_level::Float64,
+        lb::AbstractVector{<:Real}=Float64[],
+        ub::AbstractVector{<:Real}=Float64[];
+        use_threads::Bool=true,
+        use_distributed::Bool=false,
+        arguments_checked::Bool=false,
+        channel::RemoteChannel=RemoteChannel(() -> Channel{Bool}(Inf)))
+
+Creates a uniform grid with `points_per_dimension` in each dimension, uniformly spaced between `lb` and `ub` if supplied or between the bounds contained in `model.core`.The log-likelihood function is evaluated at each grid point and all grid points within the `confidence_level` log-likelihood threshold are saved as a [`SampledConfidenceStruct`](@ref). Points are saved alongside a vector of their log-likelihood values. Log-likelihood values are standardised to 0.0 at the MLE point.
+
+For the [`UniformGridSamples`](@ref) sample type.
+"""
 function uniform_grid(model::LikelihoodModel,
                         points_per_dimension::Union{Int, Vector{Int}},
                         confidence_level::Float64,
@@ -147,6 +168,21 @@ function uniform_grid(model::LikelihoodModel,
     return SampledConfidenceStruct(pnts, lls)
 end
 
+"""
+    uniform_random(model::LikelihoodModel,
+        num_points::Int,
+        confidence_level::Float64,
+        lb::AbstractVector{<:Real}=Float64[],
+        ub::AbstractVector{<:Real}=Float64[];
+        use_threads::Bool=true,
+        use_distributed::Bool=false,
+        arguments_checked::Bool=false,
+        channel::RemoteChannel=RemoteChannel(() -> Channel{Bool}(num_points+1)))
+
+Creates a grid of `num_points` uniform random points sampled between `lb` and `ub` if supplied or between the bounds contained in `model.core`. The log-likelihood function is evaluated at each grid point and all grid points within the `confidence_level` log-likelihood threshold are saved as a [`SampledConfidenceStruct`](@ref). Points are saved alongside a vector of their log-likelihood values. Log-likelihood values are standardised to 0.0 at the MLE point.
+
+For the [`UniformRandomSamples`](@ref) sample type.
+"""
 function uniform_random(model::LikelihoodModel,
                         num_points::Int,
                         confidence_level::Float64,
@@ -174,7 +210,21 @@ function uniform_random(model::LikelihoodModel,
     return SampledConfidenceStruct(pnts, lls)
 end
 
-# LatinHypercubeSampling
+"""
+    LHS(model::LikelihoodModel,
+        num_points::Int,
+        confidence_level::Float64,
+        lb::AbstractVector{<:Real}=Float64[],
+        ub::AbstractVector{<:Real}=Float64[];
+        use_threads::Bool=true,
+        use_distributed::Bool=false,
+        arguments_checked::Bool=false,
+        channel::RemoteChannel=RemoteChannel(() -> Channel{Bool}(num_points+1)))
+
+Creates a grid of `num_points` points sampled using a Latin Hypercube sampling plan between `lb` and `ub` if supplied or between the bounds contained in `model.core`. The log-likelihood function is evaluated at each grid point and all grid points within the `confidence_level` log-likelihood threshold are saved as a [`SampledConfidenceStruct`](@ref). Points are saved alongside a vector of their log-likelihood values. Log-likelihood values are standardised to 0.0 at the MLE point.
+
+For the [`LatinHypercubeSamples`](@ref) sample type.
+"""
 function LHS(model::LikelihoodModel,
             num_points::Int,
             confidence_level::Float64,
@@ -200,6 +250,19 @@ function LHS(model::LikelihoodModel,
     return SampledConfidenceStruct(pnts, lls)
 end
 
+"""
+    full_likelihood_sample(model::LikelihoodModel,
+        num_points::Union{Int, Vector{Int}},
+        confidence_level::Float64,
+        sample_type::AbstractSampleType,
+        lb::AbstractVector{<:Real},
+        ub::AbstractVector{<:Real},
+        use_threads::Bool,
+        use_distributed::Bool,
+        channel::RemoteChannel)
+
+Calls the desired method for sampling parameter space, `sample_type`, and returns a [`SampledConfidenceStruct`](@ref) containing any points that were found within the `confidence_level` log-likelihood threshold.
+"""
 function full_likelihood_sample(model::LikelihoodModel,
                                     num_points::Union{Int, Vector{Int}},
                                     confidence_level::Float64,
@@ -229,14 +292,28 @@ end
 """
     full_likelihood_sample!(model::LikelihoodModel,
         num_points_to_sample::Union{Int, Vector{Int}};
-        confidence_level::Float64=0.95,
-        sample_type::AbstractSampleType=LatinHypercubeSamples(),
-        lb::AbstractVector{<:Real}=Float64[],
-        ub::AbstractVector{<:Real}=Float64[],
-        use_threads::Bool=true,
-        existing_profiles::Symbol=:overwrite)
+        <keyword arguments>)
 
-        
+Samples `num_points_to_sample` points from full parameter space, evaluating the log-likelihood function at each, saving all points that are inside the `confidence_level` log-likelihood threshold. Saves this sample by modifying `model` in place.
+
+# Arguments
+- `model`: a [`LikelihoodModel`](@ref) containing model information, saved profiles and predictions.
+- `num_points_to_sample`: integer number of points to sample (for [`UniformRandomSamples`](@ref) and [`LatinHypercubeSamples`](@ref) sample types). For the [`UniformGridSamples`](@ref) sample type, if integer it is the number of points to grid over in each parameter dimension. If it is a vector of integers each index of the vector is the number of points to grid over in the corresponding parameter dimension. For example, [1,2] would mean a single point in dimension 1 and two points in dimension 2. 
+
+# Keyword Arguments
+- `confidence_level`: a number ∈ (0.0, 1.0) for the confidence level which . Default is 0.95 (95%).
+- `sample_type`: the sampling method used to sample parameter space. Available sample types are [`UniformGridSamples`](@ref), [`UniformRandomSamples`](@ref) and [`LatinHypercubeSamples`](@ref). Default is `LatinHypercubeSamples()` ([`LatinHypercubeSamples`](@ref)).
+- `lb`: optional vector of lower bounds on parameters. Use to specify parameter lower bounds to sample over that are different than those contained in `model.core`. Default is `Float64[]` (use lower bounds from `model.core`).
+- `ub`: optional vector of upper bounds on parameters. Use to specify parameter upper bounds to sample over that are different than those contained in `model.core`. Default is `Float64[]` (use upper bounds from `model.core`).
+- `use_distributed`: boolean variable specifying whether to use a threaded for loop or distributed for loop to evaluate the log-likelihood at each sampled point. This should be set to true if Julia instances have been started with low numbers of threads or distributed computing is being used. Default is `false`.
+- `use_threads`: boolean variable specifying, if `use_distributed` is false, whether to use a parallelised for loop across `Threads.nthreads()` threads or a non-parallel for loop to evaluate the log-likelihood at each sampled point. Default is true.
+- `existing_profiles`: `Symbol ∈ [:ignore, :overwrite]` specifying what to do if samples already exist for a given `confidence_level` and `sample_type`.  Default is `:overwrite`.
+- `show_progress`: boolean variable specifying whether to display progress bars on the percentage of `θcombinations` completed and estimated time of completion. Default is `model.show_progress`.
+
+# Details
+
+Using [`full_likelihood_sample`](@ref) this function calls the sample method specified by `sample_type` (depending on the setting for `existing_profiles` and `confidence_level` if a full likelihood sample already exists). Updates `model.dim_samples_df` if the sample is successful and saves the results as a [`SampledConfidenceStruct`](@ref) in `model.dim_samples_dict`, where the keys for the dictionary is the row number in `model.dim_samples_df` of the corresponding sample.
+
 ## Iteration Speed Of the Progress Meter
 
 The time/it value is the time it takes for each point chosen under the specified sampling scheme to be evaluated as valid or not. A point is valid if the log-likelihood function value at that point is greater than the confidence log-likelihood threshold.
@@ -247,8 +324,8 @@ function full_likelihood_sample!(model::LikelihoodModel,
                                     sample_type::AbstractSampleType=LatinHypercubeSamples(),
                                     lb::AbstractVector{<:Real}=Float64[],
                                     ub::AbstractVector{<:Real}=Float64[],
-                                    use_threads::Bool=true,
                                     use_distributed::Bool=false,
+                                    use_threads::Bool=true,
                                     existing_profiles::Symbol=:overwrite,
                                     show_progress::Bool=model.show_progress)
 

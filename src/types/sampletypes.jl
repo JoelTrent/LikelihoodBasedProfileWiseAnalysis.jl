@@ -16,7 +16,7 @@ abstract type AbstractSampleType end
 """
     UniformGridSamples()
 
-Evaluate the interest parameter bounds space on a uniform grid and keep samples that are inside the particular `profile_type`'s boundary. 
+Evaluate the interest parameter bounds space on a uniform grid, determining the optimised log-likelihood value at each grid point. Keep samples which are inside the confidence threshold boundary. 
 
 # Supertype Hiearachy
 
@@ -27,7 +27,7 @@ struct UniformGridSamples <: AbstractSampleType end
 """
     UniformRandomSamples()
 
-Take uniform random samples of interest parameter bounds space and keep samples that are inside the particular `profile_type`'s boundary. 
+Take uniform random samples of interest parameter bounds space, determining the optimised log-likelihood value at each point. Keep samples which are inside the confidence threshold boundary. 
 
 # Supertype Hiearachy
 
@@ -38,7 +38,7 @@ struct UniformRandomSamples <: AbstractSampleType end
 """
     LatinHypercubeSamples()
 
-Create a Latin Hypercube sampling plan in interest parameter bounds space and keep samples that are inside the particular `profile_type`'s boundary. Uses [LatinHypercubeSampling.jl](https://github.com/MrUrq/LatinHypercubeSampling.jl).
+Create a Latin Hypercube sampling plan in interest parameter bounds space, determining the optimised log-likelihood value at each point in the plan. Keep samples which are inside the confidence threshold boundary. Uses [LatinHypercubeSampling.jl](https://github.com/MrUrq/LatinHypercubeSampling.jl).
 
 # Supertype Hiearachy
 

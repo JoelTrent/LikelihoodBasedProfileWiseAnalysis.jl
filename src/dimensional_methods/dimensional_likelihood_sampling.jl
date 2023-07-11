@@ -16,6 +16,18 @@ function dimensional_optimiser!(θs::Union{Vector, SubArray}, p::NamedTuple, tar
     return llb
 end
 
+"""
+    valid_points(model::LikelihoodModel, 
+        p::NamedTuple, 
+        grid::Matrix{Float64},
+        grid_size::Int,
+        confidence_level::Float64, 
+        num_dims::Int,
+        use_threads::Bool,
+        channel::RemoteChannel)
+
+Given a `grid` of `grid_size` points in interest parameter space with `num_dims` dimensions, this function finds the values of nuisance parameters that maximise the log-likelihood function at each point and returns the points that are within the `confidence_level` log-likelihood threshold as a `num_dims * n` array, alongside a vector of their log-likelihood values. Log-likelihood values are standardised to 0.0 at the MLE point.
+"""
 function valid_points(model::LikelihoodModel, 
                         p::NamedTuple, 
                         grid::Matrix{Float64},
@@ -43,6 +55,13 @@ function valid_points(model::LikelihoodModel,
     return grid[:,valid_point], valid_ll_values
 end
 
+"""
+    check_if_bounds_supplied(model::LikelihoodModel,
+        lb::AbstractVector{<:Real},
+        ub::AbstractVector{<:Real})
+
+Returns the model bounds on interest parameter space if lb and ub are empty, and lb and ub for interest parameter indices otherwise.  
+"""
 function check_if_bounds_supplied(model::LikelihoodModel,
                                     θindices::Vector{Int},
                                     lb::AbstractVector{<:Real},
@@ -60,7 +79,21 @@ function check_if_bounds_supplied(model::LikelihoodModel,
     return lb, ub
 end
 
-# Uniform grids
+"""
+    uniform_grid(model::LikelihoodModel,
+        θindices::Vector{Int},
+        points_per_dimension::Union{Int, Vector{Int}},
+        confidence_level::Float64,
+        lb::AbstractVector{<:Real}=Float64[],
+        ub::AbstractVector{<:Real}=Float64[];
+        use_threads=true,
+        arguments_checked::Bool=false,
+        channel::RemoteChannel=RemoteChannel(() -> Channel{Bool}(Inf)))
+
+Creates a uniform grid on interest parameter space `θindices` with `points_per_dimension` in each interest dimension, uniformly spaced between `lb[θindices]` and `ub[θindices]` if supplied or between the bounds contained in `model.core`. The grid is then passed to [`PlaceholderLikelihood.valid_points`](@ref) to determine the values of nuisance parameters that maximise log-likelihood function at each grid point. All grid points within the `confidence_level` log-likelihood threshold are then saved as a [`SampledConfidenceStruct`](@ref). Points are saved alongside a vector of their log-likelihood values. Log-likelihood values are standardised to 0.0 at the MLE point.
+
+For the [`UniformGridSamples`](@ref) sample type.
+"""
 function uniform_grid(model::LikelihoodModel,
                         θindices::Vector{Int},
                         points_per_dimension::Union{Int, Vector{Int}},
@@ -100,83 +133,98 @@ function uniform_grid(model::LikelihoodModel,
     return SampledConfidenceStruct(pnts, lls)
 end
 
-function uniform_random_blocks(model::LikelihoodModel,
-                        θindices::Vector{Int},
-                        num_points::Int,
-                        confidence_level::Float64,
-                        lb::AbstractVector{<:Real}=Float64[],
-                        ub::AbstractVector{<:Real}=Float64[];
-                        block_size=20000,
-                        use_threads::Bool=true,
-                        arguments_checked::Bool=false,
-                        channel::RemoteChannel=RemoteChannel(() -> Channel{Bool}(num_points+1)))
+# function uniform_random_blocks(model::LikelihoodModel,
+#                         θindices::Vector{Int},
+#                         num_points::Int,
+#                         confidence_level::Float64,
+#                         lb::AbstractVector{<:Real}=Float64[],
+#                         ub::AbstractVector{<:Real}=Float64[];
+#                         block_size=20000,
+#                         use_threads::Bool=true,
+#                         arguments_checked::Bool=false,
+#                         channel::RemoteChannel=RemoteChannel(() -> Channel{Bool}(num_points+1)))
 
-    num_dims = length(θindices); num_dims > 0 || throw(ArgumentError("θindices must not be empty"))
-    if !arguments_checked
-        num_points > 0 || throw(DomainError("num_points must be a strictly positive integer"))
-    end
-    newLb, newUb, initGuess, ωindices = init_nuisance_parameters(model, θindices, num_dims)
-    consistent = get_consistent_tuple(model, confidence_level, LogLikelihood(), num_dims)
-    p=(θindices=θindices, newLb=newLb, newUb=newUb, initGuess=initGuess,
-        ωindices=ωindices, consistent=consistent)
+#     num_dims = length(θindices); num_dims > 0 || throw(ArgumentError("θindices must not be empty"))
+#     if !arguments_checked
+#         num_points > 0 || throw(DomainError("num_points must be a strictly positive integer"))
+#     end
+#     newLb, newUb, initGuess, ωindices = init_nuisance_parameters(model, θindices, num_dims)
+#     consistent = get_consistent_tuple(model, confidence_level, LogLikelihood(), num_dims)
+#     p=(θindices=θindices, newLb=newLb, newUb=newUb, initGuess=initGuess,
+#         ωindices=ωindices, consistent=consistent)
     
-    lb, ub = arguments_checked ? (lb, ub) : check_if_bounds_supplied(model, θindices, lb, ub)
+#     lb, ub = arguments_checked ? (lb, ub) : check_if_bounds_supplied(model, θindices, lb, ub)
 
-    num_blocks = div(num_points, block_size)
-    remainder = mod(num_points, block_size)
+#     num_blocks = div(num_points, block_size)
+#     remainder = mod(num_points, block_size)
 
-    valid_grid = zeros(model.core.num_pars, 0)
-    valid_ll_values = zeros(0)
+#     valid_grid = zeros(model.core.num_pars, 0)
+#     valid_ll_values = zeros(0)
 
-    block_sizes = [block_size for _ in 1:num_blocks]
-    if remainder > 0; append!(block_sizes, remainder) end
-    cumulative_sizes = cumsum(block_sizes)
-    preallocate_j = findfirst((cumulative_sizes ./ num_points) .≥ 0.05)
+#     block_sizes = [block_size for _ in 1:num_blocks]
+#     if remainder > 0; append!(block_sizes, remainder) end
+#     cumulative_sizes = cumsum(block_sizes)
+#     preallocate_j = findfirst((cumulative_sizes ./ num_points) .≥ 0.05)
 
-    current_len = 0
-    estimated_size = num_points
-    grid = zeros(model.core.num_pars, block_size)
-    for (i, block) in enumerate(block_sizes)
+#     current_len = 0
+#     estimated_size = num_points
+#     grid = zeros(model.core.num_pars, block_size)
+#     for (i, block) in enumerate(block_sizes)
 
-        if block < block_size; grid = zeros(model.core.num_pars, block) end
+#         if block < block_size; grid = zeros(model.core.num_pars, block) end
 
-        for dim in 1:num_dims
-            grid[θindices[dim], :] .= rand(Uniform(lb[dim], ub[dim]), block)
-        end
+#         for dim in 1:num_dims
+#             grid[θindices[dim], :] .= rand(Uniform(lb[dim], ub[dim]), block)
+#         end
 
-        pnts, lls = valid_points(model, p, grid, block, confidence_level, num_dims, use_threads, channel)
+#         pnts, lls = valid_points(model, p, grid, block, confidence_level, num_dims, use_threads, channel)
 
-        if i ≤ preallocate_j
-            valid_grid = hcat(valid_grid, @view(pnts[:,:]))
-            valid_ll_values = vcat(valid_ll_values, @view(lls[:]))
-            continue
-        end
-        if (preallocate_j + 1) == i
-            # estimate preallocation size
-            current_len = length(valid_ll_values)
-            accept_rate = current_len/cumulative_sizes[preallocate_j]
-            safety_factor = 1.25
-            estimated_size = convert(Int, round(accept_rate * num_points * safety_factor, RoundDown))
+#         if i ≤ preallocate_j
+#             valid_grid = hcat(valid_grid, @view(pnts[:,:]))
+#             valid_ll_values = vcat(valid_ll_values, @view(lls[:]))
+#             continue
+#         end
+#         if (preallocate_j + 1) == i
+#             # estimate preallocation size
+#             current_len = length(valid_ll_values)
+#             accept_rate = current_len/cumulative_sizes[preallocate_j]
+#             safety_factor = 1.25
+#             estimated_size = convert(Int, round(accept_rate * num_points * safety_factor, RoundDown))
 
-            valid_grid = hcat(valid_grid, zeros(model.core.num_pars, estimated_size-current_len))
-            resize!(valid_ll_values, estimated_size)
-        end
+#             valid_grid = hcat(valid_grid, zeros(model.core.num_pars, estimated_size-current_len))
+#             resize!(valid_ll_values, estimated_size)
+#         end
 
-        num_to_add = length(lls)
-        if (current_len + num_to_add) ≤ estimated_size
-            rnge = current_len+1:current_len+num_to_add
-            valid_grid[:, rnge] .= pnts
-            valid_ll_values[rnge] .= lls
-            current_len += num_to_add
-        else
-            # do something here
-            continue
-        end
-    end
+#         num_to_add = length(lls)
+#         if (current_len + num_to_add) ≤ estimated_size
+#             rnge = current_len+1:current_len+num_to_add
+#             valid_grid[:, rnge] .= pnts
+#             valid_ll_values[rnge] .= lls
+#             current_len += num_to_add
+#         else
+#             # do something here
+#             continue
+#         end
+#     end
 
-    return SampledConfidenceStruct(valid_grid[:,1:current_len], valid_ll_values[1:current_len])
-end
+#     return SampledConfidenceStruct(valid_grid[:,1:current_len], valid_ll_values[1:current_len])
+# end
 
+"""
+    uniform_random(model::LikelihoodModel,
+        num_points::Int,
+        confidence_level::Float64,
+        lb::AbstractVector{<:Real}=Float64[],
+        ub::AbstractVector{<:Real}=Float64[];
+        use_threads::Bool=true,
+        use_distributed::Bool=false,
+        arguments_checked::Bool=false,
+        channel::RemoteChannel=RemoteChannel(() -> Channel{Bool}(num_points+1)))
+
+Creates a grid of `num_points` uniform random points on interest parameter space `θindices` sampled between `lb[θindices]` and `ub[θindices]` if supplied or between the bounds contained in `model.core`. The grid is then passed to [`PlaceholderLikelihood.valid_points`](@ref) to determine the values of nuisance parameters that maximise log-likelihood function at each grid point. All grid points within the `confidence_level` log-likelihood threshold are then saved as a [`SampledConfidenceStruct`](@ref). Points are saved alongside a vector of their log-likelihood values. Log-likelihood values are standardised to 0.0 at the MLE point.
+    
+For the [`UniformRandomSamples`](@ref) sample type.
+"""
 function uniform_random(model::LikelihoodModel,
                         θindices::Vector{Int},
                         num_points::Int,
@@ -208,7 +256,21 @@ function uniform_random(model::LikelihoodModel,
     return SampledConfidenceStruct(pnts, lls)
 end
 
-# LatinHypercubeSampling
+"""
+    LHS(model::LikelihoodModel,
+        θindices::Vector{Int},
+        num_points::Int,
+        confidence_level::Float64,
+        lb::AbstractVector{<:Real}=Float64[],
+        ub::AbstractVector{<:Real}=Float64[];
+        use_threads::Bool=true,
+        arguments_checked::Bool=false,
+        channel::RemoteChannel=RemoteChannel(() -> Channel{Bool}(num_points+1)))
+
+Creates a grid of `num_points` points on interest parameter space `θindices` using a Latin Hypercube sampling planbetween `lb[θindices]` and `ub[θindices]` if supplied or between the bounds contained in `model.core`. The grid is then passed to [`PlaceholderLikelihood.valid_points`](@ref) to determine the values of nuisance parameters that maximise log-likelihood function at each grid point. All grid points within the `confidence_level` log-likelihood threshold are then saved as a [`SampledConfidenceStruct`](@ref). Points are saved alongside a vector of their log-likelihood values. Log-likelihood values are standardised to 0.0 at the MLE point.
+
+For the [`LatinHypercubeSamples`](@ref) sample type.
+"""
 function LHS(model::LikelihoodModel,
             θindices::Vector{Int},
             num_points::Int,
@@ -241,6 +303,19 @@ function LHS(model::LikelihoodModel,
     return SampledConfidenceStruct(pnts, lls)
 end
 
+"""
+    dimensional_likelihood_sample(model::LikelihoodModel,
+        θindices::Vector{Int},
+        num_points::Union{Int, Vector{Int}},
+        confidence_level::Float64,
+        sample_type::AbstractSampleType,
+        lb::AbstractVector{<:Real},
+        ub::AbstractVector{<:Real},
+        use_threads::Bool,
+        channel::RemoteChannel)
+
+Calls the desired method for sampling interest parameter space, `sample_type`, and returns a [`SampledConfidenceStruct`](@ref) containing any points that were found within the `confidence_level` log-likelihood threshold.
+"""
 function dimensional_likelihood_sample(model::LikelihoodModel,
                                     θindices::Vector{Int},
                                     num_points::Union{Int, Vector{Int}},
@@ -280,30 +355,43 @@ function dimensional_likelihood_sample(model::LikelihoodModel,
 end
 
 """
-    dimensional_likelihood_sample!(model::LikelihoodModel,
+    dimensional_likelihood_samples!(model::LikelihoodModel,
         θindices::Vector{Vector{Int}},
         num_points_to_sample::Union{Int, Vector{Int}};
-        confidence_level::Float64=0.95,
-        sample_type::AbstractSampleType=LatinHypercubeSamples(),
-        lb::AbstractVector{<:Real}=Float64[],
-        ub::AbstractVector{<:Real}=Float64[],
-        θs_is_unique::Bool=false,
-        use_threads::Bool=false,
-        existing_profiles::Symbol=:overwrite,
-        show_progress::Bool=model.show_progress)
+        <keyword arguments>)
+
+Samples `num_points_to_sample` points from interest parameter space, for each interest parameter combination in `θindices`, determine the values of nuisance parameters that maximise log-likelihood function at each,  saving all points that are inside the `confidence_level` log-likelihood threshold. Saves these samples by modifying `model` in place.
+
+# Arguments
+- `model`: a [`LikelihoodModel`](@ref) containing model information, saved profiles and predictions.
+- `θindices`:
+- `num_points_to_sample`: integer number of points to sample (for [`UniformRandomSamples`](@ref) and [`LatinHypercubeSamples`](@ref) sample types). For the [`UniformGridSamples`](@ref) sample type, if integer it is the number of points to grid over in each parameter dimension. If it is a vector of integers each index of the vector is the number of points to grid over in the corresponding parameter dimension. For example, [1,2] would mean a single point in dimension 1 and two points in dimension 2. 
+
+# Keyword Arguments
+- `confidence_level`: a number ∈ (0.0, 1.0) for the confidence level which . Default is 0.95 (95%).
+- `sample_type`: the sampling method used to sample parameter space. Available sample types are [`UniformGridSamples`](@ref), [`UniformRandomSamples`](@ref) and [`LatinHypercubeSamples`](@ref). Default is `LatinHypercubeSamples()` ([`LatinHypercubeSamples`](@ref)).
+- `lb`: optional vector of lower bounds on interest parameters. Use to specify interest parameter lower bounds to sample over that are different than those contained in `model.core` (must be the same length as original bounds). Default is `Float64[]` (use lower bounds from `model.core`).
+- `ub`: optional vector of upper bounds on interest parameters. Use to specify interest parameter upper bounds to sample over that are different than those contained in `model.core` (must be the same length as original bounds). Default is `Float64[]` (use upper bounds from `model.core`).
+- `use_distributed`: boolean variable specifying whether to use a threaded for loop or distributed for loop to evaluate the log-likelihood at each sampled point. This should be set to true if Julia instances have been started with low numbers of threads or distributed computing is being used. Default is `false`.
+- `use_threads`: boolean variable specifying, if `use_distributed` is false, whether to use a parallelised for loop across `Threads.nthreads()` threads or a non-parallel for loop to evaluate the log-likelihood at each sampled point. Default is `true`.
+- `existing_profiles`: `Symbol ∈ [:ignore, :overwrite]` specifying what to do if samples already exist for a given `confidence_level` and `sample_type`.  Default is `:overwrite`.
+- `show_progress`: boolean variable specifying whether to display progress bars on the percentage of `θcombinations` completed and estimated time of completion. Default is `model.show_progress`.
+
+# Details
+
+Using [`dimensional_likelihood_sample`](@ref) this function calls the sample method specified by `sample_type` for each set of interest parameters in `[θindices]` (depending on the setting for `existing_profiles` and `confidence_level` if these samples already exist). Updates `model.dim_samples_df` for each successful sample and saves their results as a [`SampledConfidenceStruct`](@ref) in `model.dim_samples_dict`, where the keys for the dictionary is the row number in `model.dim_samples_df` of the corresponding sample.
 
 ## Iteration Speed Of the Progress Meter
 
 The time/it value is the time it takes for each point chosen under the specified sampling scheme to be evaluated as valid or not, for each interest parameter combination. A point is valid if the log-likelihood function value at that point is greater than the confidence log-likelihood threshold.
 """
-function dimensional_likelihood_sample!(model::LikelihoodModel,
+function dimensional_likelihood_samples!(model::LikelihoodModel,
                                         θindices::Vector{Vector{Int}},
                                         num_points_to_sample::Union{Int, Vector{Int}};
                                         confidence_level::Float64=0.95,
                                         sample_type::AbstractSampleType=LatinHypercubeSamples(),
                                         lb::AbstractVector{<:Real}=Float64[],
                                         ub::AbstractVector{<:Real}=Float64[],
-                                        θs_is_unique::Bool=false,
                                         use_threads::Bool=false,
                                         existing_profiles::Symbol=:overwrite,
                                         show_progress::Bool=model.show_progress)
@@ -325,13 +413,11 @@ function dimensional_likelihood_sample!(model::LikelihoodModel,
     # error handle confidence_level
     get_target_loglikelihood(model, confidence_level, LogLikelihood(), 1)
     
-    if !θs_is_unique 
-        θindices = θindices[.!isempty.(θindices)]
-        sort!.(θindices); unique!.(θindices)
-        sort!(θindices); unique!(θindices)
+    θindices = θindices[.!isempty.(θindices)]
+    sort!.(θindices); unique!.(θindices)
+    sort!(θindices); unique!(θindices)
+    1 ≤ first.(θindices)[1] && maximum(last.(θindices)) ≤ model.core.num_pars || throw(DomainError("θindices can only contain parameter indexes between 1 and the number of model parameters"))
 
-        1 ≤ first.(θindices)[1] && maximum(last.(θindices)) ≤ model.core.num_pars || throw(DomainError("θindices can only contain parameter indexes between 1 and the number of model parameters"))
-    end
     # check if any of θindices is for the full likelihood - do this outside main for loop
     for (i, θs) in enumerate(θindices)
         if length(θs) == model.core.num_pars
@@ -435,30 +521,46 @@ function dimensional_likelihood_sample!(model::LikelihoodModel,
     return nothing
 end
 
-function dimensional_likelihood_sample!(model::LikelihoodModel,
+"""
+    dimensional_likelihood_samples!(model::LikelihoodModel,
+        θnames::Vector{Vector{Symbol}},
+        num_points_to_sample::Union{Int, Vector{Int}};
+        <keyword arguments>)
+
+Samples just the provided `θnames` interest parameter sets, provided as a vector of vectors.
+"""
+function dimensional_likelihood_samples!(model::LikelihoodModel,
     θnames::Vector{Vector{Symbol}},
     num_points_to_sample::Union{Int, Vector{Int}};
     confidence_level::Float64=0.95,
     sample_type::AbstractSampleType=LatinHypercubeSamples(),
     lb::AbstractVector{<:Real}=Float64[],
     ub::AbstractVector{<:Real}=Float64[],
-    θs_is_unique::Bool=false,
     use_threads::Bool=true,
     existing_profiles::Symbol=:overwrite,
     show_progress::Bool=model.show_progress)
 
     θindices = convertθnames_toindices(model, θnames)
 
-    dimensional_likelihood_sample!(model, θindices, num_points_to_sample,
+    dimensional_likelihood_samples!(model, θindices, num_points_to_sample,
                                     confidence_level=confidence_level, sample_type=sample_type,
-                                    lb=lb, ub=ub, θs_is_unique=θs_is_unique,
+                                    lb=lb, ub=ub,
                                     use_threads=use_threads,
                                     existing_profiles=existing_profiles,
                                     show_progress=show_progress)
     return nothing
 end
 
-function dimensional_likelihood_sample!(model::LikelihoodModel,
+"""
+    dimensional_likelihood_samples!(model::LikelihoodModel,
+        sample_dimension::Int,
+        sample_m_random_combinations::Int,
+        num_points_to_sample::Union{Int, Vector{Int}}
+        <keyword arguments>)
+
+Samples m random combinations of `sample_dimension` model parameters (sampling without replacement), where `0 < m ≤ binomial(model.core.num_pars, sample_dimension)`.
+"""
+function dimensional_likelihood_samples!(model::LikelihoodModel,
     sample_dimension::Int,
     sample_m_random_combinations::Int,
     num_points_to_sample::Union{Int, Vector{Int}};
@@ -476,16 +578,23 @@ function dimensional_likelihood_sample!(model::LikelihoodModel,
     θcombinations = sample(collect(combinations(1:model.core.num_pars, sample_dimension)),
                             sample_m_random_combinations, replace=false, ordered=true)
 
-    dimensional_likelihood_sample!(model, θcombinations, num_points_to_sample,
+    dimensional_likelihood_samples!(model, θcombinations, num_points_to_sample,
                                     confidence_level=confidence_level, sample_type=sample_type,
-                                    lb=lb, ub=ub, θs_is_unique=true,
+                                    lb=lb, ub=ub,
                                     use_threads=use_threads,
                                     existing_profiles=existing_profiles,
                                     show_progress=show_progress)
     return nothing
 end
 
-function dimensional_likelihood_sample!(model::LikelihoodModel,
+"""
+    dimensional_likelihood_samples!(model::LikelihoodModel,
+        sample_dimension::Int,
+        num_points_to_sample::Union{Int, Vector{Int}}
+
+Samples all combinations of `sample_dimension` model parameters.
+"""
+function dimensional_likelihood_samples!(model::LikelihoodModel,
     sample_dimension::Int,
     num_points_to_sample::Union{Int, Vector{Int}};
     confidence_level::Float64=0.95,
@@ -498,9 +607,9 @@ function dimensional_likelihood_sample!(model::LikelihoodModel,
 
     θcombinations = collect(combinations(1:model.core.num_pars, sample_dimension))
 
-    dimensional_likelihood_sample!(model, θcombinations, num_points_to_sample,
+    dimensional_likelihood_samples!(model, θcombinations, num_points_to_sample,
                                     confidence_level=confidence_level, sample_type=sample_type,
-                                    lb=lb, ub=ub, θs_is_unique=true,
+                                    lb=lb, ub=ub,
                                     use_threads=use_threads,
                                     existing_profiles=existing_profiles,
                                     show_progress=show_progress)

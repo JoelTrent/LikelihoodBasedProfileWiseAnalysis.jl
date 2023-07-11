@@ -53,7 +53,7 @@ export initialiseLikelihoodModel,
     combine_bivariate_boundaries!,
     check_bivariate_parameter_coverage, check_bivariate_boundary_coverage,
     
-    dimensional_likelihood_sample!, full_likelihood_sample!,
+    dimensional_likelihood_samples!, full_likelihood_sample!,
 
     add_prediction_function!, check_prediction_function_exists,
     generate_predictions_univariate!, generate_predictions_bivariate!,

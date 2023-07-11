@@ -26,5 +26,5 @@ full_likelihood_sample!
 Note: dimensional likelihood samples can be 'full' likelihood samples as well.
 
 ```@docs
-dimensional_likelihood_sample!
+dimensional_likelihood_samples!
 ```

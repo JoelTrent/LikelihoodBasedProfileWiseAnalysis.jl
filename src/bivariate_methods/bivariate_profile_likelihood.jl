@@ -132,7 +132,7 @@ end
         save_internal_points::Bool,
         channel::RemoteChannel)
 
-Returns a [`BivariateConfidenceStruct`](@ref) containing the `num_points` boundary points and internal points (if `save_internal_points=true`) for the specified combination of parameters `ind1` and `ind2`, and `profile_type` at `confidence_level` using `method`. Calls the desired method. Called by [`bivariate_confidenceprofiles!`](@ref).
+Returns a [`BivariateConfidenceStruct`](@ref) containing the `num_points` boundary points and internal points (if `save_internal_points=true`) for the specified combination of parameters `ind1` and `ind2`, and `profile_type` at `confidence_level` using `method`. Calls the desired `method`. Called by [`bivariate_confidenceprofiles!`](@ref).
 """
 function bivariate_confidenceprofile(bivariate_optimiser::Function,
                                         model::LikelihoodModel, 
@@ -262,7 +262,6 @@ Finds `num_points` `profile_type` boundary points at a specified `confidence_lev
 - `confidence_level`: a number ∈ (0.0, 1.0) for the confidence level on which to find the `profile_type` boundary. Default is 0.95 (95%).
 - `profile_type`: whether to use the true log-likelihood function or an ellipse approximation of the log-likelihood function centred at the MLE (with optional use of parameter bounds). Available profile types are [`LogLikelihood`](@ref), [`EllipseApprox`](@ref) and [`EllipseApproxAnalytical`](@ref). Default is `LogLikelihood()` ([`LogLikelihood`](@ref)).
 - `method`: a method of type [`AbstractBivariateMethod`](@ref). For a list of available methods use `bivariate_methods()` ([`bivariate_methods`](@ref)). Default is `RadialRandomMethod(3)` ([`RadialRandomMethod`](@ref)).
-- `θcombinations_is_unique`: boolean variable specifying whether all parameter combinations in `θcombinations` are ordered by parameter index (ascending) and are unique. Default is `false`.
 - `save_internal_points`: boolean variable specifying whether to save points found inside the boundary during boundary computation. Internal points can be plotted in bivariate profile plots and will be used to generate predictions from a given bivariate profile. Default is `true`.
 - `existing_profiles`: `Symbol ∈ [:ignore, :merge, :overwrite]` specifying what to do if profiles already exist for a given `θcombination`, `confidence_level`, `profile_type` and `method`. See below for each symbol's meanings. Default is `:merge`.
 - `show_progress`: boolean variable specifying whether to display progress bars on the percentage of `θcombinations` completed and estimated time of completion. Default is `model.show_progress`.
@@ -275,7 +274,7 @@ Finds `num_points` `profile_type` boundary points at a specified `confidence_lev
 
 # Details
 
-Using [`bivariate_confidenceprofile`](@ref) this function calls the algorithm/method specified by `method` for each parameter combination in `θcombinations` (depending on the setting for `existing_profiles` and `num_points` if these profiles already exist). Updates `model.biv_profiles_df` for each successful profile and saves their results as a [`BivariateConfidenceStruct`](@ref) in `model.biv_profiles_dict`, where the keys for the dictionary is the row number in `model.biv_profiles_df` of the corresponding profile.
+Using [`bivariate_confidenceprofile`](@ref) this function calls the algorithm/method specified by `method` for each interest parameter combination in `θcombinations` (depending on the setting for `existing_profiles` and `num_points` if these profiles already exist). Updates `model.biv_profiles_df` for each successful profile and saves their results as a [`BivariateConfidenceStruct`](@ref) in `model.biv_profiles_dict`, where the keys for the dictionary is the row number in `model.biv_profiles_df` of the corresponding profile.
 
 ## Iteration Speed Of the Progress Meter
 
@@ -287,7 +286,6 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
                                         confidence_level::Float64=0.95, 
                                         profile_type::AbstractProfileType=LogLikelihood(),
                                         method::AbstractBivariateMethod=RadialRandomMethod(3),
-                                        θcombinations_is_unique::Bool=false,
                                         save_internal_points::Bool=true,
                                         existing_profiles::Symbol=:merge,
                                         show_progress::Bool=model.show_progress,
@@ -316,12 +314,10 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
     mle_targetll = get_target_loglikelihood(model, confidence_level, EllipseApproxAnalytical(), 2)
 
     # for each combination, enforce ind1 < ind2 and make sure only unique combinations are run
-    if !θcombinations_is_unique 
-        sort!.(θcombinations); unique!.(θcombinations)
-        sort!(θcombinations); unique!(θcombinations)
+    sort!.(θcombinations); unique!.(θcombinations)
+    sort!(θcombinations); unique!(θcombinations)
+    1 ≤ first.(θcombinations)[1] && maximum(last.(θcombinations)) ≤ model.core.num_pars || throw(DomainError("θcombinations can only contain parameter indexes between 1 and the number of model parameters"))
 
-        1 ≤ first.(θcombinations)[1] && maximum(last.(θcombinations)) ≤ model.core.num_pars || throw(DomainError("θcombinations can only contain parameter indexes between 1 and the number of model parameters"))
-    end
     extrema(length.(θcombinations)) == (2,2) || throw(ArgumentError("θcombinations must only contain vectors of length 2"))
 
     init_biv_profile_row_exists!(model, θcombinations, profile_type, method)
@@ -471,7 +467,6 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
                                         confidence_level::Float64=0.95, 
                                         profile_type::AbstractProfileType=LogLikelihood(),
                                         method::AbstractBivariateMethod=RadialRandomMethod(3),
-                                        θcombinations_is_unique::Bool=false,
                                         save_internal_points::Bool=true,
                                         existing_profiles::Symbol=:merge,
                                         show_progress::Bool=model.show_progress,
@@ -481,7 +476,7 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
 
     bivariate_confidenceprofiles!(model, θcombinations, num_points, 
             confidence_level=confidence_level, profile_type=profile_type, 
-            method=method, θcombinations_is_unique=θcombinations_is_unique,
+            method=method,
             save_internal_points=save_internal_points,
             existing_profiles=existing_profiles,
             show_progress=show_progress,
@@ -496,10 +491,6 @@ end
         <keyword arguments>)
 
 Profiles m random two-way combinations of model parameters (sampling without replacement), where `0 < m ≤ binomial(model.core.num_pars,2)`.
-
-!!! warning "θcombinations_is_unique keyword argument"
-
-    `θcombinations_is_unique` is not a valid keyword argument for this function method as it internally produces the parameter combinations which are guaranteed to be unique.
 """
 function bivariate_confidenceprofiles!(model::LikelihoodModel, 
                                         profile_m_random_combinations::Int, 
@@ -520,7 +511,7 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
 
     bivariate_confidenceprofiles!(model, θcombinations, num_points, 
             confidence_level=confidence_level, profile_type=profile_type, 
-            method=method, θcombinations_is_unique=true, 
+            method=method,
             save_internal_points=save_internal_points,
             existing_profiles=existing_profiles,
             show_progress=show_progress,
@@ -534,10 +525,6 @@ end
         <keyword arguments>)
 
 Profiles all two-way combinations of model parameters.
-
-!!! warning "θcombinations_is_unique keyword argument"
-
-    `θcombinations_is_unique` is not a valid keyword argument for this function method as it internally produces the parameter combinations which are guaranteed to be unique.
 """
 function bivariate_confidenceprofiles!(model::LikelihoodModel, 
                                         num_points::Int; 
@@ -553,7 +540,7 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
 
     bivariate_confidenceprofiles!(model, θcombinations, num_points, 
             confidence_level=confidence_level, profile_type=profile_type, 
-            method=method, θcombinations_is_unique=true,
+            method=method,
             save_internal_points=save_internal_points,
             existing_profiles=existing_profiles,
             show_progress=show_progress,

@@ -288,7 +288,6 @@ Computes likelihood-based confidence interval profiles for the provided `θs_to_
 - `confidence_level`: a number ∈ (0.0, 1.0) for the confidence level to evaluate the confidence interval. Default is 0.95 (95%).
 - `profile_type`: whether to use the true log-likelihood function or an ellipse approximation of the log-likelihood function centred at the MLE (with optional use of parameter bounds). Available profile types are [`LogLikelihood`](@ref), [`EllipseApprox`](@ref) and [`EllipseApproxAnalytical`](@ref). Default is `LogLikelihood()` ([`LogLikelihood`](@ref)).
 - `use_existing_profiles`: boolean variable specifying whether to use existing profiles of a parameter `θi` to decrease the width of the bracket used to search for the desired confidence interval using [`PlaceholderLikelihood.get_interval_brackets`](@ref). Default is `false`.
-- `θs_is_unique`: boolean variable specifying whether all parameter indexes in `θs_to_profile` are ordered by parameter index (ascending) and unique. Default is `false`.
 - `num_points_in_interval`: an integer number of points to optionally evaluate within the confidence interval for each interest parameter using [`get_points_in_interval!`](@ref). Points are linearly spaced in the interval and have their optimised log-likelihood value recorded. Useful for plots that visualise the confidence interval or for predictions from univariate profiles. Default is 0. 
 - `additional_width`: a `Real` number greater than or equal to zero. Specifies the additional width to optionally evaluate outside the confidence interval's width if `num_points_in_interval` is greater than 0 using [`get_points_in_interval!`](@ref). Half of this additional width will be placed on either side of the confidence interval. If the additional width goes outside a bound on the parameter, only up to the bound will be considered. The spacing of points in the additional width will try to match the spacing of points evaluated inside the interval. Useful for plots that visualise the confidence interval as it shows the trend of the log-likelihood profile outside the interval range. Default is 0.0.
 - `existing_profiles`: `Symbol ∈ [:ignore, :overwrite]` specifying what to do if profiles already exist for a given interest parameter, `confidence_level` and `profile_type`. See below for each symbol's meanings. Default is `:merge`.
@@ -313,7 +312,6 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
                                         confidence_level::Float64=0.95, 
                                         profile_type::AbstractProfileType=LogLikelihood(),
                                         use_existing_profiles::Bool=false,
-                                        θs_is_unique::Bool=false,
                                         num_points_in_interval::Int=0,
                                         additional_width::Real=0.0,
                                         existing_profiles::Symbol=:ignore,
@@ -334,8 +332,7 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
     consistent = get_consistent_tuple(model, confidence_level, profile_type, 1)
     mle_targetll = get_target_loglikelihood(model, confidence_level, EllipseApproxAnalytical(), 1)
 
-    θs_is_unique || (sort(θs_to_profile); unique!(θs_to_profile))
-
+    (sort(θs_to_profile); unique!(θs_to_profile))
     1 ≤ θs_to_profile[1] && θs_to_profile[end] ≤ model.core.num_pars || throw(DomainError("θs_to_profile can only contain parameter indexes between 1 and the number of model parameters"))
 
     init_uni_profile_row_exists!(model, θs_to_profile, profile_type)
@@ -453,7 +450,6 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
                                         confidence_level::Float64=0.95, 
                                         profile_type::AbstractProfileType=LogLikelihood(),
                                         use_existing_profiles::Bool=false,
-                                        θs_is_unique::Bool=false,
                                         num_points_in_interval::Int=0,
                                         additional_width::Real=0.0,
                                         existing_profiles::Symbol=:ignore,
@@ -464,7 +460,6 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
     univariate_confidenceintervals!(model, indices_to_profile, confidence_level=confidence_level,
                                 profile_type=profile_type,
                                 use_existing_profiles=use_existing_profiles,
-                                θs_is_unique=θs_is_unique,
                                 num_points_in_interval=num_points_in_interval,
                                 additional_width=additional_width,
                                 existing_profiles=existing_profiles,
@@ -479,10 +474,6 @@ end
         <keyword arguments>)
 
 Profiles m random interest parameters (sampling without replacement), where `0 < m ≤ model.core.num_pars`.
-
-!!! warning "θs_is_unique keyword argument"
-
-    `θs_is_unique` is not a valid keyword argument for this function method as it internally produces the parameter combinations which are guaranteed to be unique.
 """
 function univariate_confidenceintervals!(model::LikelihoodModel, 
                                         profile_m_random_parameters::Int; 
@@ -503,7 +494,6 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
     univariate_confidenceintervals!(model, indices_to_profile, confidence_level=confidence_level,
                                 profile_type=profile_type,
                                 use_existing_profiles=use_existing_profiles,
-                                θs_is_unique=true,
                                 num_points_in_interval=num_points_in_interval,
                                 additional_width=additional_width,
                                 existing_profiles=existing_profiles,
