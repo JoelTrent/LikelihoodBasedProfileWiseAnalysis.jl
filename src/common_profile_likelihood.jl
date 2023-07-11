@@ -88,7 +88,7 @@ end
         profile_type::AbstractProfileType, 
         dof::Int)
 
-Returns the target log-likelihood / threshold at a confidence level and degrees of freedom, `dof` (the number of interest parameters), required for a particular `profile_type` to be in the confidence set. Uses [`PlaceholderLikelihood.ll_correction`](@ref) 
+Returns the target log-likelihood / threshold at a confidence level and degrees of freedom, `dof` (the number of interest parameters), required for a particular `profile_type` to be in the confidence set. Uses [`PlaceholderLikelihood.ll_correction`](@ref).
 """
 function get_target_loglikelihood(model::LikelihoodModel, 
                                     confidence_level::Float64,

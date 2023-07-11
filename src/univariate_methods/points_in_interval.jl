@@ -174,7 +174,7 @@ function get_points_in_interval!(model::LikelihoodModel,
                                     additional_width::Real=0.0
                                     )
 
-    0 < num_points_in_interval || throw(DomainError("num_points_in_interval must be a strictly positive integer"))
+    num_points_in_interval > 0 || throw(DomainError("num_points_in_interval must be a strictly positive integer"))
     additional_width >= 0 || throw(DomainError("additional_width must be greater than or equal to zero"))
     
     sub_df = desired_df_subset(model.uni_profiles_df, model.num_uni_profiles, Int[], 

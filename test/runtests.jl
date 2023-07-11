@@ -314,6 +314,55 @@ using EllipseSampling
             combine_bivariate_boundaries!(m, not_evaluated_predictions=false)
             @test length(m.biv_profiles_df.row_ind) == 1
         end
+
+        @testset "error_handling_EllipseLikelihood" begin
+            m = initialiseLikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes, show_progress=false)
+
+            @test_throws DomainError   univariate_confidenceintervals!(m, 0)
+            @test_throws DomainError   univariate_confidenceintervals!(m, confidence_level=-0.1)
+            @test_throws DomainError   univariate_confidenceintervals!(m, confidence_level=1.0)
+            @test_throws DomainError   univariate_confidenceintervals!(m, num_points_in_interval=-1)
+            @test_throws DomainError   univariate_confidenceintervals!(m, additional_width=-1.0)
+            @test_throws DomainError   univariate_confidenceintervals!(m, [1,4,2,3])
+            @test_throws ArgumentError univariate_confidenceintervals!(m, existing_profiles=:merge)
+
+            @test_throws DomainError   get_points_in_interval!(m, 0)
+            @test_throws DomainError   get_points_in_interval!(m, 1, additional_width=-1.0)
+
+            @test_throws DomainError   bivariate_confidenceprofiles!(m, 0, 10)
+            @test_throws DomainError   bivariate_confidenceprofiles!(m, 10, confidence_level=-0.1)
+            @test_throws DomainError   bivariate_confidenceprofiles!(m, 10, confidence_level=1.0)
+            @test_throws DomainError   bivariate_confidenceprofiles!(m, [[1,2],[2,4],[5,1]], 10)
+            @test_throws ArgumentError bivariate_confidenceprofiles!(m, [[1,2], [1]], 10)
+            @test_throws ArgumentError bivariate_confidenceprofiles!(m, 10, existing_profiles=:something)
+            @test_throws ArgumentError bivariate_confidenceprofiles!(m, 10, method=CombinedBivariateMethod())
+
+            @test_throws DomainError   sample_bivariate_internal_points!(m, 0)
+
+            @test_throws DomainError   dimensional_likelihood_sample!(m, 1, 0, 10)
+            @test_throws DomainError   dimensional_likelihood_sample!(m, 1, 10, confidence_level=-0.1)
+            @test_throws DomainError   dimensional_likelihood_sample!(m, 1, 10, confidence_level=1.0)
+            @test_throws DomainError   dimensional_likelihood_sample!(m, 1, 0)
+            @test_throws DomainError   dimensional_likelihood_sample!(m, 2, [0, 1], sample_type=UniformGridSamples())
+            @test_throws DomainError   dimensional_likelihood_sample!(m, [[1,2],[2,4],[5,1]], 10)
+            @test_throws ArgumentError dimensional_likelihood_sample!(m, 2, [1, 1], sample_type=LatinHypercubeSamples())
+            @test_throws ArgumentError dimensional_likelihood_sample!(m, [[1],[1,2]], [1, 1], sample_type=UniformGridSamples())
+            @test_throws ArgumentError dimensional_likelihood_sample!(m, 1, 10, existing_profiles=:merge)
+            
+            @test_throws DomainError   full_likelihood_sample!(m, 0)
+            @test_throws DomainError   full_likelihood_sample!(m, 10, confidence_level=-0.1)
+            @test_throws DomainError   full_likelihood_sample!(m, 10, confidence_level=1.0)
+            @test_throws DomainError   full_likelihood_sample!(m, [ 0, 10], sample_type=UniformGridSamples())
+            @test_throws ArgumentError full_likelihood_sample!(m, [10, 10], sample_type=LatinHypercubeSamples())
+            @test_throws ArgumentError full_likelihood_sample!(m, 10, existing_profiles=:merge)
+
+            function predict_func(θ, data, t=[1.5]); return sum(θ) .* t end # exact output is not important here
+            m = initialiseLikelihoodModel(PlaceholderLikelihood.ellipse_loglike, predict_func, data, θnames, θG, lb, ub, par_magnitudes, show_progress=false)
+            
+            @test_throws DomainError generate_predictions_univariate!(m, [1, 2], -0.1)
+            @test_throws DomainError generate_predictions_bivariate!(m, [1, 2], -0.1)
+            @test_throws DomainError generate_predictions_dim_samples!(m, [1, 2], -0.1)
+        end
     end
     
     # REAL LIKELIHOOD

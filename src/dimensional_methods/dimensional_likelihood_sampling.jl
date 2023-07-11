@@ -321,6 +321,9 @@ function dimensional_likelihood_sample!(model::LikelihoodModel,
     end
     existing_profiles ∈ [:ignore, :overwrite] || throw(ArgumentError("existing_profiles can only take value :ignore or :overwrite"))
     lb, ub = check_if_bounds_supplied(model, lb, ub)
+
+    # error handle confidence_level
+    get_target_loglikelihood(model, confidence_level, LogLikelihood(), 1)
     
     if !θs_is_unique 
         θindices = θindices[.!isempty.(θindices)]

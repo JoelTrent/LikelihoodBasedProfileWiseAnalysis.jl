@@ -262,6 +262,9 @@ function full_likelihood_sample!(model::LikelihoodModel,
     existing_profiles ∈ [:ignore, :overwrite] || throw(ArgumentError("existing_profiles can only take value :ignore or :overwrite"))
     lb, ub = check_if_bounds_supplied(model, lb, ub)
 
+    # error handle confidence_level
+    get_target_loglikelihood(model, confidence_level, LogLikelihood(), 1)
+
     init_dim_samples_row_exists!(model, sample_type)
 
     requires_overwrite = model.dim_samples_row_exists[sample_type][confidence_level] != 0
