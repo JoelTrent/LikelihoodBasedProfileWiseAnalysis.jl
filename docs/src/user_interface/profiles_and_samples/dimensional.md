@@ -4,7 +4,7 @@
 Pages = ["dimensional.md"]
 ```
 
-We can generate samples within the loglikelihood boundary at any dimension of model interest parameters.
+We can generate samples within the log-likelihood boundary at any dimension of model interest parameters. Nuisance parameters will be set to the values that maximise the log-likelihood function, found using an optimisation scheme. Samples are only implemented for the true log-likelihood function (the [`LogLikelihood`](@ref) profile type).
 
 ## Sample Types
 
@@ -17,7 +17,6 @@ LatinHypercubeSamples
 
 ## Full Likelihood Sampling
 
-
 ```@docs
 full_likelihood_sample!
 ```
@@ -28,5 +27,4 @@ Note: dimensional likelihood samples can be 'full' likelihood samples as well.
 
 ```@docs
 dimensional_likelihood_sample!
-bivariate_concave_hull
 ```

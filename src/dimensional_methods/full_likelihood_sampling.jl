@@ -1,3 +1,8 @@
+"""
+    add_dim_samples_rows!(model::LikelihoodModel, num_rows_to_add::Int)
+
+Adds `num_rows_to_add` free rows to `model.dim_samples_df` by vertically concatenating the existing DataFrame and free rows using [`PlaceholderLikelihood.init_dim_samples_df`](@ref).
+"""
 function add_dim_samples_rows!(model::LikelihoodModel, 
                                 num_rows_to_add::Int)
     new_rows = init_dim_samples_df(num_rows_to_add, 
@@ -7,80 +12,45 @@ function add_dim_samples_rows!(model::LikelihoodModel,
     return nothing
 end
 
+"""
+    set_dim_samples_row!(model::LikelihoodModel, 
+        row_ind::Int,
+        θindices::Vector{Int},
+        not_evaluated_predictions::Bool,
+        confidence_level::Float64,
+        sample_type::AbstractSampleType,
+        num_points::Int)
+
+Sets the relevant fields of row `row_ind` in `model.dim_samples_df` after a profile has been evaluated.
+"""
 function set_dim_samples_row!(model::LikelihoodModel, 
-                                    row_ind::Int,
-                                    θindices::Vector{Int},
-                                    not_evaluated_predictions::Bool,
-                                    confidence_level::Float64,
-                                    sample_type::AbstractSampleType,
-                                    num_points::Int)
+                                row_ind::Int,
+                                θindices::Vector{Int},
+                                not_evaluated_predictions::Bool,
+                                confidence_level::Float64,
+                                sample_type::AbstractSampleType,
+                                num_points::Int)
     model.dim_samples_df[row_ind, 2:end] .= θindices,
-                                                length(θindices),
-                                                not_evaluated_predictions,
-                                                confidence_level,
-                                                sample_type,
-                                                num_points
+                                            length(θindices),
+                                            not_evaluated_predictions,
+                                            confidence_level,
+                                            sample_type,
+                                            num_points
     return nothing
 end
 
-function valid_points(model::LikelihoodModel, 
-                        grid::Base.Iterators.ProductIterator,
-                        grid_size::Int,
-                        confidence_level::Float64, 
-                        num_dims::Int,
-                        use_threads::Bool,
-                        use_distributed::Bool,
-                        channel::RemoteChannel)
-    
-    valid_point = falses(grid_size)
-    ll_values = zeros(grid_size)
-    targetll = get_target_loglikelihood(model, confidence_level,
-                                         LogLikelihood(), num_dims)
+"""
+    valid_points(model::LikelihoodModel, 
+        grid::Matrix{Float64},
+        grid_size::Int,
+        confidence_level::Float64, 
+        num_dims::Int,
+        use_threads::Bool,
+        use_distributed::Bool,
+        channel::RemoteChannel)
 
-    if use_distributed
-        valid_point_shared = SharedArray{Bool}(grid_size)
-        valid_point_shared .= false
-        ll_values_shared = SharedArray{Float64}(grid_size)
-
-        @distributed for i in axes(grid, 2)
-            ll_values_shared[i] = model.core.loglikefunction(grid[:, i], model.core.data) - targetll
-            if ll_values_shared[i] >= 0
-                valid_point_shared[i] = true
-            end
-            put!(channel, true)
-        end
-        valid_point .= valid_point_shared
-        ll_values   .= ll_values_shared
-
-    else
-        ex = use_threads ? ThreadedEx() : ThreadedEx(basesize=grid_size) 
-        @floop ex for (i, point) in enumerate(grid)
-            ll_values[i] = model.core.loglikefunction(point, model.core.data)-targetll
-            if ll_values[i] >= 0
-                valid_point[i] = true
-            end
-            put!(channel, true)
-        end
-    end
-
-    points = zeros(model.core.num_pars, sum(valid_point))
-    j=1
-    for (i, point) in enumerate(grid)
-        if (ll_values[i]) > 0 
-            points[:,j] .= point
-            j+=1
-        end
-    end
-
-    valid_ll_values = ll_values[valid_point]
-    valid_ll_values .= valid_ll_values .+ get_target_loglikelihood(model, confidence_level,
-                                                        EllipseApproxAnalytical(), num_dims)
-
-    put!(channel, false)
-
-    return points, valid_ll_values
-end
-
+Given a `grid` of `grid_size` points in full parameter space with `num_dims` dimensions, this function evaluates the log-likelihood function at each point and returns the points that are within the `confidence_level` log-likelihood threshold as a `num_dims * n` array, alongside a vector of their log-likelihood values. Log-likelihood values are standardised to 0.0 at the MLE point.
+"""
 function valid_points(model::LikelihoodModel, 
                         grid::Matrix{Float64},
                         grid_size::Int,
@@ -165,8 +135,13 @@ function uniform_grid(model::LikelihoodModel,
     lb, ub = arguments_checked ? (lb, ub) : check_if_bounds_supplied(model, lb, ub)
 
     ranges = LinRange.(lb, ub, points_per_dimension)
-    grid = Iterators.product(ranges...)
+    grid_iter = Iterators.product(ranges...)
     grid_size = prod(points_per_dimension)
+    grid = zeros(num_dims, grid_size)
+
+    for (i, point) in enumerate(grid_iter)
+        grid[:, i] .= point
+    end
 
     pnts, lls = valid_points(model, grid, grid_size, confidence_level, num_dims, use_threads, use_distributed, channel)
     return SampledConfidenceStruct(pnts, lls)
@@ -280,7 +255,9 @@ function full_likelihood_sample!(model::LikelihoodModel,
     if num_points_to_sample isa Int
         num_points_to_sample > 0 || throw(DomainError("num_points_to_sample must be a strictly positive integer"))
     else
-        min(num_points_to_sample) > 0 || throw(DomainError("num_points_to_sample must contain strictly positive integers"))
+        minimum(num_points_to_sample) > 0 || throw(DomainError("num_points_to_sample must contain strictly positive integers"))
+
+        sample_type isa UniformGridSamples || throw(ArgumentError(string("num_points_to_sample must be an integer for ", sample_type, " sample_type")))
     end
     existing_profiles ∈ [:ignore, :overwrite] || throw(ArgumentError("existing_profiles can only take value :ignore or :overwrite"))
     lb, ub = check_if_bounds_supplied(model, lb, ub)
@@ -290,8 +267,13 @@ function full_likelihood_sample!(model::LikelihoodModel,
     requires_overwrite = model.dim_samples_row_exists[sample_type][confidence_level] != 0
     if existing_profiles == :ignore && requires_overwrite; return nothing end
 
-    totaltasks = num_points_to_sample isa Int ? num_points_to_sample : prod(num_points_to_sample)
-    channel_buffer_size = min(ceil(Int, totaltasks*0.2), 1000)
+    if sample_type isa UniformGridSamples
+        totaltasks = num_points_to_sample isa Int ? num_points_to_sample^model.core.num_pars : prod(num_points_to_sample)
+    else
+        totaltasks = num_points_to_sample
+    end
+
+    channel_buffer_size = min(ceil(Int, totaltasks*0.2), 400)
     channel = RemoteChannel(() -> Channel{Bool}(channel_buffer_size))
     p = Progress(totaltasks; desc="Computing full likelihood samples: ",
                 dt=PROGRESS__METER__DT, enabled=show_progress, showspeed=true)

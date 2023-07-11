@@ -60,7 +60,7 @@ struct ConcaveHullMethod <: AbstractBivariateHullMethod end
 """
     MPPHullMethod()
 
-Constructs a 2D polygon hull to sample internal points from by applying a minimum perimeter polygon (MPP) traveling salesman problem algorithm to the boundary (see [`PlaceholderLikelihood.minimum_perimeter_polygon!`](@ref)). 
+Constructs a 2D polygon hull to sample internal points from by applying a minimum perimeter polygon (MPP) traveling salesman problem algorithm to the boundary points (see [`PlaceholderLikelihood.minimum_perimeter_polygon!`](@ref)). 
 
 # Details
 

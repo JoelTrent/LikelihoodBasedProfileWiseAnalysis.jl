@@ -288,7 +288,7 @@ end
         lb::AbstractVector{<:Real}=Float64[],
         ub::AbstractVector{<:Real}=Float64[],
         θs_is_unique::Bool=false,
-        use_threads::Bool=true,
+        use_threads::Bool=false,
         existing_profiles::Symbol=:overwrite,
         show_progress::Bool=model.show_progress)
 
@@ -311,7 +311,13 @@ function dimensional_likelihood_sample!(model::LikelihoodModel,
     if num_points_to_sample isa Int
         num_points_to_sample > 0 || throw(DomainError("num_points_to_sample must be a strictly positive integer"))
     else
-        min(num_points_to_sample) > 0 || throw(DomainError("num_points_to_sample must contain strictly positive integers"))
+        minimum(num_points_to_sample) > 0 || throw(DomainError("num_points_to_sample must contain strictly positive integers"))
+
+        sample_type isa UniformGridSamples || throw(ArgumentError(string("num_points_to_sample must be an integer for ", sample_type, " sample_type")))
+
+        (length(num_points_to_sample) == length(θindices[1]) &&
+            diff([extrema(length.(θindices))...])[1] == 0) || 
+            throw(ArgumentError("num_points_to_sample must have the same length as each vector of interest parameters in num_points_to_sample"))
     end
     existing_profiles ∈ [:ignore, :overwrite] || throw(ArgumentError("existing_profiles can only take value :ignore or :overwrite"))
     lb, ub = check_if_bounds_supplied(model, lb, ub)
@@ -330,6 +336,7 @@ function dimensional_likelihood_sample!(model::LikelihoodModel,
                                     confidence_level=confidence_level,
                                     sample_type=sample_type,
                                     lb=lb, ub=ub, use_threads=use_threads,
+                                    use_distributed = !use_threads,
                                     existing_profiles=existing_profiles)
             θindices = θindices[setdiff(1:length(θindices), i)]
             break
@@ -365,10 +372,21 @@ function dimensional_likelihood_sample!(model::LikelihoodModel,
         add_dim_samples_rows!(model, num_rows_required)
     end
 
-    tasks_per_profile = num_points_to_sample isa Int ? num_points_to_sample : prod(num_points_to_sample)
-    channel_buffer_size = min(ceil(Int, tasks_per_profile*0.2), 1000)
+    if sample_type isa UniformGridSamples
+        if num_points_to_sample isa Int
+            totaltasks = sum(num_points_to_sample .^ length.(θindices))
+            tasks_per_profile = totaltasks / length(θindices)
+        else
+            tasks_per_profile = prod(num_points_to_sample)
+            totaltasks = length(θindices) * tasks_per_profile
+        end
+    else
+        tasks_per_profile = num_points_to_sample
+        totaltasks = length(θindices) * tasks_per_profile
+    end
+    channel_buffer_size = min(ceil(Int, tasks_per_profile*0.2), 400)
     channel = RemoteChannel(() -> Channel{Bool}(channel_buffer_size))
-    totaltasks = length(θindices)*tasks_per_profile
+    
     p = Progress(totaltasks; desc="Computing dimensional profile samples: ",
                 dt=PROGRESS__METER__DT, enabled=show_progress, showspeed=true)
 

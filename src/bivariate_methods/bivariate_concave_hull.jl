@@ -66,8 +66,12 @@ end
 
 Method which unpacks a `sampled_struct` into the format required to call the other method of [`PlaceholderLikelihood.bivariate_concave_hull`](@ref).
 """
-function bivariate_concave_hull(sampled_struct::SampledConfidenceStruct, θindices::Vector{Int},
-    min_proportion_to_keep::Real, min_scaling_from_desired_ll::Real, target_ll::Float64, sample_type::AbstractSampleType)
+function bivariate_concave_hull(sampled_struct::SampledConfidenceStruct, 
+                                θindices::Vector{Int},
+                                min_proportion_to_keep::Real, 
+                                min_scaling_from_desired_ll::Real, 
+                                target_ll::Float64, 
+                                sample_type::AbstractSampleType)
 
     length(θindices) == 2 || throw(ArgumentError("θindices must have length 2; this function estimates the concave hull of a 2D point cloud"))
 
