@@ -71,7 +71,6 @@ function combine_bivariate_boundaries!(model::LikelihoodModel;
                                         methods::Vector{<:AbstractBivariateMethod}=AbstractBivariateMethod[],
                                         not_evaluated_predictions::Bool=true)
 
-    
     if !isempty(methods) && CombinedBivariateMethod() ∈ [methods]
         setdiff!(methods, [CombinedBivariateMethod()])
     end

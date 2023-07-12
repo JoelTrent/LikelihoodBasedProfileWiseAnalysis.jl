@@ -302,6 +302,7 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
     existing_profiles ∈ [:ignore, :merge, :overwrite] || throw(ArgumentError("existing_profiles can only take value :ignore, :merge or :overwrite"))
 
     method isa CombinedBivariateMethod && throw(ArgumentError("CombinedBivariateMethod is not a valid method"))
+    model.core isa CoreLikelihoodModel || throw(ArgumentError("model does not contain a log-likelihood function. Add it using add_loglikelihood_function!"))
 
     # need at least 3 boundary points for some algorithms to work
     num_points = max(3, num_points)

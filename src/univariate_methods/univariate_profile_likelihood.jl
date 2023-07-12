@@ -324,6 +324,7 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
     num_points_in_interval >= 0 || throw(DomainError("num_points_in_interval must be a strictly positive integer"))
     additional_width >= 0 || throw(DomainError("additional_width must be greater than or equal to zero"))
     existing_profiles ∈ [:ignore, :overwrite] || throw(ArgumentError("existing_profiles can only take value :ignore or :overwrite"))
+    model.core isa CoreLikelihoodModel || throw(ArgumentError("model does not contain a log-likelihood function. Add it using add_loglikelihood_function!"))
 
     additional_width = num_points_in_interval > 0 ? additional_width : 0.0
 

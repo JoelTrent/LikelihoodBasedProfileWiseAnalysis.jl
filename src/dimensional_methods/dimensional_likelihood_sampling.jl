@@ -400,6 +400,8 @@ function dimensional_likelihood_samples!(model::LikelihoodModel,
                                         existing_profiles::Symbol=:overwrite,
                                         show_progress::Bool=model.show_progress)
 
+    model.core isa CoreLikelihoodModel || throw(ArgumentError("model does not contain a log-likelihood function. Add it using add_loglikelihood_function!"))
+
     if num_points_to_sample isa Int
         num_points_to_sample > 0 || throw(DomainError("num_points_to_sample must be a strictly positive integer"))
     else

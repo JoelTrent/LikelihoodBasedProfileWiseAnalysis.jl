@@ -27,6 +27,10 @@ end
 Checks if a prediction function is stored in `model`, returning true if there is. Otherwise false is returned and a warning is logged. Requirements for a prediction function can be seen in [`add_prediction_function!`](@ref).
 """
 function check_prediction_function_exists(model::LikelihoodModel)
+    if model.core isa BaseLikelihoodModel
+        @warn "the LikelihoodModel does not contain a log-likelihood function or a function for evaluating predictions. Please add a log-likelihood function using add_loglikelihood_function! then add a prediction function using add_prediction_function!"
+        return false
+    end
     if ismissing(model.core.predictfunction) 
         @warn "the LikelihoodModel does not contain a function for evaluating predictions. Please add a prediction function using add_prediction_function!"
         return false

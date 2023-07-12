@@ -6,6 +6,8 @@ Pages = ["initialisation.md"]
 
 ## Model Initialisation
 
+To initialise a model for profile likelihood evaluation we use [`initialiseLikelihoodModel`](@ref) which returns a struct of type [`LikelihoodModel`](@ref).
+
 ```@docs
 initialiseLikelihoodModel
 ```

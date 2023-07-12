@@ -149,6 +149,7 @@ function sample_bivariate_internal_points!(model::LikelihoodModel,
                                     proportion_of_predictions_to_keep::Real=1.0)
 
     0 < num_points || throw(DomainError("num_points must be a strictly positive integer"))
+    model.core isa CoreLikelihoodModel || throw(ArgumentError("model does not contain a log-likelihood function. Add it using add_loglikelihood_function!"))
     
     sub_df = desired_df_subset(model.biv_profiles_df, model.num_biv_profiles, Tuple{Int,Int}[], 
                 confidence_levels, profile_types, methods)

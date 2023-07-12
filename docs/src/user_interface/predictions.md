@@ -4,11 +4,16 @@
 Pages = ["predictions.md"]
 ```
 
-In the event that a prediction function has not been added to the [`LikelihoodModel`](@ref) struct yet, we can add one using [`add_prediction_function!`](@ref)
+## Adding a Prediction Function
+
+In the event that a prediction function has not been added to the [`LikelihoodModel`](@ref) struct yet, we can add one using [`add_prediction_function!`](@ref).
+
 ```@docs
 add_prediction_function!
 check_prediction_function_exists
 ```
+
+## Prediction Generation
 
 Then to generate predictions we can use one of three functions, depending on whether we want to generate predictions from univariate or bivariate profiles, or dimensional samples.
 

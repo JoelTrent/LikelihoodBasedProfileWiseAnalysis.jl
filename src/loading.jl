@@ -19,7 +19,7 @@ end
 """
     remove_functions_from_core!(model::LikelihoodModel)
 
-Removes the functions from `model.core` by replacing the [`CoreLikelihoodModel`](@ref) at `model.core` with a [`BaseLikelihoodModel`](@ref), returning the [`CoreLikelihoodModel`](@ref) 
+Removes the functions from `model.core` by replacing the [`CoreLikelihoodModel`](@ref) at `model.core` with a [`BaseLikelihoodModel`](@ref), returning the [`CoreLikelihoodModel`](@ref).
 """
 function remove_functions_from_core!(model::LikelihoodModel)
 

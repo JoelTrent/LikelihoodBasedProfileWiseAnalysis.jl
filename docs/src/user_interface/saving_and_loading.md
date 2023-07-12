@@ -34,7 +34,7 @@ There are a couple of things to watch out for if the model saved had functions d
 
 ## Fixing Issues
 
-The first of these issues we can get around by converting our [`CoreLikelihoodModel`](@ref) to a [`BaseLikelihoodModel`](@ref) before saving. The only difference between these two structs is that [`BaseLikelihoodModel`](@ref) doesn't contain fields for the log-likelihood and prediction functions. This means we can load a saved `model` without needing those functions defined in the local scope, which may useful for workflows where the computation is performed in one file and plotting of outputs is performed in another file.
+The first of these issues we can get around by converting our [`CoreLikelihoodModel`](@ref) to a [`BaseLikelihoodModel`](@ref) before saving. The only difference between these two structs is that [`BaseLikelihoodModel`](@ref) doesn't contain fields for the log-likelihood and prediction functions. This means we can load a saved `model` without needing those functions defined in the local scope, which may be useful for workflows where the computation is performed in one file and plotting of outputs is performed in another file.
 
 We can use [`remove_functions_from_core!`](@ref) to perform this task, pulling out the original `model.core` so we can put it back into `model` later if desired: 
 
@@ -49,13 +49,13 @@ model.core = core_original
 If we want to add the log-likelihood function to this loaded version of the `model` we can use [`add_loglikelihood_function!`](@ref).
 
 ```julia
-# function defined...
-
+# log-likelihood function function definition
+function loglikefunction(θ, data); return ... end
 add_loglikelihood_function!(model, loglikefunction)
 ```
 
 !!! danger "Missing log-likelihood function"
-    All profile functions will break if the log-likelihood function is not defined in `model.core`.
+    Trying to use a profile-related function will result in an error if the log-likelihood function is not defined in `model.core`.
 
 The prediction function can be added in the same fashion using [`add_prediction_function!`](@ref). However, the log-likelihood function must have been added first.
 
