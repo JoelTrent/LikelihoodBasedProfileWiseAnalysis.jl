@@ -265,16 +265,24 @@ Finds `num_points` `profile_type` boundary points at a specified `confidence_lev
 - `save_internal_points`: boolean variable specifying whether to save points found inside the boundary during boundary computation. Internal points can be plotted in bivariate profile plots and will be used to generate predictions from a given bivariate profile. Default is `true`.
 - `existing_profiles`: `Symbol ∈ [:ignore, :merge, :overwrite]` specifying what to do if profiles already exist for a given `θcombination`, `confidence_level`, `profile_type` and `method`. See below for each symbol's meanings. Default is `:merge`.
 - `show_progress`: boolean variable specifying whether to display progress bars on the percentage of `θcombinations` completed and estimated time of completion. Default is `model.show_progress`.
-- `use_distributed`: boolean variable specifying whether to use a normal for loop or a `@distributed` for loop across combinations of interest parameters. The variable makes no difference if Distributed.jl is not being used - it's intended for use when simulating parameter confidence boundary coverage (see [`check_bivariate_parameter_coverage`](@ref)). 
+- `use_distributed`: boolean variable specifying whether to use a normal for loop or a `@distributed` for loop across combinations of interest parameters. The variable makes no difference if [Distributed.jl](https://docs.julialang.org/en/v1/stdlib/Distributed/) is not being used - setting it to `false` is intended for use when simulating parameter confidence boundary coverage (see [`check_bivariate_parameter_coverage`](@ref)). 
 
 !!! note "existing_profiles meanings"
     - :ignore means profiles that already exist will not be recomputed even if they contain fewer `num_points` boundary points. 
-    - :merge means profiles that already exist will be merged with profiles from the current algorithm run to reach `num_points`. If the existing profile already has at least `num_points` boundary points then that profile will not be recomputed. Otherwise, the specified method will be run starting from the difference between `num_points` and the number of points in the existing profile. The result of that method run will be merged with the existing profile.  
-    - :overwrite means profiles that already exist will be overwritten, regardless of how many points they contain.
+    - :merge means profiles that already exist will be merged with profiles from the current algorithm run to reach `num_points`. If the existing profile already has at least `num_points` boundary points then that profile will not be recomputed. Otherwise, the specified method will be run starting from the difference between `num_points` and the number of points in the existing profile. The result of that method run will be merged with the existing profile. Predictions evaluated from the existing profile will be forgotten. To keep these predictions see below.
+    - :overwrite means profiles that already exist will be overwritten, regardless of how many points they contain. Predictions evaluated from the existing profile will be forgotten. To keep these predictions see below.
 
 # Details
 
-Using [`bivariate_confidenceprofile`](@ref) this function calls the algorithm/method specified by `method` for each interest parameter combination in `θcombinations` (depending on the setting for `existing_profiles` and `num_points` if these profiles already exist). Updates `model.biv_profiles_df` for each successful profile and saves their results as a [`BivariateConfidenceStruct`](@ref) in `model.biv_profiles_dict`, where the keys for the dictionary is the row number in `model.biv_profiles_df` of the corresponding profile.
+Using [`PlaceholderLikelihood.bivariate_confidenceprofile`](@ref) this function calls the algorithm/method specified by `method` for each interest parameter combination in `θcombinations` (depending on the setting for `existing_profiles` and `num_points` if these profiles already exist). Nuisance parameters of each point in bivariate interest parameter space are found by maximising the log-likelihood function given by `profile_type`. Updates `model.biv_profiles_df` for each successful profile and saves their results as a [`BivariateConfidenceStruct`](@ref) in `model.biv_profiles_dict`, where the keys for the dictionary is the row number in `model.biv_profiles_df` of the corresponding profile. `model.biv_profiles_df.num_points` is the number of points found on the bivariate boundary (it does not include the number of saved internal points).
+
+## Preventing predictions from being forgotten when merging or overwriting profiles
+
+To prevent predictions from being lost from existing profiles that would be overwritten when calling [`bivariate_confidenceprofiles!`](@ref), existing profiles should be converted into a [`CombinedBivariateMethod`], prior to running new bivariate profiles. To do this use [`combine_bivariate_boundaries!`](@ref) on `model` with keyword argument `not_evaluated_predictions` set to `false`.
+
+## Distributed Computing Implementation
+
+If [Distributed.jl](https://docs.julialang.org/en/v1/stdlib/Distributed/) is being used and `use_distributed` is `true`, then the bivariate profiles of distinct interest parameter combinations will be computed in parallel across `Distributed.nworkers()` workers.
 
 ## Iteration Speed Of the Progress Meter
 

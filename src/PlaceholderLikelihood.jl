@@ -45,7 +45,7 @@ export initialiseLikelihoodModel,
 
     transformbounds, transformbounds_NLopt,
 
-    univariate_confidenceintervals!, get_points_in_interval!, 
+    univariate_confidenceintervals!, get_points_in_intervals!, 
     get_uni_confidence_interval, get_uni_confidence_interval_points,
     check_univariate_parameter_coverage,
 

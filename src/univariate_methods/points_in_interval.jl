@@ -33,7 +33,7 @@ end
         current_interval_points::PointsAndLogLikelihood,
         additional_width::Real=0.0)
 
-Method for getting `num_points_in_interval` points inside a confidence interval for parameter `θi`, directly called by [`PlaceholderLikelihood.univariate_confidenceinterval`](@ref) and called via it's other method for [`get_points_in_interval!`](@ref). Optionally adds `additional_width` outside of the confidence interval, so long as a parameter bound is not reached. If a bound is reached, up until the bound will be considered instead.
+Method for getting `num_points_in_interval` points inside a confidence interval for parameter `θi`, directly called by [`PlaceholderLikelihood.univariate_confidenceinterval`](@ref) and called via it's other method for [`get_points_in_intervals!`](@ref). Optionally adds `additional_width` outside of the confidence interval, so long as a parameter bound is not reached. If a bound is reached, up until the bound will be considered instead.
 """
 function get_points_in_interval_single_row(univariate_optimiser::Function, 
                                 model::LikelihoodModel,
@@ -129,7 +129,7 @@ end
         num_points_in_interval::Int,
         additional_width::Real)
 
-Alternate method called by [`get_points_in_interval!`](@ref).
+Alternate method called by [`get_points_in_intervals!`](@ref).
 """
 function get_points_in_interval_single_row(model::LikelihoodModel,
                                 uni_row_number::Int,
@@ -146,40 +146,42 @@ function get_points_in_interval_single_row(model::LikelihoodModel,
 end
 
 """
-    get_points_in_interval!(model::LikelihoodModel, 
+    get_points_in_intervals!(model::LikelihoodModel, 
         num_points_in_interval::Int; 
-        confidence_levels::Vector{<:Float64}=Float64[], 
-        profile_types::Vector{<:AbstractProfileType}=AbstractProfileType[], 
-        additional_width::Real=0.0)
+        <keyword arguments>)
 
-Evaluate and save `num_points_in_interval` linearly spaced points between the confidence intervals of existing univariate profiles that meet the requirements of [`PlaceholderLikelihood.desired_df_subset`](@ref) (see Keyword Arguments), as well as any additional width on the sides of the interval. Modifies `model` in place.
+Evaluate and save `num_points_in_interval` linearly spaced points between the confidence intervals of existing univariate profiles that meet the requirements of the univariate method of [`PlaceholderLikelihood.desired_df_subset`](@ref) (see Keyword Arguments), as well as any additional width on the sides of the interval. Modifies `model` in place.
 
 # Arguments
 - `model`: a [`LikelihoodModel`](@ref) containing model information, saved profiles and predictions.
-- `num_points_in_interval`: an integer number of points to evaluate within the confidence interval. Points are linearly spaced in the interval and have their optimised log-likelihood value recorded. Useful for plots that visualise the confidence interval or for predictions from univariate profiles. 
+- `num_points_in_interval`: an integer number of points to evaluate within the confidence interval. Points are linearly spaced in the interval and have their optimised log-likelihood value recorded (standardised to 0.0 at the MLE point). Useful for plots that visualise the confidence interval or for predictions from univariate profiles. 
 
 # Keyword Arguments
-- `confidence_levels`: a vector of confidence levels. If empty, all confidence levels of univariate profiles will be considered for finding interval points. Otherwise, only confidence levels of univariate profiles in `confidence_levels` will be considered. Default is `Float64[]` (any confidence level).
-- `profile_types`: a vector of `AbstractProfileType` structs. If empty, all profile types of univariate profiles are considered. Otherwise, only univariate profiles with matching profile types will be considered. Default is `AbstractProfileType[]` (any profile type).
-- `additional_width`: a `Real` number greater than or equal to zero. Specifies the additional width to optionally evaluate outside the confidence interval's width. Half of this additional width will be placed on either side of the confidence interval. If the additional width goes outside a bound on the parameter, only up to the bound will be considered. The spacing of points in the additional width will try to match the spacing of points evaluated inside the interval. Useful for plots that visualise the confidence interval as it shows the trend of the log-likelihood profile outside the interval range. Default is 0.0.
+- `additional_width`: a `Real` number greater than or equal to zero. Specifies the additional width to optionally evaluate outside the confidence interval's width. Half of this additional width will be placed on either side of the confidence interval. If the additional width goes outside a bound on the parameter, only up to the bound will be considered. The spacing of points in the additional width will try to match the spacing of points evaluated inside the interval. Useful for plots that visualise the confidence interval as it shows the trend of the log-likelihood profile outside the interval range. Default is `0.0`.
+- `confidence_levels`: a vector of confidence levels. If empty, all confidence levels of univariate profiles will be considered for finding interval points. Otherwise, only confidence levels in `confidence_levels` will be considered. Default is `Float64[]` (any confidence level).
+- `profile_types`: a vector of `AbstractProfileType` structs. If empty, all profile types of univariate profiles are considered. Otherwise, only profiles with matching profile types will be considered. Default is `AbstractProfileType[]` (any profile type).
+- `not_evaluated_predictions`: a boolean specifying whether to only get points in intervals of profiles that have not had predictions evaluated (true) or for all profiles (false). If `false`, then any existing predictions will be forgotten by the `model` and overwritten the next time predictions are evaluated for each profile. Default is `true`.
 
 # Details
 
-Interval points and their corresponding log-likelihood values are stored in the `interval_points` field of a [`UnivariateConfidenceStruct`](@ref). These are updated using [`PlaceholderLikelihood.update_uni_dict_internal!`](@ref).
+Interval points and their corresponding log-likelihood values are stored in the `interval_points` field of a [`UnivariateConfidenceStruct`](@ref). These are updated using [`PlaceholderLikelihood.update_uni_dict_internal!`](@ref). Nuisance parameters of each point in univariate interest parameter space are found by maximising the log-likelihood function given by the `profile_type` of the profile. 
+
+If [`get_points_in_intervals!`](@ref) has already been used on a univariate profile, with the same values of `num_points_in_interval` and `additional_width`, it will not be recomputed for that profile.
 """
-function get_points_in_interval!(model::LikelihoodModel,
+function get_points_in_intervals!(model::LikelihoodModel,
                                     num_points_in_interval::Int;
+                                    additional_width::Real=0.0,
                                     confidence_levels::Vector{<:Float64}=Float64[],
                                     profile_types::Vector{<:AbstractProfileType}=AbstractProfileType[],
-                                    additional_width::Real=0.0
-                                    )
+                                    not_evaluated_predictions::Bool=true)
 
     num_points_in_interval > 0 || throw(DomainError("num_points_in_interval must be a strictly positive integer"))
     additional_width >= 0 || throw(DomainError("additional_width must be greater than or equal to zero"))
     
     sub_df = desired_df_subset(model.uni_profiles_df, model.num_uni_profiles, Int[], 
                 confidence_levels, profile_types, 
-                for_points_in_interval=(true, num_points_in_interval, additional_width))
+                for_points_in_interval=(true, num_points_in_interval, additional_width),
+                for_prediction_generation=not_evaluated_predictions)
 
     if nrow(sub_df) < 1
         return nothing

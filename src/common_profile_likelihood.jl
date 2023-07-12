@@ -209,7 +209,7 @@ Returns a view of `df` that includes only valid rows ∈ `1:num_used_rows`, and 
 - `profile_types`: a vector of `AbstractProfileType` structs. If empty, all profile types in `df` are allowed. Otherwise, only matching profile types in `df` are allowed.
 
 # Keyword Arguments
-- `for_points_in_interval`: a tuple used for only extracting the rows that need to have points in the confidence interval evaluated by [`get_points_in_interval!`](@ref). Default is `(false, 0, 0)`.
+- `for_points_in_interval`: a tuple used for only extracting the rows that need to have points in the confidence interval evaluated by [`get_points_in_intervals!`](@ref). Default is `(false, 0, 0)`.
 - `for_prediction_generation`: a boolean specifying whether only rows which have not had predictions evaluated are allowed. As predictions do not need to be generated for rows which already have them evaluated. 
 - `for_prediction_plots`: a boolean specifying whether only rows which have had predictions evaluated are allowed. As prediction plots can only include rows which have evaluated predictions. 
 """

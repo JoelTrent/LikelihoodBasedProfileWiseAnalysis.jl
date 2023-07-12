@@ -55,7 +55,7 @@ using EllipseSampling
             m2 = initialiseLikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes)
 
             univariate_confidenceintervals!(m2, [1])
-            get_points_in_interval!(m2, N, additional_width=0.2)
+            get_points_in_intervals!(m2, N, additional_width=0.2)
 
             @test isapprox(m1.uni_profiles_dict[1].interval_points.boundary_col_indices, m2.uni_profiles_dict[1].interval_points.boundary_col_indices)
 
@@ -117,9 +117,9 @@ using EllipseSampling
             m = initialiseLikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes, show_progress=false)
 
             # UNIVARIATE
-            dimensional_likelihood_sample!(m, 1, 100, sample_type=UniformGridSamples())
-            dimensional_likelihood_sample!(m, 1, 100, sample_type=UniformRandomSamples())
-            dimensional_likelihood_sample!(m, 1, 100, sample_type=LatinHypercubeSamples())
+            dimensional_likelihood_samples!(m, 1, 100, sample_type=UniformGridSamples())
+            dimensional_likelihood_samples!(m, 1, 100, sample_type=UniformRandomSamples())
+            dimensional_likelihood_samples!(m, 1, 100, sample_type=LatinHypercubeSamples())
 
             targetll_standardised = PlaceholderLikelihood.get_target_loglikelihood(m, 0.95, EllipseApprox(), 1)
 
@@ -128,9 +128,9 @@ using EllipseSampling
             end
 
             # BIVARIATE / FULL
-            dimensional_likelihood_sample!(m, 2, 10, sample_type=UniformGridSamples())
-            dimensional_likelihood_sample!(m, 2, 100, sample_type=UniformRandomSamples())
-            dimensional_likelihood_sample!(m, 2, 100, sample_type=LatinHypercubeSamples())
+            dimensional_likelihood_samples!(m, 2, 10, sample_type=UniformGridSamples())
+            dimensional_likelihood_samples!(m, 2, 100, sample_type=UniformRandomSamples())
+            dimensional_likelihood_samples!(m, 2, 100, sample_type=LatinHypercubeSamples())
 
             targetll_standardised = PlaceholderLikelihood.get_target_loglikelihood(m, 0.95, EllipseApprox(), 2)
 
@@ -216,7 +216,7 @@ using EllipseSampling
 
             # UNIVARIATE
             univariate_confidenceintervals!(m, [:x])
-            get_points_in_interval!(m, 10; confidence_levels=[0.95], profile_types=[LogLikelihood()])
+            get_points_in_intervals!(m, 10; confidence_levels=[0.95], profile_types=[LogLikelihood()])
 
             @test m.uni_profiles_df[1, :num_points] == 12
 
@@ -249,15 +249,15 @@ using EllipseSampling
             @test !isapprox(m.biv_profiles_dict[1].confidence_boundary, existing_points)
 
             # DIMENSIONAL
-            dimensional_likelihood_sample!(m, 2, 1000)
+            dimensional_likelihood_samples!(m, 2, 1000)
             existing_points = m.dim_samples_dict[1].points[:,1] .* 1.0
             num_points = m.dim_samples_df[1, :num_points] .* 1
 
-            dimensional_likelihood_sample!(m, 2, 1000, existing_profiles=:ignore)
+            dimensional_likelihood_samples!(m, 2, 1000, existing_profiles=:ignore)
             @test m.dim_samples_df[1, :num_points] == num_points
             @test isapprox(m.dim_samples_dict[1].points[:, 1], existing_points)
 
-            dimensional_likelihood_sample!(m, 2, 100, existing_profiles=:overwrite)
+            dimensional_likelihood_samples!(m, 2, 100, existing_profiles=:overwrite)
             @test m.dim_samples_df[1, :num_points] != num_points
             @test (m.dim_samples_df[1, :num_points] == 0) || !isapprox(m.dim_samples_dict[1].points[:, 1], existing_points)
         end
@@ -326,8 +326,8 @@ using EllipseSampling
             @test_throws DomainError   univariate_confidenceintervals!(m, [1,4,2,3])
             @test_throws ArgumentError univariate_confidenceintervals!(m, existing_profiles=:merge)
 
-            @test_throws DomainError   get_points_in_interval!(m, 0)
-            @test_throws DomainError   get_points_in_interval!(m, 1, additional_width=-1.0)
+            @test_throws DomainError   get_points_in_intervals!(m, 0)
+            @test_throws DomainError   get_points_in_intervals!(m, 1, additional_width=-1.0)
 
             @test_throws DomainError   bivariate_confidenceprofiles!(m, 0, 10)
             @test_throws DomainError   bivariate_confidenceprofiles!(m, 10, confidence_level=-0.1)
@@ -339,15 +339,17 @@ using EllipseSampling
 
             @test_throws DomainError   sample_bivariate_internal_points!(m, 0)
 
-            @test_throws DomainError   dimensional_likelihood_sample!(m, 1, 0, 10)
-            @test_throws DomainError   dimensional_likelihood_sample!(m, 1, 10, confidence_level=-0.1)
-            @test_throws DomainError   dimensional_likelihood_sample!(m, 1, 10, confidence_level=1.0)
-            @test_throws DomainError   dimensional_likelihood_sample!(m, 1, 0)
-            @test_throws DomainError   dimensional_likelihood_sample!(m, 2, [0, 1], sample_type=UniformGridSamples())
-            @test_throws DomainError   dimensional_likelihood_sample!(m, [[1,2],[2,4],[5,1]], 10)
-            @test_throws ArgumentError dimensional_likelihood_sample!(m, 2, [1, 1], sample_type=LatinHypercubeSamples())
-            @test_throws ArgumentError dimensional_likelihood_sample!(m, [[1],[1,2]], [1, 1], sample_type=UniformGridSamples())
-            @test_throws ArgumentError dimensional_likelihood_sample!(m, 1, 10, existing_profiles=:merge)
+            @test_throws DomainError   dimensional_likelihood_samples!(m, 1, 0, 10)
+            @test_throws DomainError   dimensional_likelihood_samples!(m, 1, 10, confidence_level=-0.1)
+            @test_throws DomainError   dimensional_likelihood_samples!(m, 1, 10, confidence_level=1.0)
+            @test_throws DomainError   dimensional_likelihood_samples!(m, 1, 0)
+            @test_throws DomainError   dimensional_likelihood_samples!(m, 2, [0, 1], sample_type=UniformGridSamples())
+            @test_throws DomainError   dimensional_likelihood_samples!(m, [[1,2],[2,4],[5,1]], 10)
+            @test_throws ArgumentError dimensional_likelihood_samples!(m, 2, [1, 1], sample_type=LatinHypercubeSamples())
+            @test_throws ArgumentError dimensional_likelihood_samples!(m, [[1],[1,2]], [1,1], sample_type=UniformGridSamples())
+            @test_throws ArgumentError dimensional_likelihood_samples!(m, 1, 10, existing_profiles=:merge)
+            @test_throws ArgumentError dimensional_likelihood_samples!(m, 1, 10, lb=[1,1], ub=[2])
+            @test_throws ArgumentError dimensional_likelihood_samples!(m, 1, 10, lb=[1], ub=[2,2])
             
             @test_throws DomainError   full_likelihood_sample!(m, 0)
             @test_throws DomainError   full_likelihood_sample!(m, 10, confidence_level=-0.1)
@@ -355,6 +357,8 @@ using EllipseSampling
             @test_throws DomainError   full_likelihood_sample!(m, [ 0, 10], sample_type=UniformGridSamples())
             @test_throws ArgumentError full_likelihood_sample!(m, [10, 10], sample_type=LatinHypercubeSamples())
             @test_throws ArgumentError full_likelihood_sample!(m, 10, existing_profiles=:merge)
+            @test_throws ArgumentError full_likelihood_sample!(m, 10, lb=[1,1], ub=[2])
+            @test_throws ArgumentError full_likelihood_sample!(m, 10, lb=[1], ub=[2,2])
 
             function predict_func(θ, data, t=[1.5]); return sum(θ) .* t end # exact output is not important here
             m = initialiseLikelihoodModel(PlaceholderLikelihood.ellipse_loglike, predict_func, data, θnames, θG, lb, ub, par_magnitudes, show_progress=false)
@@ -432,9 +436,9 @@ using EllipseSampling
             m = initialiseLikelihoodModel(loglhood, data, θnames, θG, lb, ub, par_magnitudes, show_progress=false)
 
             # UNIVARIATE
-            dimensional_likelihood_sample!(m, 1, 100, sample_type=UniformGridSamples())
-            dimensional_likelihood_sample!(m, 1, 100, sample_type=UniformRandomSamples())
-            dimensional_likelihood_sample!(m, 1, 100, sample_type=LatinHypercubeSamples())
+            dimensional_likelihood_samples!(m, 1, 100, sample_type=UniformGridSamples())
+            dimensional_likelihood_samples!(m, 1, 100, sample_type=UniformRandomSamples())
+            dimensional_likelihood_samples!(m, 1, 100, sample_type=LatinHypercubeSamples())
 
             targetll_standardised = PlaceholderLikelihood.get_target_loglikelihood(m, 0.95, EllipseApprox(), 1)
 
@@ -443,9 +447,9 @@ using EllipseSampling
             end
 
             # BIVARIATE
-            dimensional_likelihood_sample!(m, 2, 10, sample_type=UniformGridSamples())
-            dimensional_likelihood_sample!(m, 2, 100, sample_type=UniformRandomSamples())
-            dimensional_likelihood_sample!(m, 2, 100, sample_type=LatinHypercubeSamples())
+            dimensional_likelihood_samples!(m, 2, 10, sample_type=UniformGridSamples())
+            dimensional_likelihood_samples!(m, 2, 100, sample_type=UniformRandomSamples())
+            dimensional_likelihood_samples!(m, 2, 100, sample_type=LatinHypercubeSamples())
 
             targetll_standardised = PlaceholderLikelihood.get_target_loglikelihood(m, 0.95, EllipseApprox(), 2)
 
@@ -454,9 +458,9 @@ using EllipseSampling
             end
 
             # FULL
-            dimensional_likelihood_sample!(m, 3, 10, sample_type=UniformGridSamples())
-            dimensional_likelihood_sample!(m, 3, 1000, sample_type=UniformRandomSamples())
-            dimensional_likelihood_sample!(m, 3, 1000, sample_type=LatinHypercubeSamples())
+            dimensional_likelihood_samples!(m, 3, 10, sample_type=UniformGridSamples())
+            dimensional_likelihood_samples!(m, 3, 1000, sample_type=UniformRandomSamples())
+            dimensional_likelihood_samples!(m, 3, 1000, sample_type=LatinHypercubeSamples())
 
             targetll_standardised = PlaceholderLikelihood.get_target_loglikelihood(m, 0.95, EllipseApprox(), 3)
 

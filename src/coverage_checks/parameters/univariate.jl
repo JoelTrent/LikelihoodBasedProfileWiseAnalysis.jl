@@ -6,12 +6,7 @@
         θtrue::AbstractVector{<:Real}, 
         θs::AbstractVector{<:Int64},
         θinitialguess::AbstractVector{<:Real}=θtrue; 
-        confidence_level::Float64=0.95, 
-        profile_type::AbstractProfileType=LogLikelihood(), 
-        θs_is_unique::Bool=false,
-        coverage_estimate_confidence_level::Float64=0.95,
-        show_progress::Bool=model.show_progress,
-        distributed_over_parameters::Bool=false)
+        <keyword arguments>)
 
 Performs a simulation to estimate the coverage of univariate confidence intervals for parameters in `θs` given a model by: repeatedly drawing new observed data using `data_generator` for fixed true parameter values, θtrue, fitting the model and univariate confidence intervals, and checking whether the confidence interval for the parameters of interest contain the true parameter value in `θtrue`. The estimated coverage is returned with a default 95% confidence interval within a DataFrame. 
 

@@ -1,16 +1,22 @@
 """
     add_prediction_function!(model::LikelihoodModel, predictfunction::Function)
 
-Adds a prediction function, `predictfunction`, to `model`.
+Adds a prediction function, `predictfunction`, to `model` and evaluates the predicted response variable(s) at the data points using the maximum likelihood estimate for model parameters. Modifies `model` in place.
     
-Requirements for `predictfunction`: a function to generate model predictions from that is paired with the `loglikefunction`. Takes three arguments, `θ`, `data` and `t`, in that order, where `θ` and `data` are the same as for `loglikefunction` and `t` needs to be an optional third argument. When `t` is not specified, the prediction function should be evaluated for the same time points/independent variable as the data. When `t` is specified, the prediction function should be evaluated for those specified time points/independent variable.
+# Requirements for `predictfunction`
+- A function to generate model predictions from that is paired with the `loglikefunction`. 
+- Takes three arguments, `θ`, `data` and `t`, in that order, where `θ` and `data` are the same as for `loglikefunction` and `t` needs to be an optional third argument. 
+- When `t` is not specified, the prediction function should be evaluated for the same time points/independent variable as the data. When `t` is specified, the prediction function should be evaluated for those specified time points/independent variable. A good practice is to include the time points of the data in the argument, `data`, so that the function can be specified as `predictfunction(θ, data, t=data.t)` (here `data` is a `NamedTuple`).
+- The output of the function should be a 1D vector when there is a single predicted response variable or a 2D array when there are multiple predicted response variables. 
+- The prediction(s) for each response variable should be stored in the columns of the array. In Julia, vectors are stored column-wise, so in the case where there is only one response variable, this will already be the case.
+- The number of rows of each predicted response variable should be the same length as the vector `t` used to evaluate the response.
 """
 function add_prediction_function!(model::LikelihoodModel,
                                     predictfunction::Function)
 
     corelikelihoodmodel = model.core
     model.core = @set corelikelihoodmodel.predictfunction = predictfunction
-    model.core = @set corelikelihoodmodel.ymle = predictfunction(θmle, model.core.data)
+    model.core = @set corelikelihoodmodel.ymle = predictfunction(model.core.θmle, model.core.data)
 
     return nothing
 end
@@ -18,11 +24,11 @@ end
 """
     check_prediction_function_exists(model::LikelihoodModel)
 
-Checks if a prediction function is stored in `model`.
+Checks if a prediction function is stored in `model`, returning true if there is. Otherwise false is returned and a warning is logged. Requirements for a prediction function can be seen in [`add_prediction_function!`](@ref).
 """
 function check_prediction_function_exists(model::LikelihoodModel)
     if ismissing(model.core.predictfunction) 
-        @warn "LikelihoodModel does not contain a function for evaluating predictions. Please add a prediction function using add_prediction_function!"
+        @warn "the LikelihoodModel does not contain a function for evaluating predictions. Please add a prediction function using add_prediction_function!"
         return false
     end
 
@@ -30,8 +36,19 @@ function check_prediction_function_exists(model::LikelihoodModel)
 end
 
 """
-If a model has multiple predictive variables, it assumes that `model.predictfunction` stores the prediction for each variable in its columns.
-We are going to store values for each variable in the 3rd dimension (row=dim1, col=dim2, page/sheet=dim3)
+    generate_prediction(predictfunction::Function,
+        data,
+        t::Vector,
+        data_ymle::AbstractArray{<:Real},
+        parameter_points::Matrix{Float64},
+        proportion_to_keep::Real,
+        channel::Union{RemoteChannel,Missing}=missing)
+
+Generates the predictions for response variables from a `predictfunction` which meets the requirements specified in [`add_prediction_function!`](@ref), given `data`, at time points `t` for each parameter combination in the columns of `parameter_points`. The extrema of all predictions is computed and `proportion_to_keep` of the individual predictions are kept. 
+    
+Returns a [`PredictionStruct`] containing the kept predictions and prediction extrema. 
+
+The prediction at each timepoint is stored in the corresponding row (1st dimension). The prediction for each parameter combination is stored in the corresponding column (2nd dimension). The prediction for multiple response variables is stored in the 3rd dimension.
 """
 function generate_prediction(predictfunction::Function,
                                 data,
@@ -39,7 +56,7 @@ function generate_prediction(predictfunction::Function,
                                 data_ymle::AbstractArray{<:Real},
                                 parameter_points::Matrix{Float64},
                                 proportion_to_keep::Real,
-                                channel::Union{RemoteChannel,Missing}=missing)
+                                channel::RemoteChannel=RemoteChannel(() -> Channel{Bool}(Inf)))
     try
         num_points = size(parameter_points, 2)
         
@@ -52,6 +69,7 @@ function generate_prediction(predictfunction::Function,
 
             for i in 1:num_points
                 predictions[:,i,:] .= predictfunction(parameter_points[:,i], data, t)
+                put!(channel, true)
             end
 
         else
@@ -59,6 +77,7 @@ function generate_prediction(predictfunction::Function,
 
             for i in 1:num_points
                 predictions[:,i] .= predictfunction(parameter_points[:,i], data, t)
+                put!(channel, true)
             end
         end
         
@@ -79,7 +98,6 @@ function generate_prediction(predictfunction::Function,
             predict_struct = PredictionStruct(predictions[:, keep_i], extrema)
         end
 
-        if !ismissing(channel); put!(channel, true) end
         return predict_struct
 
     catch
@@ -93,6 +111,16 @@ function generate_prediction(predictfunction::Function,
     return nothing
 end
 
+"""
+    generate_prediction_univariate(model::LikelihoodModel,
+        sub_df,
+        row_i::Int,
+        t::Vector,
+        proportion_to_keep::Real, 
+        channel::RemoteChannel)
+
+Generates predictions for the univariate profile in `sub_df` that corresponds to `row_i` at timepoints `t`.
+"""
 function generate_prediction_univariate(model::LikelihoodModel,
                                         sub_df,
                                         row_i::Int,
@@ -109,6 +137,16 @@ function generate_prediction_univariate(model::LikelihoodModel,
                 interval_points.points[:, boundary_range], proportion_to_keep, channel)
 end
 
+"""
+    generate_prediction_bivariate(model::LikelihoodModel,
+        sub_df,
+        row_i::Int,
+        t::Vector,
+        proportion_to_keep::Real,
+        channel::RemoteChannel)
+
+Generates predictions for the bivariate profile in `sub_df` that corresponds to `row_i` at timepoints `t`.
+"""
 function generate_prediction_bivariate(model::LikelihoodModel,
                                         sub_df,
                                         row_i::Int,
@@ -131,6 +169,35 @@ function generate_prediction_bivariate(model::LikelihoodModel,
 end
 
 """
+    generate_predictions_univariate!(model::LikelihoodModel,
+        t::AbstractVector,
+        proportion_to_keep::Real;
+        <keyword arguments>)
+
+Evalute and save `proportion_to_keep` individual predictions and their extrema from existing univariate profiles that meet the requirements of the univariate method of [`PlaceholderLikelihood.desired_df_subset`](@ref) (see Keyword Arguments) at time points `t`. Modifies `model` in place.
+
+# Arguments
+- `model`: a [`LikelihoodModel`](@ref) containing model information, saved profiles and predictions.
+- `t`: a vector of time points to compute predictions at.
+- `proportion_to_keep`: a `Real` number ∈ (0.0,1.0) of the proportion of individual predictions to save. 
+
+# Keyword Arguments
+- `confidence_levels`: a vector of confidence levels. If empty, all confidence levels of univariate profiles will be considered for evaluating predictions from. Otherwise, only confidence levels in `confidence_levels` will be considered. Default is `Float64[]` (any confidence level).
+- `profile_types`: a vector of `AbstractProfileType` structs. If empty, all profile types of univariate profiles are considered. Otherwise, only profiles with matching profile types will be considered. Default is `AbstractProfileType[]` (any profile type).
+- `overwrite_predictions`: boolean variable specifying whether to re-evaluate and overwrite predictions for univariate profiles that have already had predictions evaluated. Set to `true` if predictions need to be evaluated for a new vector of time points. Default is `false`.
+- `show_progress`: boolean variable specifying whether to display progress bars on the percentage of predictions evaluated and estimated time of completion. Default is `model.show_progress`.
+
+# Details
+
+For each univariate profile that meets the requirements of [`PlaceholderLikelihood.desired_df_subset`](@ref), it uses [`PlaceholderLikelihood.generate_prediction`](@ref) to generates the predictions for every parameter point in the profiles. The extrema of these predictions are computed (these are approximate simultaneous confidence bands for the prediction mean). The extrema and `proportion_to_keep` of the individual predictions are saved as a [`PredictionStruct`](@ref) in `model.uni_predictions_dict`, where the keys for the dictionary is the row number in `model.uni_profiles_df` of the corresponding profile.
+
+## Distributed Computing Implementation
+
+If [Distributed.jl](https://docs.julialang.org/en/v1/stdlib/Distributed/) is being used then the predictions from each univariate profile will be computed in parallel across `Distributed.nworkers()` workers.
+
+## Iteration Speed Of the Progress Meter
+
+The time/it value is the time it takes for a prediction to be evaluated from a single point in parameter space.
 """
 function generate_predictions_univariate!(model::LikelihoodModel,
                                             t::AbstractVector,
@@ -150,8 +217,10 @@ function generate_predictions_univariate!(model::LikelihoodModel,
         return nothing
     end
 
-    channel = RemoteChannel(() -> Channel{Bool}(1))
-    p = Progress(nrow(sub_df); desc="Generating univariate profile predictions: ",
+    totaltasks = sum(sub_df.num_points)
+    channel_buffer_size = min(ceil(Int, totaltasks * 0.05), 50)
+    channel = RemoteChannel(() -> Channel{Bool}(channel_buffer_size))
+    p = Progress(totaltasks; desc="Generating univariate profile predictions: ",
                 dt=PROGRESS__METER__DT, enabled=show_progress, showspeed=true)
 
     @sync begin
@@ -177,6 +246,38 @@ function generate_predictions_univariate!(model::LikelihoodModel,
     return nothing
 end
 
+"""
+    generate_predictions_bivariate!(model::LikelihoodModel,
+        t::AbstractVector,
+        proportion_to_keep::Real;
+        <keyword arguments>)
+
+Evalute and save `proportion_to_keep` individual predictions and their extrema from existing bivariate profiles that meet the requirements of the bivariate method of [`PlaceholderLikelihood.desired_df_subset`](@ref) (see Keyword Arguments) at time points `t`. Modifies `model` in place.
+
+# Arguments
+- `model`: a [`LikelihoodModel`](@ref) containing model information, saved profiles and predictions.
+- `t`: a vector of time points to compute predictions at.
+- `proportion_to_keep`: a `Real` number ∈ (0.0,1.0) of the proportion of individual predictions to save. 
+
+# Keyword Arguments
+- `confidence_levels`: a vector of confidence levels. If empty, all confidence levels of bivariate profiles will be considered for evaluating predictions from. Otherwise, only confidence levels in `confidence_levels` will be considered. Default is `Float64[]` (any confidence level).
+- `profile_types`: a vector of `AbstractProfileType` structs. If empty, all profile types of bivariate profiles are considered. Otherwise, only profiles with matching profile types will be considered. Default is `AbstractProfileType[]` (any profile type).
+- `methods`: a vector of `AbstractBivariateMethod` structs. If empty all methods used to find bivariate profiles are considered. Otherwise, only profiles with matching method types will be considered (struct arguments do not need to be the same). Default is `AbstractBivariateMethod[]` (any bivariate method).
+- `overwrite_predictions`: boolean variable specifying whether to re-evaluate and overwrite predictions for bivariate profiles that have already had predictions evaluated. Set to `true` if predictions need to be evaluated for a new vector of time points. Default is `false`.
+- `show_progress`: boolean variable specifying whether to display progress bars on the percentage of predictions evaluated and estimated time of completion. Default is `model.show_progress`.
+
+# Details
+
+For each bivariate profile that meets the requirements of [`PlaceholderLikelihood.desired_df_subset`](@ref), it uses [`PlaceholderLikelihood.generate_prediction`](@ref) to generates the predictions for every parameter point in the profiles. The extrema of these predictions are computed (these are approximate simultaneous confidence bands for the prediction mean). The extrema and `proportion_to_keep` of the individual predictions are saved as a [`PredictionStruct`](@ref) in `model.biv_predictions_dict`, where the keys for the dictionary is the row number in `model.biv_profiles_df` of the corresponding profile.
+
+## Distributed Computing Implementation
+
+If [Distributed.jl](https://docs.julialang.org/en/v1/stdlib/Distributed/) is being used then the predictions from each bivariate profile will be computed in parallel across `Distributed.nworkers()` workers.
+
+## Iteration Speed Of the Progress Meter
+
+The time/it value is the time it takes for a prediction to be evaluated from a single point in parameter space.
+"""
 function generate_predictions_bivariate!(model::LikelihoodModel,
                                             t::AbstractVector,
                                             proportion_to_keep::Real;
@@ -196,8 +297,11 @@ function generate_predictions_bivariate!(model::LikelihoodModel,
         return nothing
     end
 
-    channel = RemoteChannel(() -> Channel{Bool}(1))
-    p = Progress(nrow(sub_df); desc="Generating bivariate profile predictions: ",
+    totaltasks = sum(sub_df.num_points) + 
+        sum([length(model.biv_profiles_dict[row_ind].internal_points.ll) for row_ind in sub_df.row_ind])
+    channel_buffer_size = min(ceil(Int, totaltasks * 0.05), 100)
+    channel = RemoteChannel(() -> Channel{Bool}(channel_buffer_size))
+    p = Progress(totaltasks; desc="Generating bivariate profile predictions: ",
                 dt=PROGRESS__METER__DT, enabled=show_progress, showspeed=true)
 
     @sync begin
@@ -224,6 +328,37 @@ function generate_predictions_bivariate!(model::LikelihoodModel,
     return nothing
 end
 
+"""
+    generate_predictions_dim_samples!(model::LikelihoodModel,
+        t::AbstractVector,
+        proportion_to_keep::Real;
+        <keyword arguments>)
+
+Evalute and save `proportion_to_keep` individual predictions and their extrema from existing dimensional samples that meet the requirements of the dimensional method of [`PlaceholderLikelihood.desired_df_subset`](@ref) (see Keyword Arguments) at time points `t`. Modifies `model` in place.
+
+# Arguments
+- `model`: a [`LikelihoodModel`](@ref) containing model information, saved profiles and predictions.
+- `t`: a vector of time points to compute predictions at.
+- `proportion_to_keep`: a `Real` number ∈ (0.0,1.0) of the proportion of individual predictions to save. 
+
+# Keyword Arguments
+- `confidence_levels`: a vector of confidence levels. If empty, all confidence levels of dimensional samples will be considered for evaluating predictions from. Otherwise, only confidence levels in `confidence_levels` will be considered. Default is `Float64[]` (any confidence level).
+- `sample_types`: a vector of [`AbstractSampleType`](@ref) structs. If empty, all sample types used to find dimensional samples are considered. Otherwise, only samples with matching sample types will be considered. Default is `AbstractSampleType[]` (any sample type).
+- `overwrite_predictions`: boolean variable specifying whether to re-evaluate and overwrite predictions for dimensional samples that have already had predictions evaluated. Set to `true` if predictions need to be evaluated for a new vector of time points. Default is `false`.
+- `show_progress`: boolean variable specifying whether to display progress bars on the percentage of predictions evaluated and estimated time of completion. Default is `model.show_progress`.
+
+# Details
+
+For each dimensional sample that meets the requirements of [`PlaceholderLikelihood.desired_df_subset`](@ref), it uses [`PlaceholderLikelihood.generate_prediction`](@ref) to generates the predictions for every parameter point in the samples. The extrema of these predictions are computed (these are approximate simultaneous confidence bands for the prediction mean). The extrema and `proportion_to_keep` of the individual predictions are saved as a [`PredictionStruct`](@ref) in `model.dim_predictions_dict`, where the keys for the dictionary is the row number in `model.dim_samples_df` of the corresponding sample.
+
+## Distributed Computing Implementation
+
+If [Distributed.jl](https://docs.julialang.org/en/v1/stdlib/Distributed/) is being used then the predictions from each dimensional sample will be computed in parallel across `Distributed.nworkers()` workers.
+
+## Iteration Speed Of the Progress Meter
+
+The time/it value is the time it takes for a prediction to be evaluated from a single point in parameter space.
+"""
 function generate_predictions_dim_samples!(model::LikelihoodModel,
                                             t::AbstractVector,
                                             proportion_to_keep::Real;
@@ -242,8 +377,10 @@ function generate_predictions_dim_samples!(model::LikelihoodModel,
         return nothing
     end
 
-    channel = RemoteChannel(() -> Channel{Bool}(1))
-    p = Progress(nrow(sub_df); desc="Generating dimensional profile sample predictions: ",
+    totaltasks = sum(sub_df.num_points)
+    channel_buffer_size = min(ceil(Int, totaltasks * 0.05), 400)
+    channel = RemoteChannel(() -> Channel{Bool}(channel_buffer_size))
+    p = Progress(totaltasks; desc="Generating dimensional profile sample predictions: ",
                 dt=PROGRESS__METER__DT, enabled=show_progress, showspeed=true)
 
     @sync begin

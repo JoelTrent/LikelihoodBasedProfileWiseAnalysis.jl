@@ -314,6 +314,10 @@ Samples `num_points_to_sample` points from full parameter space, evaluating the 
 
 Using [`full_likelihood_sample`](@ref) this function calls the sample method specified by `sample_type` (depending on the setting for `existing_profiles` and `confidence_level` if a full likelihood sample already exists). Updates `model.dim_samples_df` if the sample is successful and saves the results as a [`SampledConfidenceStruct`](@ref) in `model.dim_samples_dict`, where the keys for the dictionary is the row number in `model.dim_samples_df` of the corresponding sample.
 
+## Parallel Computing Implementation
+
+If [Distributed.jl](https://docs.julialang.org/en/v1/stdlib/Distributed/) is being used and `use_distributed` is `true`,the log-likelihood value of sampled points will be computed in parallel across `Distributed.nworkers()` workers. If `use_distributed` is `false` and `use_threads` is `true` then the log-likelihood value of sampled points will be computed in parallel across `Threads.nthreads()` threads.
+
 ## Iteration Speed Of the Progress Meter
 
 The time/it value is the time it takes for each point chosen under the specified sampling scheme to be evaluated as valid or not. A point is valid if the log-likelihood function value at that point is greater than the confidence log-likelihood threshold.

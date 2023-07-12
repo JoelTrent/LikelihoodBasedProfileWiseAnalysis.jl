@@ -39,11 +39,11 @@ abstract type AbstractConfidenceStruct end
     UnivariateConfidenceStruct(confidence_interval::Vector{<:Float64}, 
         interval_points::PointsAndLogLikelihood)
 
-Struct that stores the confidence interval of a given interest parameter as well as points sampled within (and outside) the confidence interval and their corresponding log-likelihood values.
+Struct that stores the confidence interval of a given interest parameter as well as points sampled inside (and outside) the confidence interval and their corresponding log-likelihood values.
 
 # Fields
 - `confidence_interval`: a vector of length two with the confidence interval for a given interest parameter. If an entry has value `NaN`, that side of the confidence interval is outside the corresponding bound on the interest parameter.
-- `interval_points`: a [`PointsAndLogLikelihood`](@ref) struct containing any points that have been evaluated inside or outside the interval by [`get_points_in_interval!`](@ref), their corresponding log-likelihood function value and the column indices of the `confidence_interval` points in `interval_points.points`. Points can be evaluated and stored that are outside the confidence interval so that log-likelihood profile plots are defined outside of the confidence interval. `interval_points.points` is stored in column-wise order of increasing interest parameter magnitude. 
+- `interval_points`: a [`PointsAndLogLikelihood`](@ref) struct containing any points that have been evaluated inside or outside the interval by [`get_points_in_intervals!`](@ref), their corresponding log-likelihood function value and the column indices of the `confidence_interval` points in `interval_points.points`. Points can be evaluated and stored that are outside the confidence interval so that log-likelihood profile plots are defined outside of the confidence interval. `interval_points.points` is stored in column-wise order of increasing interest parameter magnitude. 
 
 # Supertype Hiearachy
 

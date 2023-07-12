@@ -360,7 +360,7 @@ end
         num_points_to_sample::Union{Int, Vector{Int}};
         <keyword arguments>)
 
-Samples `num_points_to_sample` points from interest parameter space, for each interest parameter combination in `θindices`, determine the values of nuisance parameters that maximise log-likelihood function at each,  saving all points that are inside the `confidence_level` log-likelihood threshold. Saves these samples by modifying `model` in place.
+Samples `num_points_to_sample` points from interest parameter space, for each interest parameter combination in `θindices`, determining the values of nuisance parameters that maximise log-likelihood function at each,  saving all points that are inside the `confidence_level` log-likelihood threshold. Saves these samples by modifying `model` in place.
 
 # Arguments
 - `model`: a [`LikelihoodModel`](@ref) containing model information, saved profiles and predictions.
@@ -379,7 +379,11 @@ Samples `num_points_to_sample` points from interest parameter space, for each in
 
 # Details
 
-Using [`dimensional_likelihood_sample`](@ref) this function calls the sample method specified by `sample_type` for each set of interest parameters in `[θindices]` (depending on the setting for `existing_profiles` and `confidence_level` if these samples already exist). Updates `model.dim_samples_df` for each successful sample and saves their results as a [`SampledConfidenceStruct`](@ref) in `model.dim_samples_dict`, where the keys for the dictionary is the row number in `model.dim_samples_df` of the corresponding sample.
+Using [`dimensional_likelihood_sample`](@ref) this function calls the sample method specified by `sample_type` for each set of interest parameters in `[θindices]` (depending on the setting for `existing_profiles` and `confidence_level` if these samples already exist). Updates `model.dim_samples_df` for each successful sample and saves their results as a [`SampledConfidenceStruct`](@ref) in `model.dim_samples_dict`, where the keys for the dictionary is the row number in `model.dim_samples_df` of the corresponding sample. `model.dim_samples_df.num_points` is the number of points within the confidence boundary from those sampled.
+
+## Parallel Computing Implementation
+
+If [Distributed.jl](https://docs.julialang.org/en/v1/stdlib/Distributed/) is being used and `use_distributed` is `true`, then the dimensional samples of distinct interest parameter combinations will be computed in parallel across `Distributed.nworkers()` workers. If `use_distributed` is `false` and `use_threads` is `true` then the log-likelihood value of sampled points will be computed in parallel across `Threads.nthreads()` threads.
 
 ## Iteration Speed Of the Progress Meter
 
@@ -590,7 +594,8 @@ end
 """
     dimensional_likelihood_samples!(model::LikelihoodModel,
         sample_dimension::Int,
-        num_points_to_sample::Union{Int, Vector{Int}}
+        num_points_to_sample::Union{Int, Vector{Int}};
+        <keyword arguments>)
 
 Samples all combinations of `sample_dimension` model parameters.
 """
