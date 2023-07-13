@@ -332,17 +332,22 @@ function full_likelihood_sample!(model::LikelihoodModel,
                                     use_threads::Bool=true,
                                     existing_profiles::Symbol=:overwrite,
                                     show_progress::Bool=model.show_progress)
+    
+    function argument_handling()
+        model.core isa CoreLikelihoodModel || throw(ArgumentError("model does not contain a log-likelihood function. Add it using add_loglikelihood_function!"))
 
-    model.core isa CoreLikelihoodModel || throw(ArgumentError("model does not contain a log-likelihood function. Add it using add_loglikelihood_function!"))
+        if num_points_to_sample isa Int
+            num_points_to_sample > 0 || throw(DomainError("num_points_to_sample must be a strictly positive integer"))
+        else
+            minimum(num_points_to_sample) > 0 || throw(DomainError("num_points_to_sample must contain strictly positive integers"))
 
-    if num_points_to_sample isa Int
-        num_points_to_sample > 0 || throw(DomainError("num_points_to_sample must be a strictly positive integer"))
-    else
-        minimum(num_points_to_sample) > 0 || throw(DomainError("num_points_to_sample must contain strictly positive integers"))
-
-        sample_type isa UniformGridSamples || throw(ArgumentError(string("num_points_to_sample must be an integer for ", sample_type, " sample_type")))
+            sample_type isa UniformGridSamples || throw(ArgumentError(string("num_points_to_sample must be an integer for ", sample_type, " sample_type")))
+        end
+        existing_profiles ∈ [:ignore, :overwrite] || throw(ArgumentError("existing_profiles can only take value :ignore or :overwrite"))
+        return nothing
     end
-    existing_profiles ∈ [:ignore, :overwrite] || throw(ArgumentError("existing_profiles can only take value :ignore or :overwrite"))
+
+    argument_handling()
     lb, ub = check_if_bounds_supplied(model, lb, ub)
 
     # error handle confidence_level

@@ -73,44 +73,50 @@ function check_bivariate_boundary_coverage(data_generator::Function,
     show_progress::Bool=model.show_progress,
     distributed_over_parameters::Bool=false)
 
-    length(θtrue) == model.core.num_pars || throw(ArgumentError("θtrue must have the same length as the number of model parameters"))
-    length(θinitialguess) == model.core.num_pars || throw(ArgumentError("θinitialguess must have the same length as the number of model parameters"))
+    function argument_handling!()
+        length(θtrue) == model.core.num_pars || throw(ArgumentError("θtrue must have the same length as the number of model parameters"))
+        length(θinitialguess) == model.core.num_pars || throw(ArgumentError("θinitialguess must have the same length as the number of model parameters"))
 
-    (0.0 < coverage_estimate_quantile_level && coverage_estimate_quantile_level < 1.0) || throw(DomainError("coverage_estimate_quantile_level must be in the open interval (0,1)"))
-    get_target_loglikelihood(model, confidence_level, profile_type, 2)
+        (0.0 < coverage_estimate_quantile_level && coverage_estimate_quantile_level < 1.0) || throw(DomainError("coverage_estimate_quantile_level must be in the open interval (0,1)"))
+        get_target_loglikelihood(model, confidence_level, profile_type, 2)
 
-    if num_points_to_sample isa Int
-        num_points_to_sample > 0 || throw(DomainError("num_points_to_sample must be a strictly positive integer"))
-    else
-        minimum(num_points_to_sample) > 0 || throw(DomainError("num_points_to_sample must contain strictly positive integers"))
+        if num_points_to_sample isa Int
+            num_points_to_sample > 0 || throw(DomainError("num_points_to_sample must be a strictly positive integer"))
+        else
+            minimum(num_points_to_sample) > 0 || throw(DomainError("num_points_to_sample must contain strictly positive integers"))
 
-        sample_type isa UniformGridSamples || throw(ArgumentError(string("num_points_to_sample must be an integer for ", sample_type, " sample_type")))
+            sample_type isa UniformGridSamples || throw(ArgumentError(string("num_points_to_sample must be an integer for ", sample_type, " sample_type")))
 
-        (length(num_points_to_sample) == length(θcombinations[1]) &&
-         diff([extrema(length.(θcombinations))...])[1] == 0) ||
-            throw(ArgumentError("num_points_to_sample must have the same length as each vector of interest parameters in num_points_to_sample"))
+            (length(num_points_to_sample) == length(θcombinations[1]) &&
+            diff([extrema(length.(θcombinations))...])[1] == 0) ||
+                throw(ArgumentError("num_points_to_sample must have the same length as each vector of interest parameters in num_points_to_sample"))
+        end
+
+        !xor(num_points isa Vector, method isa Vector) || throw(ArgumentError("num_points and method must both be a Vector, or both be a Int and AbstractBivariateMethod, respectively, at the same time (xnor gate)"))
+        combine_methods = num_points isa Vector
+        if combine_methods
+            (length(num_points) == length(method)) || throw(ArgumentError("num_points must have the same length as method, each index in num_points corresponds to the number of boundary points for the corresponding index in method"))
+        end
+
+        N > 0 || throw(DomainError("N must be greater than 0"))
+
+        if θcombinations isa Vector{Tuple{Int, Int}}
+            θcombinations = [[combo...] for combo in θcombinations]
+        end
+
+        # for each combination, enforce ind1 < ind2 and make sure only unique combinations are run
+        sort!.(θcombinations)
+        unique!.(θcombinations)
+        sort!(θcombinations)
+        unique!(θcombinations)
+
+        1 ≤ first.(θcombinations)[1] && maximum(last.(θcombinations)) ≤ model.core.num_pars || throw(DomainError("θcombinations can only contain parameter indexes between 1 and the number of model parameters"))
+        extrema(length.(θcombinations)) == (2, 2) || throw(ArgumentError("θcombinations must only contain vectors of length 2"))
+        return nothing
     end
 
-    !xor(num_points isa Vector, method isa Vector) || throw(ArgumentError("num_points and method must both be a Vector, or both be a Int and AbstractBivariateMethod, respectively, at the same time (xnor gate)"))
-    combine_methods = num_points isa Vector
-    if combine_methods
-        (length(num_points) == length(method)) || throw(ArgumentError("num_points must have the same length as method, each index in num_points corresponds to the number of boundary points for the corresponding index in method"))
-    end
-
-    N > 0 || throw(DomainError("N must be greater than 0"))
-
-    if θcombinations isa Vector{Tuple{Int, Int}}
-        θcombinations = [[combo...] for combo in θcombinations]
-    end
-
-    # for each combination, enforce ind1 < ind2 and make sure only unique combinations are run
-    sort!.(θcombinations)
-    unique!.(θcombinations)
-    sort!(θcombinations)
-    unique!(θcombinations)
-
-    1 ≤ first.(θcombinations)[1] && maximum(last.(θcombinations)) ≤ model.core.num_pars || throw(DomainError("θcombinations can only contain parameter indexes between 1 and the number of model parameters"))
-    extrema(length.(θcombinations)) == (2, 2) || throw(ArgumentError("θcombinations must only contain vectors of length 2"))
+    local combine_methods::Bool
+    argument_handling!()
 
     len_θs = length(θcombinations)
     combo_to_index = Dict{Tuple{Int,Int},Int}(Tuple(combo) => index for (index, combo) in enumerate(θcombinations))

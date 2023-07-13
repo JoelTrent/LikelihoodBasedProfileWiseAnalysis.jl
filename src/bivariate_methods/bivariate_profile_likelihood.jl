@@ -299,14 +299,26 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
                                         show_progress::Bool=model.show_progress,
                                         use_distributed::Bool=true)
                                     
-    existing_profiles ∈ [:ignore, :merge, :overwrite] || throw(ArgumentError("existing_profiles can only take value :ignore, :merge or :overwrite"))
+    function argument_handling!()
+        existing_profiles ∈ [:ignore, :merge, :overwrite] || throw(ArgumentError("existing_profiles can only take value :ignore, :merge or :overwrite"))
 
-    method isa CombinedBivariateMethod && throw(ArgumentError("CombinedBivariateMethod is not a valid method"))
-    model.core isa CoreLikelihoodModel || throw(ArgumentError("model does not contain a log-likelihood function. Add it using add_loglikelihood_function!"))
-
+        method isa CombinedBivariateMethod && throw(ArgumentError("CombinedBivariateMethod is not a valid method"))
+        model.core isa CoreLikelihoodModel || throw(ArgumentError("model does not contain a log-likelihood function. Add it using add_loglikelihood_function!"))
+        
+        # for each combination, enforce ind1 < ind2 and make sure only unique combinations are run
+        sort!.(θcombinations); unique!.(θcombinations)
+        sort!(θcombinations); unique!(θcombinations)
+        1 ≤ first.(θcombinations)[1] && maximum(last.(θcombinations)) ≤ model.core.num_pars || throw(DomainError("θcombinations can only contain parameter indexes between 1 and the number of model parameters"))
+        
+        extrema(length.(θcombinations)) == (2,2) || throw(ArgumentError("θcombinations must only contain vectors of length 2"))
+        return nothing
+    end
+    
+    argument_handling!()
+    
     # need at least 3 boundary points for some algorithms to work
     num_points = max(3, num_points)
-
+    
     if profile_type isa AbstractEllipseProfileType
         check_ellipse_approx_exists!(model)
     end
@@ -321,13 +333,6 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
     bivariate_optimiser = get_bivariate_opt_func(profile_type, method)
     consistent = get_consistent_tuple(model, confidence_level, profile_type, 2)
     mle_targetll = get_target_loglikelihood(model, confidence_level, EllipseApproxAnalytical(), 2)
-
-    # for each combination, enforce ind1 < ind2 and make sure only unique combinations are run
-    sort!.(θcombinations); unique!.(θcombinations)
-    sort!(θcombinations); unique!(θcombinations)
-    1 ≤ first.(θcombinations)[1] && maximum(last.(θcombinations)) ≤ model.core.num_pars || throw(DomainError("θcombinations can only contain parameter indexes between 1 and the number of model parameters"))
-
-    extrema(length.(θcombinations)) == (2,2) || throw(ArgumentError("θcombinations must only contain vectors of length 2"))
 
     init_biv_profile_row_exists!(model, θcombinations, profile_type, method)
 

@@ -239,6 +239,7 @@ function uniform_random(model::LikelihoodModel,
     if !arguments_checked
         num_points > 0 || throw(DomainError("num_points must be a strictly positive integer"))
     end
+    
     newLb, newUb, initGuess, ωindices = init_nuisance_parameters(model, θindices, num_dims)
     consistent = get_consistent_tuple(model, confidence_level, LogLikelihood(), num_dims)
     p=(θindices=θindices, newLb=newLb, newUb=newUb, initGuess=initGuess,
@@ -400,20 +401,25 @@ function dimensional_likelihood_samples!(model::LikelihoodModel,
                                         existing_profiles::Symbol=:overwrite,
                                         show_progress::Bool=model.show_progress)
 
-    model.core isa CoreLikelihoodModel || throw(ArgumentError("model does not contain a log-likelihood function. Add it using add_loglikelihood_function!"))
+    function argument_handling()
+        model.core isa CoreLikelihoodModel || throw(ArgumentError("model does not contain a log-likelihood function. Add it using add_loglikelihood_function!"))
 
-    if num_points_to_sample isa Int
-        num_points_to_sample > 0 || throw(DomainError("num_points_to_sample must be a strictly positive integer"))
-    else
-        minimum(num_points_to_sample) > 0 || throw(DomainError("num_points_to_sample must contain strictly positive integers"))
+        if num_points_to_sample isa Int
+            num_points_to_sample > 0 || throw(DomainError("num_points_to_sample must be a strictly positive integer"))
+        else
+            minimum(num_points_to_sample) > 0 || throw(DomainError("num_points_to_sample must contain strictly positive integers"))
 
-        sample_type isa UniformGridSamples || throw(ArgumentError(string("num_points_to_sample must be an integer for ", sample_type, " sample_type")))
+            sample_type isa UniformGridSamples || throw(ArgumentError(string("num_points_to_sample must be an integer for ", sample_type, " sample_type")))
 
-        (length(num_points_to_sample) == length(θindices[1]) &&
-            diff([extrema(length.(θindices))...])[1] == 0) || 
-            throw(ArgumentError("num_points_to_sample must have the same length as each vector of interest parameters in num_points_to_sample"))
+            (length(num_points_to_sample) == length(θindices[1]) &&
+                diff([extrema(length.(θindices))...])[1] == 0) || 
+                throw(ArgumentError("num_points_to_sample must have the same length as each vector of interest parameters in num_points_to_sample"))
+        end
+        existing_profiles ∈ [:ignore, :overwrite] || throw(ArgumentError("existing_profiles can only take value :ignore or :overwrite"))
+        return nothing
     end
-    existing_profiles ∈ [:ignore, :overwrite] || throw(ArgumentError("existing_profiles can only take value :ignore or :overwrite"))
+    
+    argument_handling()
     lb, ub = check_if_bounds_supplied(model, lb, ub)
 
     # error handle confidence_level

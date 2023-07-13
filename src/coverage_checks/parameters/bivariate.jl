@@ -68,32 +68,37 @@ function check_bivariate_parameter_coverage(data_generator::Function,
     show_progress::Bool=model.show_progress,
     distributed_over_parameters::Bool=false)
 
-    length(θtrue) == model.core.num_pars || throw(ArgumentError("θtrue must have the same length as the number of model parameters"))
-    length(θinitialguess) == model.core.num_pars || throw(ArgumentError("θinitialguess must have the same length as the number of model parameters"))
+    function argument_handling!()
+        length(θtrue) == model.core.num_pars || throw(ArgumentError("θtrue must have the same length as the number of model parameters"))
+        length(θinitialguess) == model.core.num_pars || throw(ArgumentError("θinitialguess must have the same length as the number of model parameters"))
 
-    (0.0 < coverage_estimate_confidence_level && coverage_estimate_confidence_level < 1.0) || throw(DomainError("coverage_estimate_confidence_level must be in the open interval (0,1)"))
-    get_target_loglikelihood(model, confidence_level, profile_type, 2)
+        (0.0 < coverage_estimate_confidence_level && coverage_estimate_confidence_level < 1.0) || throw(DomainError("coverage_estimate_confidence_level must be in the open interval (0,1)"))
+        get_target_loglikelihood(model, confidence_level, profile_type, 2)
+        
+        !xor(num_points isa Vector, method isa Vector) || throw(ArgumentError("num_points and method must both be a Vector, or both be a Int and AbstractBivariateMethod, respectively, at the same time (xnor gate)"))
+        combine_methods = num_points isa Vector 
+        if combine_methods
+            (length(num_points) == length(method)) || throw(ArgumentError("num_points must have the same length as method, each index in num_points corresponds to the number of boundary points for the corresponding index in method"))
+        end
+
+        N > 0 || throw(DomainError("N must be greater than 0"))
+
+        if θcombinations isa Vector{Tuple{Int, Int}}
+            θcombinations = [[combo...] for combo in θcombinations]
+        end
+
+        # for each combination, enforce ind1 < ind2 and make sure only unique combinations are run
+        sort!.(θcombinations)
+        unique!.(θcombinations)
+        sort!(θcombinations)
+        unique!(θcombinations)
+
+        1 ≤ first.(θcombinations)[1] && maximum(last.(θcombinations)) ≤ model.core.num_pars || throw(DomainError("θcombinations can only contain parameter indexes between 1 and the number of model parameters"))
+        extrema(length.(θcombinations)) == (2, 2) || throw(ArgumentError("θcombinations must only contain vectors of length 2"))
+        return nothing
+    end
     
-    !xor(num_points isa Vector, method isa Vector) || throw(ArgumentError("num_points and method must both be a Vector, or both be a Int and AbstractBivariateMethod, respectively, at the same time (xnor gate)"))
-    combine_methods = num_points isa Vector 
-    if combine_methods
-        (length(num_points) == length(method)) || throw(ArgumentError("num_points must have the same length as method, each index in num_points corresponds to the number of boundary points for the corresponding index in method"))
-    end
-
-    N > 0 || throw(DomainError("N must be greater than 0"))
-
-    if θcombinations isa Vector{Tuple{Int, Int}}
-        θcombinations = [[combo...] for combo in θcombinations]
-    end
-
-    # for each combination, enforce ind1 < ind2 and make sure only unique combinations are run
-    sort!.(θcombinations)
-    unique!.(θcombinations)
-    sort!(θcombinations)
-    unique!(θcombinations)
-
-    1 ≤ first.(θcombinations)[1] && maximum(last.(θcombinations)) ≤ model.core.num_pars || throw(DomainError("θcombinations can only contain parameter indexes between 1 and the number of model parameters"))
-    extrema(length.(θcombinations)) == (2, 2) || throw(ArgumentError("θcombinations must only contain vectors of length 2"))
+    argument_handling!()
 
     len_θs = length(θcombinations)
     combo_to_index = Dict{Tuple{Int,Int},Int}(Tuple(combo) => index for (index, combo) in enumerate(θcombinations))

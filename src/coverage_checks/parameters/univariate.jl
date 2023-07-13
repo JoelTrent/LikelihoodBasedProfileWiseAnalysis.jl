@@ -59,16 +59,20 @@ function check_univariate_parameter_coverage(data_generator::Function,
     show_progress::Bool=model.show_progress,
     distributed_over_parameters::Bool=false)
 
-    length(θtrue) == model.core.num_pars || throw(ArgumentError("θtrue must have the same length as the number of model parameters"))
-    length(θinitialguess) == model.core.num_pars || throw(ArgumentError("θinitialguess must have the same length as the number of model parameters"))
+    function argument_handling!()
+        length(θtrue) == model.core.num_pars || throw(ArgumentError("θtrue must have the same length as the number of model parameters"))
+        length(θinitialguess) == model.core.num_pars || throw(ArgumentError("θinitialguess must have the same length as the number of model parameters"))
 
-    (0.0 < coverage_estimate_confidence_level && coverage_estimate_confidence_level < 1.0) || throw(DomainError("coverage_estimate_confidence_level must be in the open interval (0,1)"))
-    get_target_loglikelihood(model, confidence_level, profile_type, 1)
+        (0.0 < coverage_estimate_confidence_level && coverage_estimate_confidence_level < 1.0) || throw(DomainError("coverage_estimate_confidence_level must be in the open interval (0,1)"))
+        get_target_loglikelihood(model, confidence_level, profile_type, 1)
 
-    N > 0 || throw(DomainError("N must be greater than 0"))
+        N > 0 || throw(DomainError("N must be greater than 0"))
 
-    (sort(θs); unique!(θs))
-    1 ≤ θs[1] && θs[end] ≤ model.core.num_pars || throw(DomainError("θs can only contain parameter indexes between 1 and the number of model parameters"))
+        (sort(θs); unique!(θs))
+        1 ≤ θs[1] && θs[end] ≤ model.core.num_pars || throw(DomainError("θs can only contain parameter indexes between 1 and the number of model parameters"))
+    end
+
+    argument_handling!()
 
     len_θs = length(θs)
     θi_to_θs = Dict{Int,Int}(θi => θs for (θs, θi) in enumerate(θs))

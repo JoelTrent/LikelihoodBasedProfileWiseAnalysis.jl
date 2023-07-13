@@ -320,12 +320,18 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
                                         existing_profiles::Symbol=:ignore,
                                         show_progress::Bool=model.show_progress,
                                         use_distributed::Bool=true)
+    
+    function argument_handling!()
+        num_points_in_interval >= 0 || throw(DomainError("num_points_in_interval must be a strictly positive integer"))
+        additional_width >= 0 || throw(DomainError("additional_width must be greater than or equal to zero"))
+        existing_profiles ∈ [:ignore, :overwrite] || throw(ArgumentError("existing_profiles can only take value :ignore or :overwrite"))
+        model.core isa CoreLikelihoodModel || throw(ArgumentError("model does not contain a log-likelihood function. Add it using add_loglikelihood_function!"))
 
-    num_points_in_interval >= 0 || throw(DomainError("num_points_in_interval must be a strictly positive integer"))
-    additional_width >= 0 || throw(DomainError("additional_width must be greater than or equal to zero"))
-    existing_profiles ∈ [:ignore, :overwrite] || throw(ArgumentError("existing_profiles can only take value :ignore or :overwrite"))
-    model.core isa CoreLikelihoodModel || throw(ArgumentError("model does not contain a log-likelihood function. Add it using add_loglikelihood_function!"))
+        (sort(θs_to_profile); unique!(θs_to_profile))
+        1 ≤ θs_to_profile[1] && θs_to_profile[end] ≤ model.core.num_pars || throw(DomainError("θs_to_profile can only contain parameter indexes between 1 and the number of model parameters"))
+    end
 
+    argument_handling!()
     additional_width = num_points_in_interval > 0 ? additional_width : 0.0
 
     if profile_type isa AbstractEllipseProfileType
@@ -335,9 +341,6 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
     univariate_optimiser = get_univariate_opt_func(profile_type)
     consistent = get_consistent_tuple(model, confidence_level, profile_type, 1)
     mle_targetll = get_target_loglikelihood(model, confidence_level, EllipseApproxAnalytical(), 1)
-
-    (sort(θs_to_profile); unique!(θs_to_profile))
-    1 ≤ θs_to_profile[1] && θs_to_profile[end] ≤ model.core.num_pars || throw(DomainError("θs_to_profile can only contain parameter indexes between 1 and the number of model parameters"))
 
     init_uni_profile_row_exists!(model, θs_to_profile, profile_type)
 
