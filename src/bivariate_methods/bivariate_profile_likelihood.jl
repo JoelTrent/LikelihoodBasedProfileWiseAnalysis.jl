@@ -256,7 +256,7 @@ Finds `num_points` `profile_type` boundary points at a specified `confidence_lev
 # Arguments
 - `model`: a [`LikelihoodModel`](@ref) containing model information, saved profiles and predictions.
 - `θcombinations`: vector of pairs of parameters to profile, as a vector of vectors of model parameter indexes.
-- `num_points`: number of points to find on the boundary at the specified confidence level. Depending on the method, if a region of the user-provided bounds is inside the boundary some of these points will be on the bounds and inside the boundary. 
+- `num_points`: positive number of points to find on the boundary at the specified confidence level. Depending on the method, if a region of the user-provided bounds is inside the boundary some of these points will be on the bounds and inside the boundary. Set to at least 3 within the function as some methods need at least three points to work.
 
 # Keyword Arguments
 - `confidence_level`: a number ∈ (0.0, 1.0) for the confidence level on which to find the `profile_type` boundary. Default is 0.95 (95%).

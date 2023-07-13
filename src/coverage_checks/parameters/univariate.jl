@@ -22,7 +22,6 @@ Performs a simulation to estimate the coverage of univariate confidence interval
 # Keyword Arguments
 - `confidence_level`: a number ∈ (0.0, 1.0) for the confidence level to evaluate the confidence interval coverage at. Default is 0.95 (95%).
 - `profile_type`: whether to use the true log-likelihood function or an ellipse approximation of the log-likelihood function centred at the MLE (with optional use of parameter bounds). Available profile types are [`LogLikelihood`](@ref), [`EllipseApprox`](@ref) and [`EllipseApproxAnalytical`](@ref). Default is `LogLikelihood()` ([`LogLikelihood`](@ref)).
-- `θs_is_unique`: boolean variable specifying whether all parameter indexes in `θs` are ordered by parameter index (ascending) and unique. Default is `false`.
 - `coverage_estimate_confidence_level`: a number ∈ (0.0, 1.0) for the level of a confidence interval of the estimated coverage. Default is 0.95 (95%).
 - `show_progress`: boolean variable specifying whether to display progress bars on the percentage of simulation iterations completed and estimated time of completion. Default is `model.show_progress`.
 - `distributed_over_parameters`: boolean variable specifying whether to distribute the workload of the simulation across simulation iterations or across the individual confidence interval calculations within each iteration. Default is `false`.
@@ -50,16 +49,19 @@ function check_univariate_parameter_coverage(data_generator::Function,
     θinitialguess::AbstractVector{<:Real}=θtrue; 
     confidence_level::Float64=0.95, 
     profile_type::AbstractProfileType=LogLikelihood(), 
-    θs_is_unique::Bool=false,
     coverage_estimate_confidence_level::Float64=0.95,
     show_progress::Bool=model.show_progress,
     distributed_over_parameters::Bool=false)
 
-    length(θtrue) == model.core.num_pars || throw(ArgumentError("θtrue must have the same length as the number of model parameters"))     
+    length(θtrue) == model.core.num_pars || throw(ArgumentError("θtrue must have the same length as the number of model parameters"))
+    length(θinitialguess) == model.core.num_pars || throw(ArgumentError("θinitialguess must have the same length as the number of model parameters"))
+
+    (0.0 < coverage_estimate_confidence_level && coverage_estimate_confidence_level < 1.0) || throw(DomainError("coverage_estimate_confidence_level must be in the open interval (0,1)"))
+    get_target_loglikelihood(model, confidence_level, profile_type, 1)
 
     N > 0 || throw(DomainError("N must be greater than 0"))
 
-    θs_is_unique || (sort(θs); unique!(θs))
+    (sort(θs); unique!(θs))
     1 ≤ θs[1] && θs[end] ≤ model.core.num_pars || throw(DomainError("θs can only contain parameter indexes between 1 and the number of model parameters"))
 
     len_θs = length(θs)
@@ -78,7 +80,7 @@ function check_univariate_parameter_coverage(data_generator::Function,
             m_new = initialiseLikelihoodModel(model.core.loglikefunction, new_data, model.core.θnames, θinitialguess, model.core.θlb, model.core.θub, model.core.θmagnitudes; uni_row_prealloaction_size=len_θs, show_progress=false)
 
             univariate_confidenceintervals!(m_new, θs; 
-                confidence_level=confidence_level, profile_type=profile_type, θs_is_unique=true, show_progress=false)
+                confidence_level=confidence_level, profile_type=profile_type, show_progress=false)
 
             for row_ind in 1:m_new.num_uni_profiles
                 θi = m_new.uni_profiles_df[row_ind, :θindex]
@@ -114,7 +116,7 @@ function check_univariate_parameter_coverage(data_generator::Function,
                         model.core.θmagnitudes; uni_row_prealloaction_size=len_θs, show_progress=false)
 
                     univariate_confidenceintervals!(m_new, θs; 
-                        confidence_level=confidence_level, profile_type=profile_type, θs_is_unique=true, show_progress=false, use_distributed=false)
+                        confidence_level=confidence_level, profile_type=profile_type, show_progress=false, use_distributed=false)
 
                     for row_ind in 1:m_new.num_uni_profiles
                         θi = m_new.uni_profiles_df[row_ind, :θindex]

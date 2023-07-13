@@ -60,7 +60,7 @@ Combines the `confidence_level` bivariate boundaries of `profile_type` found usi
 - `confidence_level`: a number ∈ (0.0, 1.0) for the confidence level of `profile_type` boundaries to combine. Default is 0.95 (95%).
 - `profile_type`: the profile type of boundaries to combine. Default is `LogLikelihood()` ([`LogLikelihood`](@ref)).
 - `methods`: a vector of methods of type [`AbstractBivariateMethod`](@ref) for combining boundaries found using those method types. `methods` should not contain [`CombinedBivariateMethod`](@ref), but the case where it is included in `methods` is handled: it will be removed from the vector. Default is `AbstractBivariateMethod[]` (boundaries found using all methods are combined).
-- `not_evaluated_predictions`: a boolean specifiying whether to combine only boundaries that have not had or have had predictions evaluated. If predictions are evaluated for the combined struct (if it exists) but not for the rows to combine with it, they will not be combined, and vice versa. Default is `true`.
+- `not_evaluated_predictions`: a boolean specifiying whether to combine only boundaries that have not had or have had predictions evaluated. If predictions are evaluated for the combined struct (if it exists) but not for the rows to combine with it, they will not be combined, and vice versa. Default is `true` (combine boundaries that have not had predictions evaluated).
 
 !!! info "Combining predictions"
     If predictions have been evaluated: the time points at which predictions have been evaluated at must be the same for all of the boundaires that are being combined.

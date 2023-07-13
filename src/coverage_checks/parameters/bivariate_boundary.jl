@@ -11,46 +11,57 @@ function check_bivariate_boundary_coverage(data_generator::Function,
     generator_args::Union{Tuple,NamedTuple},
     model::LikelihoodModel,
     N::Int,
-    num_points::Int,
+    num_points::Union{Int, Vector{<:Int}},
     num_points_to_sample::Union{Int, Vector{<:Int}},
     θtrue::AbstractVector{<:Real},
     θcombinations::Union{Vector{Vector{Int}}, Vector{Tuple{Int,Int}}},
     θinitialguess::AbstractVector{<:Real}=θtrue;
     confidence_level::Float64=0.95,
     profile_type::AbstractProfileType=LogLikelihood(),
-    method::AbstractBivariateMethod=RadialRandomMethod(3),
+    method::Union{AbstractBivariateMethod, Vector{<:AbstractBivariateMethod}}=RadialRandomMethod(3),
     sample_type::AbstractSampleType=LatinHypercubeSamples(),
     hullmethod::AbstractBivariateHullMethod=MPPHullMethod(),
-    θcombinations_is_unique::Bool=false,
     coverage_estimate_quantile_level::Float64=0.95,
     show_progress::Bool=model.show_progress,
     distributed_over_parameters::Bool=false)
 
     length(θtrue) == model.core.num_pars || throw(ArgumentError("θtrue must have the same length as the number of model parameters"))
+    length(θinitialguess) == model.core.num_pars || throw(ArgumentError("θinitialguess must have the same length as the number of model parameters"))
 
     (0.0 < coverage_estimate_quantile_level && coverage_estimate_quantile_level < 1.0) || throw(DomainError("coverage_estimate_quantile_level must be in the open interval (0,1)"))
+    get_target_loglikelihood(model, confidence_level, profile_type, 2)
+
+    if num_points_to_sample isa Int
+        num_points_to_sample > 0 || throw(DomainError("num_points_to_sample must be a strictly positive integer"))
+    else
+        minimum(num_points_to_sample) > 0 || throw(DomainError("num_points_to_sample must contain strictly positive integers"))
+
+        sample_type isa UniformGridSamples || throw(ArgumentError(string("num_points_to_sample must be an integer for ", sample_type, " sample_type")))
+
+        (length(num_points_to_sample) == length(θcombinations[1]) &&
+         diff([extrema(length.(θcombinations))...])[1] == 0) ||
+            throw(ArgumentError("num_points_to_sample must have the same length as each vector of interest parameters in num_points_to_sample"))
+    end
+
+    !xor(num_points isa Vector, method isa Vector) || throw(ArgumentError("num_points and method must both be a Vector, or both be a Int and AbstractBivariateMethod, respectively, at the same time (xnor gate)"))
+    combine_methods = num_points isa Vector
+    if combine_methods
+        (length(num_points) == length(method)) || throw(ArgumentError("num_points must have the same length as method, each index in num_points corresponds to the number of boundary points for the corresponding index in method"))
+    end
 
     N > 0 || throw(DomainError("N must be greater than 0"))
-
-    if num_points isa Int
-        num_points > 2 || throw(DomainError("num_points must be greater than 2"))
-    else
-        all(num_points .> 2) || throw(DomainError("all elements of num_points must be greater than 2"))
-    end
 
     if θcombinations isa Vector{Tuple{Int, Int}}
         θcombinations = [[combo...] for combo in θcombinations]
     end
 
     # for each combination, enforce ind1 < ind2 and make sure only unique combinations are run
-    if !θcombinations_is_unique
-        sort!.(θcombinations)
-        unique!.(θcombinations)
-        sort!(θcombinations)
-        unique!(θcombinations)
+    sort!.(θcombinations)
+    unique!.(θcombinations)
+    sort!(θcombinations)
+    unique!(θcombinations)
 
-        1 ≤ first.(θcombinations)[1] && maximum(last.(θcombinations)) ≤ model.core.num_pars || throw(DomainError("θcombinations can only contain parameter indexes between 1 and the number of model parameters"))
-    end
+    1 ≤ first.(θcombinations)[1] && maximum(last.(θcombinations)) ≤ model.core.num_pars || throw(DomainError("θcombinations can only contain parameter indexes between 1 and the number of model parameters"))
     extrema(length.(θcombinations)) == (2, 2) || throw(ArgumentError("θcombinations must only contain vectors of length 2"))
 
     len_θs = length(θcombinations)
@@ -75,13 +86,23 @@ function check_bivariate_boundary_coverage(data_generator::Function,
 
             m_new = initialiseLikelihoodModel(model.core.loglikefunction, new_data, model.core.θnames, θinitialguess, model.core.θlb, model.core.θub, model.core.θmagnitudes; biv_row_preallocation_size=len_θs, show_progress=false)
 
-            dimensional_likelihood_sample!(m_new, θcombinations, num_points_to_sample;
+            dimensional_likelihood_samples!(m_new, θcombinations, num_points_to_sample;
                 confidence_level=confidence_level, sample_type=sample_type, 
-                θs_is_unique=true, show_progress=false)
+                show_progress=false)
 
-            bivariate_confidenceprofiles!(m_new, θcombinations, num_points;
-                confidence_level=confidence_level, profile_type=profile_type, method=method, 
-                θcombinations_is_unique=true, show_progress=false)
+            if combine_methods
+                for (j, methodj) in enumerate(method)
+                    bivariate_confidenceprofiles!(m_new, θcombinations, num_points[j];
+                        confidence_level=confidence_level, profile_type=profile_type, method=methodj,
+                        show_progress=false)
+                end
+                combine_bivariate_boundaries!(m_new, confidence_level=confidence_level,
+                    not_evaluated_predictions=true)
+            else
+                bivariate_confidenceprofiles!(m_new, θcombinations, num_points;
+                    confidence_level=confidence_level, profile_type=profile_type, method=method,
+                    show_progress=false)
+            end
 
             for row_ind in 1:m_new.num_biv_profiles
                 θindices_tuple = m_new.biv_profiles_df[row_ind, :θindices]
@@ -135,13 +156,23 @@ function check_bivariate_boundary_coverage(data_generator::Function,
                         model.core.θnames, θinitialguess, model.core.θlb, model.core.θub,
                         model.core.θmagnitudes; uni_row_prealloaction_size=len_θs, show_progress=false)
 
-                    dimensional_likelihood_sample!(m_new, θcombinations, num_points_to_sample;
+                    dimensional_likelihood_samples!(m_new, θcombinations, num_points_to_sample;
                         confidence_level=confidence_level, sample_type=sample_type,
-                        θs_is_unique=true, show_progress=false)
+                        show_progress=false)
                     
-                    bivariate_confidenceprofiles!(m_new, θcombinations, num_points;
-                        confidence_level=confidence_level, profile_type=profile_type, method=method,
-                        θcombinations_is_unique=true, show_progress=false)                    
+                    if combine_methods
+                        for (j, methodj) in enumerate(method)
+                            bivariate_confidenceprofiles!(m_new, θcombinations, num_points[j];
+                                confidence_level=confidence_level, profile_type=profile_type, method=methodj,
+                                show_progress=false)
+                        end
+                        combine_bivariate_boundaries!(m_new, confidence_level=confidence_level,
+                            not_evaluated_predictions=true)
+                    else
+                        bivariate_confidenceprofiles!(m_new, θcombinations, num_points;
+                            confidence_level=confidence_level, profile_type=profile_type, method=method,
+                            show_progress=false)
+                    end
 
                     for row_ind in 1:m_new.num_biv_profiles
                         θindices_tuple = m_new.biv_profiles_df[row_ind, :θindices]
@@ -194,5 +225,5 @@ function check_bivariate_boundary_coverage(data_generator::Function,
     return DataFrame(θnames=[model.core.θnames[[combo...]] for combo in θcombinations],
                         θindices=θcombinations, coverage=coverage_mean, 
                         coverage_lb=quantile_intervals[:, 1], coverage_ub=quantile_intervals[:, 2],
-                        num_boundary_points=fill(num_points, len_θs))
+                        num_boundary_points=fill(sum(num_points), len_θs))
 end
