@@ -10,7 +10,7 @@ Pages = ["bivariate_boundaries.md"]
 check_bivariate_parameter_coverage
 ```
 
-## Boundary Coverage of Theoretical Boundary
+## Boundary Coverage of True Boundary
 
 ```@docs
 check_bivariate_boundary_coverage

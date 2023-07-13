@@ -1,4 +1,7 @@
-function profilecolor(profile_type::Union{AbstractProfileType,AbstractSampleType})
+"""
+    profilecolor(profile_type::Union{AbstractProfileType, AbstractSampleType})
+"""
+function profilecolor(profile_type::Union{AbstractProfileType, AbstractSampleType})
     if profile_type isa EllipseApproxAnalytical
         return 1
     elseif profile_type isa EllipseApprox
@@ -124,6 +127,18 @@ function add_extrema!(plt, t, extrema, layout; extremacolor=:gold, label=["Sampl
     return plt
 end
 
+"""
+    plot_univariate_profiles(model::LikelihoodModel,
+        xlim_scaler::Real=0.2,
+        ylim_scaler::Real=0.2;
+        θs_to_plot::Vector=Int[],
+        confidence_levels::Vector{<:Float64}=Float64[],
+        profile_types::Vector{<:AbstractProfileType}=AbstractProfileType[], 
+        num_points_in_interval::Int=0,
+        palette_to_use::Symbol=:Paired_6, 
+        kwargs...)
+
+"""
 function plot_univariate_profiles(model::LikelihoodModel,
                                     xlim_scaler::Real=0.2,
                                     ylim_scaler::Real=0.2;

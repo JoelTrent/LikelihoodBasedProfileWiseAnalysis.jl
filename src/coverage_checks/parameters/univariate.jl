@@ -8,7 +8,11 @@
         θinitialguess::AbstractVector{<:Real}=θtrue; 
         <keyword arguments>)
 
-Performs a simulation to estimate the coverage of univariate confidence intervals for parameters in `θs` given a model by: repeatedly drawing new observed data using `data_generator` for fixed true parameter values, θtrue, fitting the model and univariate confidence intervals, and checking whether the confidence interval for the parameters of interest contain the true parameter value in `θtrue`. The estimated coverage is returned with a default 95% confidence interval within a DataFrame. 
+Performs a simulation to estimate the coverage of univariate confidence intervals for parameters in `θs` given a model by: 
+    
+1. Repeatedly drawing new observed data using `data_generator` for fixed true parameter values, θtrue. 
+2. Fitting the model and univariate confidence intervals. 
+3. Checking whether the confidence interval for each of the parameters of interest contain the true parameter value in `θtrue`. The estimated coverage is returned with a default 95% confidence interval within a DataFrame. 
 
 # Arguments
 - `data_generator`: a function with two arguments which generates data for fixed time points and true model parameters corresponding to the log-likelihood function contained in `model`. The two arguments must be the vector of true model parameters, `θtrue`, and a Tuple or NamedTuple, `generator_args`. Outputs a `data` Tuple or NamedTuple that corresponds to the log-likelihood function contained in `model`.
@@ -24,18 +28,20 @@ Performs a simulation to estimate the coverage of univariate confidence interval
 - `profile_type`: whether to use the true log-likelihood function or an ellipse approximation of the log-likelihood function centred at the MLE (with optional use of parameter bounds). Available profile types are [`LogLikelihood`](@ref), [`EllipseApprox`](@ref) and [`EllipseApproxAnalytical`](@ref). Default is `LogLikelihood()` ([`LogLikelihood`](@ref)).
 - `coverage_estimate_confidence_level`: a number ∈ (0.0, 1.0) for the level of a confidence interval of the estimated coverage. Default is 0.95 (95%).
 - `show_progress`: boolean variable specifying whether to display progress bars on the percentage of simulation iterations completed and estimated time of completion. Default is `model.show_progress`.
-- `distributed_over_parameters`: boolean variable specifying whether to distribute the workload of the simulation across simulation iterations or across the individual confidence interval calculations within each iteration. Default is `false`.
+- `distributed_over_parameters`: boolean variable specifying whether to distribute the workload of the simulation across simulation iterations (false) or across the individual confidence interval calculations within each iteration (true). Default is `false`.
 
 # Details
 
-This simulated coverage check is used to estimate the performance of parameter confidence intervals. For a 95% confidence interval of a interest parameter `θi` it is expected that under repeated experiments from an underlying true model (data generation) which are used to construct a confidence interval for `θi` using the method used in [`univariate_confidenceintervals!`](@ref), 95% of the intervals constructed would contain the true value for `θi`. In our simulation where the values of our true parameters, `θtrue`, are known this is equivalent to whether the confidence interval for `θi` contains the value `θtrue[θi]`. 
+This simulated coverage check is used to estimate the performance of parameter confidence intervals. 
+
+For a 95% confidence interval of a interest parameter `θi` it is expected that under repeated experiments from an underlying true model (data generation) which are used to construct a confidence interval for `θi` using the method used in [`univariate_confidenceintervals!`](@ref), 95% of the intervals constructed would contain the true value for `θi`. In the simulation where the values of the true parameters, `θtrue`, are known, this is equivalent to whether the confidence interval for `θi` contains the value `θtrue[θi]`. 
 
 The uncertainty in estimates of the coverage under the simulated model will decrease as the number of simulations, `N`, is increased. Confidence intervals for the coverage estimate are provided to quantify this uncertainty. The confidence interval for the estimated coverage is a Clopper-Pearson interval on a binomial test generated using [HypothesisTests.jl](https://juliastats.org/HypothesisTests.jl/stable/).
 
 !!! note "Recommended setting for distributed_over_parameters"
     - If the number of processes available to use is significantly greater than the number of model parameters or only a few model parameters are being checked for coverage, `false` is recommended.   
     - If system memory or model size in system memory is a concern, or the number of processes available is similar or less than the number of model parameters being checked, `true` will likely be more appropriate. 
-    - When set to `false`, a separate [`LikelihoodModel`](@ref) struct will be used by each process, as opposed to only one when set to `true`, which could be an issue for larger models. 
+    - When set to `false`, a separate [`LikelihoodModel`](@ref) struct will be used by each process, as opposed to only one when set to `true`, which could cause a memory issue for larger models. 
 
 !!! danger "Not intended for use on bimodal univariate profile likelihoods"
     The current implementation only considers two extremes of the log-likelihood and whether the truth is between these two points. If the profile likelihood function is bimodal, it's possible the method has only found one set of correct confidence intervals (estimated coverage will be correct, but less than expected) or found one extrema on distinct sets (estimated coverage may be incorrect and will either be larger than expected or much lower than expected). 

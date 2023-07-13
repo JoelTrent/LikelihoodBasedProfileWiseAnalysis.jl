@@ -7,7 +7,7 @@
         hullmethod::AbstractBivariateHullMethod,
         return_boundary_not_mesh::Bool)
 
-Constructs a 2D polygon hull that represents an approximation of a theoretical bivariate log-likelihood confidence boundary, given boundary points and saved internal points in `conf_struct`, using `hullmethod`. Optionally returns the boundary as an ordered 2*n array or as a [`SimpleMesh`](https://juliageometry.github.io/Meshes.jl/stable/domains/meshes.html#Meshes.SimpleMesh). For a description of the algorithms used for each [`AbstractBivariateHullMethod`](@ref) see their docstrings: [`ConvexHullMethod`](@ref), [`ConcaveHullMethod`](@ref) and [`MPPHullMethod`](@ref).
+Constructs a 2D polygon hull that represents an approximation of a true bivariate log-likelihood confidence boundary, given boundary points and saved internal points in `conf_struct`, using `hullmethod`. Optionally returns the boundary as an ordered 2*n array or as a [`SimpleMesh`](https://juliageometry.github.io/Meshes.jl/stable/domains/meshes.html#Meshes.SimpleMesh). For a description of the algorithms used for each [`AbstractBivariateHullMethod`](@ref) see their docstrings: [`ConvexHullMethod`](@ref), [`ConcaveHullMethod`](@ref) and [`MPPHullMethod`](@ref).
 """
 function construct_polygon_hull(model::LikelihoodModel,
                                 θindices::Vector{<:Int},

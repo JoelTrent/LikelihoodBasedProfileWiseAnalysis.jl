@@ -22,11 +22,11 @@ Constructs a 2D polygon hull to sample internal points from by applying a convex
 
 ## Representation Accuracy
 
-For convex boundaries, this method has the ability to create a more accurate representation of the theoretical boundary than [`MPPHullMethod`](@ref), if saved internal points contain information about the boundary that is not covered by a convex hull of boundary points alone. For concave boundaries, this method will not be an accurate representation of the theoretical boundary. However, this may be desirable if the rejection rate when sampling is not too high, because the convex nature of the hull will likely contain more of the theoretical boundary than each of the other methods, particularly for lower numbers of boundary points. 
+For convex boundaries, this method has the ability to create a more accurate representation of the true confidence boundary than [`MPPHullMethod`](@ref), if saved internal points contain information about the boundary that is not covered by a convex hull of boundary points alone. For concave boundaries, this method will not be an accurate representation of the true confidence boundary. However, this may be desirable if the rejection rate when sampling is not too high, because the convex nature of the hull will likely contain more of the true confidence boundary than each of the other methods, particularly for lower numbers of boundary points. 
 
 ## Rejection Rate when Sampling Internal Points
 
-The rejection rate when sampling internal points will be low for convex boundaries. The rejection rate may become very high for concave boundaries, if the area of the convex hull of the theoretical boundary is much larger than the area of the theoretical boundary. 
+The rejection rate when sampling internal points will be low for convex boundaries. The rejection rate may become very high for concave boundaries, if the area of the convex hull of the true confidence boundary is much larger than the area of the true confidence boundary. 
 
 # Supertype Hiearachy
 
@@ -41,7 +41,7 @@ Constructs a 2D polygon hull to sample internal points from by applying a heuris
 
 # Details 
 
-It applies the `ConcaveHull.concave_hull` algorithm twice to the union of boundary and saved internal points, with the number of neighbours for the first pass chosen using a heuristic based on the number of points in the point union. Resultantly, it may result in more accurate coverage of the theoretical boundary than [`MPPHullMethod`](@ref), for smaller numbers of boundary points, if saved internal points are in locations not enclosed by a polygon found using only boundary points. For example, if the theoretical boundary is a square and there is an internal point in the bottom left corner, but no boundary points around that corner, the boundary polygon created by this method will likely have a vertex at that internal point. However, this is not guaranteed because it is a heuristic. Bivariate methods that struggle to find boundaries close to or on the other side of a parameter bound are an example where using information on saved internal points will prove useful.
+It applies the `ConcaveHull.concave_hull` algorithm twice to the union of boundary and saved internal points, with the number of neighbours for the first pass chosen using a heuristic based on the number of points in the point union. Resultantly, it may result in more accurate coverage of the true confidence boundary than [`MPPHullMethod`](@ref), for smaller numbers of boundary points, if saved internal points are in locations not enclosed by a polygon found using only boundary points. For example, if the true confidence boundary is a square and there is an internal point in the bottom left corner, but no boundary points around that corner, the boundary polygon created by this method will likely have a vertex at that internal point. However, this is not guaranteed because it is a heuristic. Bivariate methods that struggle to find boundaries close to or on the other side of a parameter bound are an example where using information on saved internal points will prove useful.
 
 ## Representation Accuracy
 
@@ -64,7 +64,7 @@ Constructs a 2D polygon hull to sample internal points from by applying a minimu
 
 # Details
 
-It does not use information on the position of internal points saved while finding a boundary. This may result in less accurate coverage of the theoretical boundary for smaller numbers of boundary points. For example, if the theoretical boundary is a square and there is an internal point in the bottom left corner, but no boundary points around that corner, the boundary polygon created by this method will not enclose the area around that corner. Bivariate methods that struggle to find boundaries close to or on the other side of a parameter bound are an example where using information on saved internal points would prove useful - [`ConvexHullMethod`](@ref) or [`ConcaveHullMethod`](@ref) may be more appropriate in these cases.
+It does not use information on the position of internal points saved while finding a boundary. This may result in less accurate coverage of the true confidence boundary for smaller numbers of boundary points. For example, if the true confidence boundary is a square and there is an internal point in the bottom left corner, but no boundary points around that corner, the boundary polygon created by this method will not enclose the area around that corner. Bivariate methods that struggle to find boundaries close to or on the other side of a parameter bound are an example where using information on saved internal points would prove useful - [`ConvexHullMethod`](@ref) or [`ConcaveHullMethod`](@ref) may be more appropriate in these cases.
 
 ## Representation Accuracy
 

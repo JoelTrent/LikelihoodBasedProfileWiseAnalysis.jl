@@ -1,11 +1,57 @@
 """
+    check_bivariate_parameter_coverage(data_generator::Function,
+        generator_args::Union{Tuple,NamedTuple},
+        model::LikelihoodModel,
+        N::Int,
+        num_points::Union{Int, Vector{<:Int}},
+        θtrue::AbstractVector{<:Real},
+        θcombinations::Union{Vector{Vector{Int}}, Vector{Tuple{Int,Int}}},
+        θinitialguess::AbstractVector{<:Real}=θtrue; 
+        <keyword arguments>)
 
-Returns confidence intervals for the mean coverage using [`confint`](https://juliastats.org/HypothesisTests.jl/stable/methods/#StatsAPI.confint) from [HypothesisTests.jl](https://juliastats.org/HypothesisTests.jl/stable/)
+Performs a simulation to estimate the coverage of bivariate confidence boundaries for two-way sets of interest parameters in `θcombinations` given a model by: 
+1. Repeatedly drawing new observed data using `data_generator` for fixed true parameter values, θtrue and fitting the model. 
+2. Testing if each of the true bivariate interest parameters, given nuisance parameters, have log-likelihood values within the confidence threshold. 
+3. If these pass then bivariate confidence boundaries of `num_points` are found using `method` and [`MPPHullMethod`](@ref) is used to construct 2D polygon hulls of the boundary points. 
+4. Finally, testing if the boundary polygons contain the true bivariate parameter values in `θtrue`. The estimated coverage is returned with a default 95% confidence interval within a DataFrame. 
 
-First it tests if the true interest parameter, given nuisance parameters, has a log-likelihood value within the confidence threshold and then check if it's inside our boundary polygon, as the straight edges of the polygon do not exactly represent the true boundary. 
+# Arguments
+- `data_generator`: a function with two arguments which generates data for fixed time points and true model parameters corresponding to the log-likelihood function contained in `model`. The two arguments must be the vector of true model parameters, `θtrue`, and a Tuple or NamedTuple, `generator_args`. Outputs a `data` Tuple or NamedTuple that corresponds to the log-likelihood function contained in `model`.
+- `generator_args`: a Tuple or NamedTuple containing any additional information required by both the log-likelihood function and `data_generator`, such as the time points to be evaluated at. If evaluating the log-likelihood function requires more than just the simulated data, arguments for the `data` output of `data_generator` should be passed in via `generator_args`. 
+- `model`: a [`LikelihoodModel`](@ref) containing model information, saved profiles and predictions.
+- `N`: a positive number of coverage simulations.
+- `num_points`: positive number of points to find on the boundary at the specified confidence level using a single `method`. Or a vector of positive numbers of boundary points to find for each method in `method` (if `method` is a vector of [`AbstractBivariateMethod`](@ref)). Set to at least 3 within the function as some methods need at least three points to work. 
+- `θtrue`: a vector of true parameters values of the model for simulating data with. 
+- `θcombinations`: a vector of pairs of parameters to profile, as a vector of vectors of model parameter indexes.
+- `θinitialguess`: a vector containing the initial guess for the values of each parameter. Used to find the MLE point in each iteration of the simulation. Default is `θtrue`.
+
+# Keyword Arguments
+- `confidence_level`: a number ∈ (0.0, 1.0) for the confidence level to evaluate the confidence interval coverage at. Default is 0.95 (95%).
+- `profile_type`: whether to use the true log-likelihood function or an ellipse approximation of the log-likelihood function centred at the MLE (with optional use of parameter bounds). Available profile types are [`LogLikelihood`](@ref), [`EllipseApprox`](@ref) and [`EllipseApproxAnalytical`](@ref). Default is `LogLikelihood()` ([`LogLikelihood`](@ref)).
+- `method`: a method of type [`AbstractBivariateMethod`](@ref) or a vector of methods of type [`AbstractBivariateMethod`] (if so `num_points` needs to be a vector of the same length). For a list of available methods use `bivariate_methods()` ([`bivariate_methods`](@ref)). Default is `RadialRandomMethod(3)` ([`RadialRandomMethod`](@ref)).
+- `coverage_estimate_confidence_level`: a number ∈ (0.0, 1.0) for the level of a confidence interval of the estimated coverage. Default is 0.95 (95%).
+- `show_progress`: boolean variable specifying whether to display progress bars on the percentage of simulation iterations completed and estimated time of completion. Default is `model.show_progress`.
+- `distributed_over_parameters`: boolean variable specifying whether to distribute the workload of the simulation across simulation iterations (false) or across the individual bivariate boundary calculations within each iteration (true). Default is `false`.
+
+# Details
+
+This simulated coverage check is used to estimate the performance of bivariate parameter confidence boundaries.
+
+For a 95% confidence boundary of a pair of interest parameters `[θi, θj]` it is expected that under repeated experiments from an underlying true model (data generation) which are used to construct a 2D confidence boundary for `[θi, θj]`, 95% of the true boundaries, would contain the true value `[θi, θj]`. In the simulation where the values of the true parameters, `θtrue`, are known, this is equivalent to whether the minimum perimeter polygon of the 2d boundary points for `[θi, θj]` AND the true confidence boundary contains the value `θtrue[[θi, θj]]`.
+
+All of the methods for constructing an approximation of the 2D boundary using [`bivariate_confidenceprofiles!`](@ref) will approach an exact representation of the 2D 95% confidence boundary, assuming bounds are not in the way, as the number of boundary points approaches infinity. Resultantly, for lower numbers of boundary points the polygon representation of the boundary will be an approximation, with straight edges that do not exactly represent the true boundary. This is why the coverage check also checks if a point is inside the true boundary, as the polygon approximation might be right by accident. This is the same logic [`sample_bivariate_internal_points!`] uses to find additional internal points within a boundary polygon.
+
+For estimates of how well the methods approximate the true 2D boundary after turning their boundary points into a polygon hull using a [`AbstractBivariateHullMethod`](@ref), [`check_bivariate_boundary_coverage`](@ref) can be used. 
+
+The uncertainty in estimates of the coverage under the simulated model will decrease as the number of simulations, `N`, is increased. Confidence intervals for the coverage estimate are provided to quantify this uncertainty. The confidence interval for the estimated coverage is a Clopper-Pearson interval on a binomial test generated using [HypothesisTests.jl](https://juliastats.org/HypothesisTests.jl/stable/).
+
+!!! note "Recommended setting for distributed_over_parameters"
+    - If the number of processes available to use is significantly greater than the number of model parameters or only a few pairs of model parameters are being checked for coverage, `false` is recommended.   
+    - If system memory or model size in system memory is a concern, or the number of processes available is similar or less than the number of pairs of model parameters being checked, `true` will likely be more appropriate. 
+    - When set to `false`, a separate [`LikelihoodModel`](@ref) struct will be used by each process, as opposed to only one when set to `true`, which could cause a memory issue for larger models. 
 
 !!! danger "May not work correctly on bimodal confidence boundaries"
-    The current implementation constructs a single polygon with minimum area from the set of boundary points as the confidence boundary. If there are multiple distinct boundaries represented, then there will be edges connecting the distinct boundaries which the true parameter might be inside (but not inside either of the distinct boundaries). 
+    The current implementation constructs a single polygon with minimum polygon perimeter from the set of boundary points as the confidence boundary. If there are multiple distinct boundaries represented, then there will be edges connecting the distinct boundaries which the true parameter might be inside (but not inside either of the distinct boundaries). 
 """
 function check_bivariate_parameter_coverage(data_generator::Function,
     generator_args::Union{Tuple,NamedTuple},

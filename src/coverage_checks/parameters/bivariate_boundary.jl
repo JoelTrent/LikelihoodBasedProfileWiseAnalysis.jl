@@ -1,11 +1,59 @@
 """
+    check_bivariate_boundary_coverage(data_generator::Function,
+        generator_args::Union{Tuple,NamedTuple},
+        model::LikelihoodModel,
+        N::Int,
+        num_points::Union{Int, Vector{<:Int}},
+        num_points_to_sample::Union{Int, Vector{<:Int}},
+        θtrue::AbstractVector{<:Real},
+        θcombinations::Union{Vector{Vector{Int}}, Vector{Tuple{Int,Int}}},
+        θinitialguess::AbstractVector{<:Real}=θtrue; 
+        <keyword arguments>)
 
-Returns simulation quantile intervals for the mean coverage of the theoretical boundary by a set of boundary points that are turned into a polygon using `hullmethod`.
+Performs a simulation to estimate the coverage of approximate bivariate confidence boundaries with `num_points` constructed using `method` and `hullmethod` for two-way sets of interest parameters in `θcombinations` given a model of the true bivariate confidence boundary by: 
 
-Tests how well the boundary polygon with a given number of points contains the theoretical boundary by testing how many valid dimensional samples from a [`AbstractSampleType`](@ref) (those within the theoretical boundary) are within the boundary polygon.
+1. Repeatedly drawing new observed data using `data_generator` for fixed true parameter values, θtrue and fitting the model. 
+2. `num_points_to_sample` points are then sampled in interest parameter space using `sample_type` and those that are inside the true bivariate confidence boundary are extracted. 
+3. Then bivariate confidence boundaries of `num_points` are found using `method` and `hullmethod` is used to construct 2D polygon hulls of the boundary points. 
+4. Finally, the percentage of extracted samples that are contained within the 2D polygon hull is extracted. The mean percentage (coverage) across all `N` simulations of the true boundary is recorded and returned with a default 95% simulation quantile interval within a DataFrame. The 95% simulation quantile interval is the 2.5% and 97.5% quantiles of the coverage across the `N simulations`. 
 
+# Arguments
+- `data_generator`: a function with two arguments which generates data for fixed time points and true model parameters corresponding to the log-likelihood function contained in `model`. The two arguments must be the vector of true model parameters, `θtrue`, and a Tuple or NamedTuple, `generator_args`. Outputs a `data` Tuple or NamedTuple that corresponds to the log-likelihood function contained in `model`.
+- `generator_args`: a Tuple or NamedTuple containing any additional information required by both the log-likelihood function and `data_generator`, such as the time points to be evaluated at. If evaluating the log-likelihood function requires more than just the simulated data, arguments for the `data` output of `data_generator` should be passed in via `generator_args`. 
+- `model`: a [`LikelihoodModel`](@ref) containing model information, saved profiles and predictions.
+- `N`: a positive number of coverage simulations.
+- `num_points`: positive number of points to find on the boundary at the specified confidence level using a single `method`. Or a vector of positive numbers of boundary points to find for each method in `method` (if `method` is a vector of [`AbstractBivariateMethod`](@ref)). Set to at least 3 within the function as some methods need at least three points to work. 
+- `num_points_to_sample`: integer number of points to sample (for [`UniformRandomSamples`](@ref) and [`LatinHypercubeSamples`](@ref) sample types) from interest parameter space. For the [`UniformGridSamples`](@ref) sample type, if integer it is the number of points to grid over in each parameter dimension. If it is a vector of integers each index of the vector is the number of points to grid over in the corresponding parameter dimension. For example, [1,2] would mean a single point in dimension 1 and two points in dimension 2. 
+- `θtrue`: a vector of true parameters values of the model for simulating data with. 
+- `θcombinations`: a vector of pairs of parameters to profile, as a vector of vectors of model parameter indexes.
+- `θinitialguess`: a vector containing the initial guess for the values of each parameter. Used to find the MLE point in each iteration of the simulation. Default is `θtrue`.
 
+# Keyword Arguments
+- `confidence_level`: a number ∈ (0.0, 1.0) for the confidence level to evaluate the confidence interval coverage at. Default is 0.95 (95%).
+- `profile_type`: whether to use the true log-likelihood function or an ellipse approximation of the log-likelihood function centred at the MLE (with optional use of parameter bounds). Available profile types are [`LogLikelihood`](@ref), [`EllipseApprox`](@ref) and [`EllipseApproxAnalytical`](@ref). Default is `LogLikelihood()` ([`LogLikelihood`](@ref)).
+- `method`: a method of type [`AbstractBivariateMethod`](@ref) or a vector of methods of type [`AbstractBivariateMethod`] (if so `num_points` needs to be a vector of the same length). For a list of available methods use `bivariate_methods()` ([`bivariate_methods`](@ref)). Default is `RadialRandomMethod(3)` ([`RadialRandomMethod`](@ref)).
+- `sample_type`: the sampling method used to sample parameter space of type [`AbstractSampleType`]. Default is `LatinHypercubeSamples()` ([`LatinHypercubeSamples`](@ref)).
+- `hullmethod`: method of type [`AbstractBivariateHullMethod`](@ref) used to create a 2D polygon hull that approximates the bivariate boundary from a set of boundary points and internal points (method dependent). For available methods see [`bivariate_hull_methods()`](@ref). Default is `MPPHullMethod()` ([`MPPHullMethod`](@ref)).
+- `coverage_estimate_confidence_level`: a number ∈ (0.0, 1.0) for the level of a confidence interval of the estimated coverage. Default is 0.95 (95%).
+- `show_progress`: boolean variable specifying whether to display progress bars on the percentage of simulation iterations completed and estimated time of completion. Default is `model.show_progress`.
+- `distributed_over_parameters`: boolean variable specifying whether to distribute the workload of the simulation across simulation iterations (false) or across the individual bivariate boundary calculations within each iteration (true). Default is `false`.
 
+# Details
+
+This simulated coverage check is used to estimate the performance of the approximations of the true bivariate parameter confidence boundaries. Namely, how well the approximation contains the true boundary. 
+
+Tests how well the boundary polygon created by a `method` with a given number of points and turned into a polygon hull using `hullmethod` contains the theoretical boundary by testing how many samples from a [`AbstractSampleType`](@ref) within the true boundary are within the boundary polygon.
+
+If [`MPPHullMethod`](@ref) is the `hullmethod` used, it is expected that the approximation of the true bivariate parameter confidence boundary created by [`bivariate_confidenceprofiles!`](@ref) will be an exact representation, as the number of boundary points approaches infinity. For [`ConcaveHullMethod`](@ref) this is also likely to be the case, but it may fail due to being a heuristic. For [`ConvexHullMethod`](@ref) this will be true if the true boundary is convex. If the true boundary is concave then the approximation that uses [`ConvexHullMethod`](@ref) will fully contain the true boundary, but will also contain parameter space that is not part of the true boundary. 
+
+This check is useful for determining how to most efficiently sample internal points from bivariate confidence boundaries with [`sample_bivariate_internal_points`] as it shows how the interaction between the `method`, `hullmethod` and the number of boundary points impact the coverage of the true boundary. For example, using [`ConvexHullMethod`](@ref) will generally give the highest coverage of the true boundary, but may cause the rejection rate to be higher because it contains a greater area that is not part of the true boundary.
+
+The uncertainty in estimates of the coverage under the simulated model will become more accurate as the number of simulations, `N`, is increased. Simulation quantile intervals for the coverage estimate are provided to quantify this uncertainty. 
+
+!!! note "Recommended setting for distributed_over_parameters"
+    - If the number of processes available to use is significantly greater than the number of model parameters or only a few pairs of model parameters are being checked for coverage, `false` is recommended.   
+    - If system memory or model size in system memory is a concern, or the number of processes available is similar or less than the number of pairs of model parameters being checked, `true` will likely be more appropriate. 
+    - When set to `false`, a separate [`LikelihoodModel`](@ref) struct will be used by each process, as opposed to only one when set to `true`, which could cause a memory issue for larger models. 
 """
 function check_bivariate_boundary_coverage(data_generator::Function,
     generator_args::Union{Tuple,NamedTuple},
