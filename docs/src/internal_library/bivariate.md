@@ -101,6 +101,8 @@ PlaceholderLikelihood.refine_search_directions!
 PlaceholderLikelihood.construct_polygon_hull
 PlaceholderLikelihood.bivariate_concave_hull
 PlaceholderLikelihood.update_biv_dict_internal!
+PlaceholderLikelihood.sample_internal_points_LHC
+PlaceholderLikelihood.sample_internal_points_uniform_random
 PlaceholderLikelihood.sample_internal_points_single_row
 ```
 

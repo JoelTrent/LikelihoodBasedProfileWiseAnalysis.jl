@@ -268,7 +268,7 @@ end
         arguments_checked::Bool=false,
         channel::RemoteChannel=RemoteChannel(() -> Channel{Bool}(num_points+1)))
 
-Creates a grid of `num_points` points on interest parameter space `θindices` using a Latin Hypercube sampling planbetween `lb[θindices]` and `ub[θindices]` if supplied or between the bounds contained in `model.core`. The grid is then passed to [`PlaceholderLikelihood.valid_points`](@ref) to determine the values of nuisance parameters that maximise log-likelihood function at each grid point. All grid points within the `confidence_level` log-likelihood threshold are then saved as a [`SampledConfidenceStruct`](@ref). Points are saved alongside a vector of their log-likelihood values. Log-likelihood values are standardised to 0.0 at the MLE point.
+Creates a grid of `num_points` points on interest parameter space `θindices` using a Latin Hypercube sampling plan between `lb[θindices]` and `ub[θindices]` if supplied or between the bounds contained in `model.core`. The grid is then passed to [`PlaceholderLikelihood.valid_points`](@ref) to determine the values of nuisance parameters that maximise log-likelihood function at each grid point. All grid points within the `confidence_level` log-likelihood threshold are then saved as a [`SampledConfidenceStruct`](@ref). Points are saved alongside a vector of their log-likelihood values. Log-likelihood values are standardised to 0.0 at the MLE point.
 
 For the [`LatinHypercubeSamples`](@ref) sample type.
 """
