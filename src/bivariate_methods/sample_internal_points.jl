@@ -215,29 +215,74 @@ function sample_internal_points_uniform_random(model::LikelihoodModel,
 end
 
 """
-    sample_internal_points_single_row(model::LikelihoodModel, 
+    sample_internal_points_single_row(model::LikelihoodModel,
+        sub_df::Union{DataFrame, SubDataFrame},
+        i::Int,
         biv_row_number::Int, 
         num_points::Int, 
-        hullmethod::AbstractBivariateHullMethod,
-        sample_type::AbstractSampleType)
+        sample_type::AbstractSampleType,
+        hullmethod::AbstractBivariateHullMethod, 
+        t::Union{AbstractVector,Missing},
+        evaluate_predictions_for_samples::Bool,
+        proportion_of_predictions_to_keep::Real,
+        channel::RemoteChannel)
 
 Sample internal points from the bivariate profile given by a valid row number in `model.biv_profiles_df` using either homogeneous sampling (`UniformRandomSamples()`) to find exactly `num_points` or a Latin Hypercube sampling plan (`LatinHypercubeSamples()`) to find approximately `num_points`.
 """
-function sample_internal_points_single_row(model::LikelihoodModel, biv_row_number::Int, num_points::Int, hullmethod::AbstractBivariateHullMethod, sample_type::AbstractSampleType)
-    θindices = model.biv_profiles_df.θindices[biv_row_number]
-    profile_type = model.biv_profiles_df.profile_type[biv_row_number]
-    conf_struct = model.biv_profiles_dict[biv_row_number]
-    confidence_level = model.biv_profiles_df[biv_row_number, :conf_level]
-    boundary_not_ordered = model.biv_profiles_df.boundary_not_ordered[biv_row_number]
+function sample_internal_points_single_row(model::LikelihoodModel,
+    sub_df::Union{DataFrame, SubDataFrame},
+    i::Int,
+    biv_row_number::Int, 
+    num_points::Int, 
+    sample_type::AbstractSampleType,
+    hullmethod::AbstractBivariateHullMethod, 
+    t::Union{AbstractVector,Missing},
+    evaluate_predictions_for_samples::Bool,
+    proportion_of_predictions_to_keep::Real,
+    channel::RemoteChannel)
 
-    @timeit_debug timer "Sample bivariate internal points" begin
-        if sample_type isa LatinHypercubeSamples
-            return sample_internal_points_LHC(model, num_points, θindices,
+    try
+        θindices = model.biv_profiles_df.θindices[biv_row_number]
+        profile_type = model.biv_profiles_df.profile_type[biv_row_number]
+        conf_struct = model.biv_profiles_dict[biv_row_number]
+        confidence_level = model.biv_profiles_df[biv_row_number, :conf_level]
+        boundary_not_ordered = model.biv_profiles_df.boundary_not_ordered[biv_row_number]
+
+        @timeit_debug timer "Sample bivariate internal points" begin
+            if sample_type isa LatinHypercubeSamples
+                internal_points, rejection_rate = sample_internal_points_LHC(model, num_points, θindices,
+                    profile_type, conf_struct, confidence_level, boundary_not_ordered, hullmethod)
+            end
+            internal_points, rejection_rate = sample_internal_points_uniform_random(model, num_points, θindices,
                 profile_type, conf_struct, confidence_level, boundary_not_ordered, hullmethod)
         end
-        return sample_internal_points_uniform_random(model, num_points, θindices,
-            profile_type, conf_struct, confidence_level, boundary_not_ordered, hullmethod)
+
+        if evaluate_predictions_for_samples && !sub_df[i, :not_evaluated_predictions]
+            predict_struct = model.biv_predictions_dict[biv_row_number]
+
+            new_predict_struct = generate_prediction(model.core.predictfunction,
+                model.core.data, t, model.core.ymle,
+                internal_points.points[:, (end-num_points+1):end],
+                proportion_of_predictions_to_keep)
+
+            merged_predict_struct = merge(predict_struct, new_predict_struct)
+        else
+            merged_predict_struct = missing
+        end
+        put!(channel, true)
+
+        return internal_points, rejection_rate, merged_predict_struct
+    catch
+        @error string("an error occurred when finding the points inside a bivariate confidence boundary with settings: ",
+            (biv_row_number=biv_row_number, num_points=num_points,
+                sample_type=sample_type, hullmethod=hullmethod))
+        for (exc, bt) in current_exceptions()
+            showerror(stdout, exc, bt)
+            println(stdout)
+            println(stdout)
+        end
     end
+    return nothing
 end
 
 """
@@ -258,14 +303,19 @@ Samples `num_points` internal points in interest parameter space of existing biv
 - `hullmethod`: method of type [`AbstractBivariateHullMethod`](@ref) used to create a 2D polygon hull that approximates the bivariate boundary from a set of boundary points and internal points (method dependent). For available methods see [`bivariate_hull_methods()`](@ref). Default is `MPPHullMethod()` ([`MPPHullMethod`](@ref)).
 - `sample_type`: either a [`UniformRandomSamples`](@ref) or [`LatinHypercubeSamples`](@ref) struct for how to sample internal points from the polygon hull. [`UniformRandomSamples`](@ref) are homogeneously sampled from the polygon and [`LatinHypercubeSamples`](@ref) use the intersection of a heuristically optimised Latin Hypercube sampling plan with the polygon. Default is `LatinHypercubeSamples()` ([`LatinHypercubeSamples`](@ref)).
 - `t`: vector of timepoints to evaluate predictions at for each new sampled internal point from a bivariate boundary that has already had predictions evaluated. The vector must be the same vector used to produce these previous predictions, otherwise points will not be sampled from this boundary. Default is `missing`.
-- `evaluate_predictions_for_samples`: boolean variable specifying whether to evaluate predictions for sampled points given predictions evaluated have been evaluated for the boundary they were sampled from. If `false`, then existing predictions will be forgotten by the `model` and overwritten the next time predictions are evaluated for each profile internal points were sampled from. Default is `true`.
+- `evaluate_predictions_for_samples`: boolean variable specifying whether to evaluate predictions for sampled points given predictions have been evaluated for the boundary they were sampled from. If `false`, then existing predictions will be forgotten by the `model` and overwritten the next time predictions are evaluated for each profile internal points were sampled from. Default is `true`.
 - `proportion_of_predictions_to_keep`: The proportion of predictions from `num_points` internal points to save. Does not impact the extrema calculated from predictions. Default is `1.0`.
+- `show_progress`: boolean variable specifying whether to display progress bars on the percentage of `θs_to_profile` completed and estimated time of completion. Default is `model.show_progress`.
 
 # Details
 
 For each bivariate profile that meets the requirements of [`PlaceholderLikelihood.desired_df_subset`](@ref) it creates a 2D polygon hull from it's set of boundary and internal points (method dependent) using `hullmethod` and samples points from the hull using `sample_type` until `num_points` are found, rejecting any that are not inside the log-likelihood threshold at that `confidence_level` and `profile_type`. For [`LatinHypercubeSamples`](@ref) this will be approximately `num_points`, whereas for [`UniformRandomSamples`](@ref) this will be exactly `num_points`. Nuisance parameters of each point in bivariate interest parameter space are found by maximising the log-likelihood function given by the `profile_type` of the profile.
 
 It is highly recommended to view the docstrings of each `hullmethod` as the rejection rate of sampled points and the representation accuracy / coverage of the true confidence boundary varies between them, which can impact both computational performance and sampling coverage. For example, given the same set of boundary and internal points, [`ConvexHullMethod`](@ref) will produce a polygon hull that contains at least as much of the true confidence boundary as the other methods, but may have a higher rejection rate than other methods leading to higher computational cost.
+
+## Iteration Speed Of the Progress Meter
+
+An iteration within the progress meter is specified as the time it takes for all internal points within a bivariate boundary to be found.
 """
 function sample_bivariate_internal_points!(model::LikelihoodModel,
                                     num_points::Int;
@@ -276,7 +326,8 @@ function sample_bivariate_internal_points!(model::LikelihoodModel,
                                     hullmethod::AbstractBivariateHullMethod=MPPHullMethod(),
                                     t::Union{AbstractVector, Missing}=missing,
                                     evaluate_predictions_for_samples::Bool=true,
-                                    proportion_of_predictions_to_keep::Real=1.0)
+                                    proportion_of_predictions_to_keep::Real=1.0,
+                                    show_progress::Bool=model.show_progress)
 
     0 < num_points || throw(DomainError("num_points must be a strictly positive integer"))
     model.core isa CoreLikelihoodModel || throw(ArgumentError("model does not contain a log-likelihood function. Add it using add_loglikelihood_function!"))
@@ -289,18 +340,16 @@ function sample_bivariate_internal_points!(model::LikelihoodModel,
         return nothing
     end
 
-    rejection_df = DataFrame(rejection_rate=zeros(nrow(sub_df)), biv_df_row_ind=zeros(Int, nrow(sub_df)))
-
-    for i in 1:nrow(sub_df)
-        row_ind = sub_df[i, :row_ind]
-        if evaluate_predictions_for_samples && !sub_df[i, :not_evaluated_predictions]
-
+    predictions_evaluated = .!sub_df.not_evaluated_predictions
+    if evaluate_predictions_for_samples && any(predictions_evaluated)
+        row_subset = falses(sum(predictions_evaluated))
+        for (i, row_ind) in enumerate(sub_df[predictions_evaluated, :row_ind])
             if check_prediction_function_exists(model::LikelihoodModel) === false
                 continue
             end
 
-            if ismissing(t) 
-                @warn string("t must be specified to evaluate predictions for internal points (and be the same as the t vector used to generate previous predictions with generate_prediction_bivariate!). Bivariate profile row ", row_ind, " not evaluated.")
+            if ismissing(t)
+                @warn string("t must be specified to evaluate predictions for internal points (and be the same as the t vector used to generate previous predictions with generate_prediction_bivariate!). Bivariate profile row ", row_ind, " not evaluated")
                 continue
             end
 
@@ -309,29 +358,53 @@ function sample_bivariate_internal_points!(model::LikelihoodModel,
                 @warn string("additional samples not evaluated for the bivariate profile at row ", row_ind, " because the length of t is not the same as the length of existing predictions")
                 continue
             end
+            row_subset[i] = true
         end
 
-        internal_points, rejection_rate = sample_internal_points_single_row(model, row_ind, num_points, hullmethod, sample_type)
-        update_biv_dict_internal!(model, row_ind, internal_points)
-        rejection_df[i, :] .= rejection_rate, row_ind
+        sub_df = @view(sub_df[row_subset, :])
+        if nrow(sub_df) < 1
+            return nothing
+        end
+    end
 
-        if evaluate_predictions_for_samples && !sub_df[i, :not_evaluated_predictions]
+    rejection_df = DataFrame(rejection_rate=zeros(nrow(sub_df)), biv_df_row_ind=zeros(Int, nrow(sub_df)))
 
-            predict_struct = model.biv_predictions_dict[row_ind]
+    p = Progress(nrow(sub_df); desc="Computing points inside bivariate confidence boundaries: ",
+        dt=PROGRESS__METER__DT, enabled=show_progress, showspeed=true)
+    channel = RemoteChannel(() -> Channel{Bool}(1))
 
-            new_predict_struct = generate_prediction(model.core.predictfunction,
-                                                        model.core.data, t, model.core.ymle,
-                                                        internal_points.points[:, (end-num_points+1):end],
-                                                        proportion_of_predictions_to_keep)
+    @sync begin
+        @async while take!(channel)
+            next!(p)
+        end
+        @async begin
+            internal_samples = @distributed (vcat) for i in 1:nrow(sub_df)
+                [(i, sub_df[i, :row_ind], 
+                    sample_internal_points_single_row(model, sub_df, i, sub_df[i, :row_ind], num_points, sample_type, 
+                        hullmethod, t, evaluate_predictions_for_samples, proportion_of_predictions_to_keep, channel))]
+            end
+            put!(channel, false)
+            
+            for (i, row_ind, samples) in internal_samples
+                if isnothing(samples); continue end
 
-            model.biv_predictions_dict[row_ind] = merge(predict_struct, new_predict_struct)
-        else
-            sub_df[row_ind, :not_evaluated_predictions] = true
+                internal_points, rejection_rate, merged_predict_struct = samples
+                if ismissing(internal_points); continue end
+
+                update_biv_dict_internal!(model, row_ind, internal_points)
+                rejection_df[i, :] .= rejection_rate, row_ind
+                sub_df[i, :not_evaluated_internal_points] = false
+
+                if ismissing(merged_predict_struct)
+                    sub_df[i, :not_evaluated_predictions] = true
+                    continue
+                end
+                model.biv_predictions_dict[row_ind] = merged_predict_struct
+            end
         end
     end
 
     rejection_df = rejection_df[rejection_df.biv_df_row_ind .!= 0, :]
-    sub_df[:, :not_evaluated_internal_points] .= false
 
     return rejection_df
 end

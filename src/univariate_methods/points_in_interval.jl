@@ -134,17 +134,32 @@ Alternate method called by [`get_points_in_intervals!`](@ref).
 function get_points_in_interval_single_row(model::LikelihoodModel,
                                 uni_row_number::Int,
                                 num_points_in_interval::Int,
-                                additional_width::Real)
+                                additional_width::Real,
+                                channel::RemoteChannel)
 
-    θi = model.uni_profiles_df.θindex[uni_row_number]
-    profile_type = model.uni_profiles_df.profile_type[uni_row_number]
-    univariate_optimiser = get_univariate_opt_func(profile_type)
-    current_interval_points = get_uni_confidence_interval_points(model, uni_row_number)
-    
-    @timeit_debug timer "Univariate points in interval" begin
-        return get_points_in_interval_single_row(univariate_optimiser, model, num_points_in_interval, 
-                                                    θi, profile_type, current_interval_points, additional_width)
+    try
+        @timeit_debug timer "Univariate points in interval" begin
+            θi = model.uni_profiles_df.θindex[uni_row_number]
+            profile_type = model.uni_profiles_df.profile_type[uni_row_number]
+            univariate_optimiser = get_univariate_opt_func(profile_type)
+            current_interval_points = get_uni_confidence_interval_points(model, uni_row_number)
+            
+            output = get_points_in_interval_single_row(univariate_optimiser, model, num_points_in_interval,
+                θi, profile_type, current_interval_points, additional_width)
+            put!(channel, true)
+            return output 
+        end
+    catch
+        @error string("an error occurred when finding the points inside a univariate confidence interval with settings: ",
+            (uni_row_number=uni_row_number, num_points_in_interval=num_points_in_interval,
+                additional_width=additional_width))
+        for (exc, bt) in current_exceptions()
+            showerror(stdout, exc, bt)
+            println(stdout)
+            println(stdout)
+        end
     end
+    return nothing
 end
 
 """
@@ -163,19 +178,25 @@ Evaluate and save `num_points_in_interval` linearly spaced points between the co
 - `confidence_levels`: a vector of confidence levels. If empty, all confidence levels of univariate profiles will be considered for finding interval points. Otherwise, only confidence levels in `confidence_levels` will be considered. Default is `Float64[]` (any confidence level).
 - `profile_types`: a vector of `AbstractProfileType` structs. If empty, all profile types of univariate profiles are considered. Otherwise, only profiles with matching profile types will be considered. Default is `AbstractProfileType[]` (any profile type).
 - `not_evaluated_predictions`: a boolean specifying whether to only get points in intervals of profiles that have not had predictions evaluated (true) or for all profiles (false). If `false`, then any existing predictions will be forgotten by the `model` and overwritten the next time predictions are evaluated for each profile. Default is `true`.
+- `show_progress`: boolean variable specifying whether to display progress bars on the percentage of `θs_to_profile` completed and estimated time of completion. Default is `model.show_progress`.
 
 # Details
 
 Interval points and their corresponding log-likelihood values are stored in the `interval_points` field of a [`UnivariateConfidenceStruct`](@ref). These are updated using [`PlaceholderLikelihood.update_uni_dict_internal!`](@ref). Nuisance parameters of each point in univariate interest parameter space are found by maximising the log-likelihood function given by the `profile_type` of the profile. 
 
 If [`get_points_in_intervals!`](@ref) has already been used on a univariate profile, with the same values of `num_points_in_interval` and `additional_width`, it will not be recomputed for that profile.
+
+## Iteration Speed Of the Progress Meter
+
+An iteration within the progress meter is specified as the time it takes for all internal points within a univariate confidence interval to be found (as well as any outside, if `additional_width` is greater than zero).
 """
 function get_points_in_intervals!(model::LikelihoodModel,
                                     num_points_in_interval::Int;
                                     additional_width::Real=0.0,
                                     confidence_levels::Vector{<:Float64}=Float64[],
                                     profile_types::Vector{<:AbstractProfileType}=AbstractProfileType[],
-                                    not_evaluated_predictions::Bool=true)
+                                    not_evaluated_predictions::Bool=true,
+                                    show_progress::Bool=model.show_progress)
 
     num_points_in_interval > 0 || throw(DomainError("num_points_in_interval must be a strictly positive integer"))
     additional_width >= 0 || throw(DomainError("additional_width must be greater than or equal to zero"))
@@ -189,11 +210,26 @@ function get_points_in_intervals!(model::LikelihoodModel,
         return nothing
     end
 
-    for i in 1:nrow(sub_df)
-        points = get_points_in_interval_single_row(model, sub_df[i, :row_ind], 
-                                            num_points_in_interval, additional_width)
+    p = Progress(nrow(sub_df); desc="Computing points in univariate confidence intervals: ",
+                dt=PROGRESS__METER__DT, enabled=show_progress, showspeed=true)
+    channel = RemoteChannel(() -> Channel{Bool}(1))
 
-        update_uni_dict_internal!(model, sub_df[i, :row_ind], points)
+    @sync begin
+        @async while take!(channel)
+            next!(p)
+        end
+        @async begin
+            points_to_add = @distributed (vcat) for i in 1:nrow(sub_df)
+                [(sub_df[i, :row_ind], get_points_in_interval_single_row(model, sub_df[i, :row_ind], 
+                                                    num_points_in_interval, additional_width, channel))]
+            end
+            put!(channel, false)
+            
+            for (i, (row_ind, points)) in enumerate(points_to_add)
+                if isnothing(points); continue end
+                update_uni_dict_internal!(model, row_ind, points)
+            end
+        end
     end
 
     sub_df[:, :not_evaluated_internal_points] .= false
