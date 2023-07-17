@@ -147,80 +147,82 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
                                         save_internal_points::Bool,
                                         channel::RemoteChannel)
 
-    try                                 
-        internal=PointsAndLogLikelihood(zeros(model.core.num_pars,0), zeros(0))
-        if method isa AnalyticalEllipseMethod
-            boundary_ellipse = generate_N_clustered_points(
-                                        num_points, consistent.data_analytic.Γmle, 
-                                        consistent.data_analytic.θmle, ind1, ind2,
-                                        confidence_level=confidence_level,
-                                        start_point_shift=method.ellipse_start_point_shift,
-                                        sqrt_distortion=method.ellipse_sqrt_distortion)
+    try 
+        @timeit_debug timer "Bivariate confidence boundary" begin
+            internal=PointsAndLogLikelihood(zeros(model.core.num_pars,0), zeros(0))
+            if method isa AnalyticalEllipseMethod
+                boundary_ellipse = generate_N_clustered_points(
+                                            num_points, consistent.data_analytic.Γmle, 
+                                            consistent.data_analytic.θmle, ind1, ind2,
+                                            confidence_level=confidence_level,
+                                            start_point_shift=method.ellipse_start_point_shift,
+                                            sqrt_distortion=method.ellipse_sqrt_distortion)
 
-            _, _, initGuess, θranges, ωranges = init_nuisance_parameters(model, ind1, ind2)
+                _, _, initGuess, θranges, ωranges = init_nuisance_parameters(model, ind1, ind2)
 
-            boundary = get_ωs_bivariate_ellipse_analytical!(
-                                boundary_ellipse, 
-                                num_points,
-                                consistent, ind1, ind2, 
-                                model.core.num_pars, initGuess,
-                                θranges, ωranges)
+                boundary = get_ωs_bivariate_ellipse_analytical!(
+                                    boundary_ellipse, 
+                                    num_points,
+                                    consistent, ind1, ind2, 
+                                    model.core.num_pars, initGuess,
+                                    θranges, ωranges)
 
-            put!(channel, true)
+                put!(channel, true)
+                
+            elseif method isa Fix1AxisMethod
+                boundary, internal = bivariate_confidenceprofile_fix1axis(
+                                        bivariate_optimiser, model, 
+                                        num_points, consistent, ind1, ind2,
+                                        mle_targetll, save_internal_points, channel)
+                
+            elseif method isa SimultaneousMethod
+                boundary, internal = bivariate_confidenceprofile_vectorsearch(
+                                        bivariate_optimiser, model, 
+                                        num_points, consistent, ind1, ind2,
+                                        mle_targetll, save_internal_points, channel,
+                                        min_proportion_unique=method.min_proportion_unique,
+                                        use_MLE_point=method.use_MLE_point)
+
+            elseif method isa RadialRandomMethod
+                boundary, internal = bivariate_confidenceprofile_vectorsearch(
+                                        bivariate_optimiser, model, 
+                                        num_points, consistent, ind1, ind2,
+                                        mle_targetll, save_internal_points, channel,
+                                        num_radial_directions=method.num_radial_directions,
+                                        use_MLE_point=method.use_MLE_point)
+
+            elseif method isa RadialMLEMethod
+                boundary, internal = bivariate_confidenceprofile_vectorsearch(
+                                        bivariate_optimiser, model, 
+                                        num_points, consistent, ind1, ind2,
+                                        mle_targetll, save_internal_points, channel,
+                                        ellipse_confidence_level=0.1,
+                                        ellipse_start_point_shift=method.ellipse_start_point_shift,
+                                        ellipse_sqrt_distortion=method.ellipse_sqrt_distortion)
+
+            elseif method isa ContinuationMethod
+                boundary, internal = bivariate_confidenceprofile_continuation(
+                                        bivariate_optimiser, 
+                                        model, num_points, consistent, ind1, ind2, profile_type,
+                                        method.ellipse_confidence_level,
+                                        confidence_level, 
+                                        method.ellipse_start_point_shift,
+                                        method.num_level_sets,
+                                        method.level_set_spacing,
+                                        mle_targetll, save_internal_points, channel)
             
-        elseif method isa Fix1AxisMethod
-            boundary, internal = bivariate_confidenceprofile_fix1axis(
-                                    bivariate_optimiser, model, 
-                                    num_points, consistent, ind1, ind2,
-                                    mle_targetll, save_internal_points, channel)
-            
-        elseif method isa SimultaneousMethod
-            boundary, internal = bivariate_confidenceprofile_vectorsearch(
-                                    bivariate_optimiser, model, 
-                                    num_points, consistent, ind1, ind2,
-                                    mle_targetll, save_internal_points, channel,
-                                    min_proportion_unique=method.min_proportion_unique,
-                                    use_MLE_point=method.use_MLE_point)
+            elseif method isa IterativeBoundaryMethod
+                boundary, internal = bivariate_confidenceprofile_iterativeboundary(
+                                        bivariate_optimiser, model,
+                                        num_points, consistent, ind1, ind2,
+                                        method.initial_num_points, method.angle_points_per_iter,
+                                        method.edge_points_per_iter, method.radial_start_point_shift,
+                                        method.ellipse_sqrt_distortion, method.use_ellipse,
+                                        mle_targetll, save_internal_points, channel)
+            end
 
-        elseif method isa RadialRandomMethod
-            boundary, internal = bivariate_confidenceprofile_vectorsearch(
-                                    bivariate_optimiser, model, 
-                                    num_points, consistent, ind1, ind2,
-                                    mle_targetll, save_internal_points, channel,
-                                    num_radial_directions=method.num_radial_directions,
-                                    use_MLE_point=method.use_MLE_point)
-
-        elseif method isa RadialMLEMethod
-            boundary, internal = bivariate_confidenceprofile_vectorsearch(
-                                    bivariate_optimiser, model, 
-                                    num_points, consistent, ind1, ind2,
-                                    mle_targetll, save_internal_points, channel,
-                                    ellipse_confidence_level=0.1,
-                                    ellipse_start_point_shift=method.ellipse_start_point_shift,
-                                    ellipse_sqrt_distortion=method.ellipse_sqrt_distortion)
-
-        elseif method isa ContinuationMethod
-            boundary, internal = bivariate_confidenceprofile_continuation(
-                                    bivariate_optimiser, 
-                                    model, num_points, consistent, ind1, ind2, profile_type,
-                                    method.ellipse_confidence_level,
-                                    confidence_level, 
-                                    method.ellipse_start_point_shift,
-                                    method.num_level_sets,
-                                    method.level_set_spacing,
-                                    mle_targetll, save_internal_points, channel)
-        
-        elseif method isa IterativeBoundaryMethod
-            boundary, internal = bivariate_confidenceprofile_iterativeboundary(
-                                    bivariate_optimiser, model,
-                                    num_points, consistent, ind1, ind2,
-                                    method.initial_num_points, method.angle_points_per_iter,
-                                    method.edge_points_per_iter, method.radial_start_point_shift,
-                                    method.ellipse_sqrt_distortion, method.use_ellipse,
-                                    mle_targetll, save_internal_points, channel)
+            return BivariateConfidenceStruct(boundary, internal)
         end
-
-        return BivariateConfidenceStruct(boundary, internal)
     catch
         @error string("an error occurred when finding the bivariate boundary with settings: ",
             (profile_type=profile_type, method=method, confidence_level=confidence_level, 

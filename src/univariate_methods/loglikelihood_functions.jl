@@ -11,10 +11,14 @@ function univariateψ_ellipse_unbounded(ψ::Real, p::NamedTuple)
 
     function fun(ω)
         θs[p.ind] = ψ
-        return ellipse_loglike(variablemapping!(θs, ω, p.θranges, p.ωranges), p.consistent.data) 
+        @timeit_debug timer "Likelihood evaluation" begin
+            return ellipse_loglike(variablemapping!(θs, ω, p.θranges, p.ωranges), p.consistent.data)
+        end
     end
 
-    (xopt,fopt)=optimise_unbounded(fun, p.initGuess)
+    @timeit_debug timer "Likelihood nuisance parameter optimisation" begin
+        (xopt,fopt)=optimise_unbounded(fun, p.initGuess)
+    end
     llb=fopt-p.consistent.targetll
     p.ω_opt .= xopt
     return llb
@@ -30,10 +34,14 @@ function univariateψ(ψ::Real, p::NamedTuple)
 
     function fun(ω)
         θs[p.ind] = ψ
-        return p.consistent.loglikefunction(variablemapping!(θs, ω, p.θranges, p.ωranges), p.consistent.data) 
+        @timeit_debug timer "Likelihood evaluation" begin
+            return p.consistent.loglikefunction(variablemapping!(θs, ω, p.θranges, p.ωranges), p.consistent.data) 
+        end
     end
 
-    (xopt,fopt)=optimise(fun, p.initGuess, p.newLb, p.newUb)
+    @timeit_debug timer "Likelihood nuisance parameter optimisation" begin
+        (xopt,fopt)=optimise(fun, p.initGuess, p.newLb, p.newUb)
+    end
     llb=fopt-p.consistent.targetll
     p.ω_opt .= xopt
     return llb

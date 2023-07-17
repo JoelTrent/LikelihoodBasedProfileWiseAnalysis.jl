@@ -9,10 +9,14 @@ function bivariateψ!(ψ::Real, p::NamedTuple)
     function fun(ω)
         θs[p.ind1] = p.ψ_x[1]
         θs[p.ind2] = ψ
-        return p.consistent.loglikefunction(variablemapping!(θs, ω, p.θranges, p.ωranges), p.consistent.data)
+        @timeit_debug timer "Likelihood evaluation" begin
+            return p.consistent.loglikefunction(variablemapping!(θs, ω, p.θranges, p.ωranges), p.consistent.data)
+        end
     end
 
-    (xopt,fopt)=optimise(fun, p.initGuess, p.newLb, p.newUb)
+    @timeit_debug timer "Likelihood nuisance parameter optimisation" begin 
+        (xopt,fopt)=optimise(fun, p.initGuess, p.newLb, p.newUb)
+    end
     llb=fopt-p.consistent.targetll
     p.ω_opt .= xopt
     return llb
@@ -29,10 +33,14 @@ function bivariateψ_vectorsearch!(ψ::Real, p::NamedTuple)
     
     function fun(ω)
         θs[p.ind1], θs[p.ind2] = ψxy
-        return p.consistent.loglikefunction(variablemapping!(θs, ω, p.θranges, p.ωranges), p.consistent.data)
+        @timeit_debug timer "Likelihood evaluation" begin 
+            return p.consistent.loglikefunction(variablemapping!(θs, ω, p.θranges, p.ωranges), p.consistent.data)
+        end
     end
 
-    (xopt,fopt)=optimise(fun, p.initGuess, p.newLb, p.newUb)
+    @timeit_debug timer "Likelihood nuisance parameter optimisation" begin 
+        (xopt,fopt)=optimise(fun, p.initGuess, p.newLb, p.newUb)
+    end
     llb=fopt-p.consistent.targetll
     p.ω_opt .= xopt
     return llb
@@ -49,10 +57,14 @@ function bivariateψ_continuation!(ψ::Real, p::NamedTuple)
     
     function fun(ω)
         θs[p.ind1], θs[p.ind2] = ψxy
-        return p.consistent.loglikefunction(variablemapping!(θs, ω, p.θranges, p.ωranges), p.consistent.data)
+        @timeit_debug timer "Likelihood evaluation" begin 
+            return p.consistent.loglikefunction(variablemapping!(θs, ω, p.θranges, p.ωranges), p.consistent.data)
+        end
     end
 
-    (xopt,fopt)=optimise(fun, p.initGuess, p.newLb, p.newUb)
+    @timeit_debug timer "Likelihood nuisance parameter optimisation" begin
+        (xopt,fopt)=optimise(fun, p.initGuess, p.newLb, p.newUb)
+    end
     llb=fopt-p.targetll
     p.ω_opt .= xopt
     return llb
@@ -64,7 +76,9 @@ end
 Returns the approximated log-likelihood value minus the confidence boundary target threshold, given an analytic ellipse approximation of a log-likelihood function ([`PlaceholderLikelihood.analytic_ellipse_loglike`](@ref)) which is unbounded in parameter space, for values of the interest parameters `p.ψ_x[1]` and `ψ`. The returned function value will be zero at the locations of the approximate confidence boundary for `p.ψ_x[1]` and `ψ`, which correspond to locations found by [`PlaceholderLikelihood.AnalyticalEllipseMethod`](@ref). Used by [`Fix1AxisMethod`](@ref). 
 """
 function bivariateψ_ellipse_analytical(ψ::Real, p::NamedTuple)
-    return analytic_ellipse_loglike([p.ψ_x[1], ψ], [p.ind1, p.ind2], p.consistent.data_analytic) - p.consistent.targetll
+    @timeit_debug timer "Likelihood evaluation" begin 
+        return analytic_ellipse_loglike([p.ψ_x[1], ψ], [p.ind1, p.ind2], p.consistent.data_analytic) - p.consistent.targetll
+    end
 end
 
 """
@@ -73,7 +87,9 @@ end
 Returns the approximated log-likelihood value minus the confidence boundary target threshold, given an analytic ellipse approximation of a log-likelihood function ([`PlaceholderLikelihood.analytic_ellipse_loglike`](@ref)) which is unbounded in parameter space, for values of the interest parameters `ψxy = p.pointa + ψ*p.uhat`. The returned function value will be zero at the locations of the approximate confidence boundary for `ψxy = p.pointa + ψ*p.uhat`, which correspond to locations found by [`PlaceholderLikelihood.AnalyticalEllipseMethod`](@ref). Used by [`AbstractBivariateVectorMethod`](@ref).
 """
 function bivariateψ_ellipse_analytical_vectorsearch(ψ::Real, p::NamedTuple)
-    return analytic_ellipse_loglike(p.pointa + ψ*p.uhat, [p.ind1, p.ind2], p.consistent.data_analytic) - p.consistent.targetll
+    @timeit_debug timer "Likelihood evaluation" begin 
+        return analytic_ellipse_loglike(p.pointa + ψ*p.uhat, [p.ind1, p.ind2], p.consistent.data_analytic) - p.consistent.targetll
+    end
 end
 
 """
@@ -82,7 +98,9 @@ end
 Returns the approximated log-likelihood value minus the confidence boundary target threshold, given an analytic ellipse approximation of a log-likelihood function ([`PlaceholderLikelihood.analytic_ellipse_loglike`](@ref)) which is unbounded in parameter space, for values of the interest parameters `ψxy = p.pointa + ψ*p.uhat`. The returned function value will be zero at the locations of the approximate confidence boundary for `ψxy = p.pointa + ψ*p.uhat`, which correspond to locations found by [`PlaceholderLikelihood.AnalyticalEllipseMethod`](@ref). Used by [`ContinuationMethod`](@ref).
 """
 function bivariateψ_ellipse_analytical_continuation(ψ::Real, p::NamedTuple)
-    return analytic_ellipse_loglike(p.pointa + ψ*p.uhat, [p.ind1, p.ind2], p.consistent.data_analytic) - p.targetll
+    @timeit_debug timer "Likelihood evaluation" begin 
+        return analytic_ellipse_loglike(p.pointa + ψ*p.uhat, [p.ind1, p.ind2], p.consistent.data_analytic) - p.targetll
+    end
 end
 
 """
@@ -95,9 +113,13 @@ function bivariateψ_ellipse_unbounded(ψ::Vector, p::NamedTuple)
     θs[p.ind1], θs[p.ind2] = ψ
 
     function fun(ω)
-        return ellipse_loglike(variablemapping!(θs, ω, p.θranges, p.ωranges), p.consistent.data) 
+        @timeit_debug timer "Likelihood evaluation" begin
+            return ellipse_loglike(variablemapping!(θs, ω, p.θranges, p.ωranges), p.consistent.data) 
+        end
     end
 
-    (xopt,_)=optimise_unbounded(fun, p.initGuess)
+    @timeit_debug timer "Likelihood nuisance parameter optimisation" begin
+        (xopt,_)=optimise_unbounded(fun, p.initGuess)
+    end
     return xopt
 end

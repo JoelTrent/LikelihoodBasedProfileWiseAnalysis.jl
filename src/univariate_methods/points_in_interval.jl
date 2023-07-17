@@ -141,8 +141,10 @@ function get_points_in_interval_single_row(model::LikelihoodModel,
     univariate_optimiser = get_univariate_opt_func(profile_type)
     current_interval_points = get_uni_confidence_interval_points(model, uni_row_number)
     
-    return get_points_in_interval_single_row(univariate_optimiser, model, num_points_in_interval, 
-                                                θi, profile_type, current_interval_points, additional_width)
+    @timeit_debug timer "Univariate points in interval" begin
+        return get_points_in_interval_single_row(univariate_optimiser, model, num_points_in_interval, 
+                                                    θi, profile_type, current_interval_points, additional_width)
+    end
 end
 
 """

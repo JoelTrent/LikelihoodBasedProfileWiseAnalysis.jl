@@ -29,6 +29,7 @@ makedocs(;
             "Predictions" => "user_interface/predictions.md",
             "Plots" => "user_interface/plots.md",
             "Saving and Loading LikelihoodModels"=> "user_interface/saving_and_loading.md",
+            "Timing and Profiling" => "user_interface/timing_and_profiling.md",
             "Simulated Coverage Checks" => 
                 ["Parameter Confidence Intervals" => "user_interface/coverage/univariate_intervals.md",
                 "Bivariate Parameter Confidence Boundaries" => "user_interface/coverage/bivariate_boundaries.md"]],

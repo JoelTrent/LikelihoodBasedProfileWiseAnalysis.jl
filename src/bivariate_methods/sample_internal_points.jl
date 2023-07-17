@@ -230,12 +230,14 @@ function sample_internal_points_single_row(model::LikelihoodModel, biv_row_numbe
     confidence_level = model.biv_profiles_df[biv_row_number, :conf_level]
     boundary_not_ordered = model.biv_profiles_df.boundary_not_ordered[biv_row_number]
 
-    if sample_type isa LatinHypercubeSamples
-        return sample_internal_points_LHC(model, num_points, θindices,
+    @timeit_debug timer "Sample bivariate internal points" begin
+        if sample_type isa LatinHypercubeSamples
+            return sample_internal_points_LHC(model, num_points, θindices,
+                profile_type, conf_struct, confidence_level, boundary_not_ordered, hullmethod)
+        end
+        return sample_internal_points_uniform_random(model, num_points, θindices,
             profile_type, conf_struct, confidence_level, boundary_not_ordered, hullmethod)
     end
-    return sample_internal_points_uniform_random(model, num_points, θindices,
-        profile_type, conf_struct, confidence_level, boundary_not_ordered, hullmethod)
 end
 
 """

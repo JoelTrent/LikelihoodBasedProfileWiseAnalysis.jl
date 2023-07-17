@@ -7,10 +7,14 @@ function dimensional_optimiser!(θs::Union{Vector, SubArray}, p::NamedTuple, tar
     
     function fun(ω)
         θs[p.ωindices] = ω
-        return p.consistent.loglikefunction(θs, p.consistent.data)
+        @timeit_debug timer "Likelihood evaluation" begin
+            return p.consistent.loglikefunction(θs, p.consistent.data)
+        end
     end
 
-    (xopt,fopt)=optimise(fun, p.initGuess, p.newLb, p.newUb)
+    @timeit_debug timer "Likelihood nuisance parameter optimisation" begin
+        (xopt,fopt)=optimise(fun, p.initGuess, p.newLb, p.newUb)
+    end
     llb=fopt-targetll
     θs[p.ωindices] .= xopt
     return llb
@@ -328,20 +332,21 @@ function dimensional_likelihood_sample(model::LikelihoodModel,
                                     channel::RemoteChannel)
 
     try         
-        if sample_type isa UniformGridSamples
-            sample_struct = uniform_grid(model, θindices, num_points, confidence_level, lb, ub;
-                                            use_threads=use_threads, arguments_checked=true,
-                                            channel=channel)
-        elseif sample_type isa UniformRandomSamples
-            sample_struct = uniform_random(model, θindices, num_points, confidence_level, lb, ub;             
-                                            use_threads=use_threads, arguments_checked=true,
-                                            channel=channel)
-        elseif sample_type isa LatinHypercubeSamples
-            sample_struct = LHS(model, θindices, num_points, confidence_level, lb, ub;
-                                use_threads=use_threads, arguments_checked=true, channel=channel)
+        @timeit_debug timer "Dimensional likelihood sample" begin
+            if sample_type isa UniformGridSamples
+                sample_struct = uniform_grid(model, θindices, num_points, confidence_level, lb, ub;
+                                                use_threads=use_threads, arguments_checked=true,
+                                                channel=channel)
+            elseif sample_type isa UniformRandomSamples
+                sample_struct = uniform_random(model, θindices, num_points, confidence_level, lb, ub;             
+                                                use_threads=use_threads, arguments_checked=true,
+                                                channel=channel)
+            elseif sample_type isa LatinHypercubeSamples
+                sample_struct = LHS(model, θindices, num_points, confidence_level, lb, ub;
+                                    use_threads=use_threads, arguments_checked=true, channel=channel)
+            end 
+            return sample_struct
         end
-        
-        return sample_struct
     catch
         @error string("an error occurred when computing a dimensional sample with settings: ",
             (sample_type=sample_type, confidence_level=confidence_level,
@@ -416,6 +421,9 @@ function dimensional_likelihood_samples!(model::LikelihoodModel,
                 throw(ArgumentError("num_points_to_sample must have the same length as each vector of interest parameters in num_points_to_sample"))
         end
         existing_profiles ∈ [:ignore, :overwrite] || throw(ArgumentError("existing_profiles can only take value :ignore or :overwrite"))
+
+        (use_threads && timeit_debug_enabled()) &&
+            throw(ArgumentError("use_threads cannot be true when debug timings from TimerOutputs are enabled. Either set use_threads to false or disable debug timings using `PlaceholderLikelihood.TimerOutputs.disable_debug_timings(PlaceholderLikelihood)`"))
         return nothing
     end
     

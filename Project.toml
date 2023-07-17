@@ -33,6 +33,7 @@ SharedArrays = "1a1011a3-84de-559e-8e89-a11a2f7dc383"
 SnoopPrecompile = "66db9d55-30c0-4569-8b51-7e840670fc0c"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
+TimerOutputs = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
 TrackingHeaps = "d94bfb22-46ad-56c3-87d0-f6c298cb800e"
 TravelingSalesmanHeuristics = "8c8f4381-2cdd-507c-846c-be2bcff6f45f"
 

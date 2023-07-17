@@ -68,7 +68,9 @@ function valid_points(model::LikelihoodModel,
         ll_values_shared = SharedArray{Float64}(grid_size)
 
         @distributed (+) for i in axes(grid, 2)
+            @timeit_debug timer "Likelihood evaluation" begin
             ll_values_shared[i] = model.core.loglikefunction(grid[:, i], model.core.data) - targetll
+            end
             put!(channel, true)
             i
         end
@@ -273,20 +275,32 @@ function full_likelihood_sample(model::LikelihoodModel,
                                     use_distributed::Bool,
                                     channel::RemoteChannel)
 
-    if sample_type isa UniformGridSamples
-        sample_struct = uniform_grid(model, num_points, confidence_level, lb, ub;
-                                        use_threads=use_threads, use_distributed=use_distributed,
-                                        arguments_checked=true, channel=channel)
-    elseif sample_type isa UniformRandomSamples
-        sample_struct = uniform_random(model, num_points, confidence_level, lb, ub;             
-                                        use_threads=use_threads, use_distributed=use_distributed,
-                                        arguments_checked=true, channel=channel)
-    elseif sample_type isa LatinHypercubeSamples
-        sample_struct = LHS(model, num_points, confidence_level, lb, ub;
-                            use_threads=use_threads, use_distributed=use_distributed,
-                            arguments_checked=true, channel=channel)
+    try                        
+        @timeit_debug timer "Full likelihood sample" begin
+            if sample_type isa UniformGridSamples
+                sample_struct = uniform_grid(model, num_points, confidence_level, lb, ub;
+                                                use_threads=use_threads, use_distributed=use_distributed,
+                                                arguments_checked=true, channel=channel)
+            elseif sample_type isa UniformRandomSamples
+                sample_struct = uniform_random(model, num_points, confidence_level, lb, ub;             
+                                                use_threads=use_threads, use_distributed=use_distributed,
+                                                arguments_checked=true, channel=channel)
+            elseif sample_type isa LatinHypercubeSamples
+                sample_struct = LHS(model, num_points, confidence_level, lb, ub;
+                                    use_threads=use_threads, use_distributed=use_distributed,
+                                    arguments_checked=true, channel=channel)
+            end
+            return sample_struct
+        end
+    catch
+        @error string("an error occurred when computing a full sample with settings: ",
+            (sample_type=sample_type, confidence_level=confidence_level))
+        for (exc, bt) in current_exceptions()
+            showerror(stdout, exc, bt)
+            println(stdout)
+            println(stdout)
+        end
     end
-    return sample_struct
 end
 
 """
@@ -344,6 +358,9 @@ function full_likelihood_sample!(model::LikelihoodModel,
             sample_type isa UniformGridSamples || throw(ArgumentError(string("num_points_to_sample must be an integer for ", sample_type, " sample_type")))
         end
         existing_profiles ∈ [:ignore, :overwrite] || throw(ArgumentError("existing_profiles can only take value :ignore or :overwrite"))
+        
+        (!use_distributed && use_threads && timeit_debug_enabled()) && 
+            throw(ArgumentError("use_threads cannot be true when debug timings from TimerOutputs are enabled and use_distributed is false. Either set use_threads to false or disable debug timings using `PlaceholderLikelihood.TimerOutputs.disable_debug_timings(PlaceholderLikelihood)`"))
         return nothing
     end
 
