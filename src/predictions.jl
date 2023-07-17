@@ -239,10 +239,10 @@ function generate_predictions_univariate!(model::LikelihoodModel,
             put!(channel, false)
             
             for (i, predict_struct) in enumerate(predictions)
-                if !isnothing(predict_struct)
-                    model.uni_predictions_dict[sub_df[i, :row_ind]] = predict_struct
-                    sub_df[i, :not_evaluated_predictions] = false
-                end
+                if isnothing(predict_struct); continue end
+
+                model.uni_predictions_dict[sub_df[i, :row_ind]] = predict_struct
+                sub_df[i, :not_evaluated_predictions] = false
             end
         end
     end
@@ -321,10 +321,10 @@ function generate_predictions_bivariate!(model::LikelihoodModel,
             put!(channel, false)
     
             for (i, predict_struct) in enumerate(predictions)
-                if !isnothing(predict_struct)
-                    model.biv_predictions_dict[sub_df[i, :row_ind]] = predict_struct
-                    sub_df[i, :not_evaluated_predictions] = false
-                end
+                if isnothing(predict_struct); continue end
+
+                model.biv_predictions_dict[sub_df[i, :row_ind]] = predict_struct
+                sub_df[i, :not_evaluated_predictions] = false
             end
         end
     end
@@ -401,10 +401,10 @@ function generate_predictions_dim_samples!(model::LikelihoodModel,
             put!(channel, false)
             
             for (i, predict_struct) in enumerate(predictions)
-                if !isnothing(predict_struct)
-                    model.dim_predictions_dict[sub_df[i, :row_ind]] = predict_struct
-                    sub_df[i, :not_evaluated_predictions] = false
-                end
+                if isnothing(predict_struct); continue end
+                
+                model.dim_predictions_dict[sub_df[i, :row_ind]] = predict_struct
+                sub_df[i, :not_evaluated_predictions] = false
             end
         end
     end

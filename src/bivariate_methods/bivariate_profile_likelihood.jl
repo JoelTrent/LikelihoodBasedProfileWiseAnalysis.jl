@@ -413,23 +413,24 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
                 put!(channel, false)
 
                 for (i, (inds, boundary_struct)) in enumerate(profiles_to_add)
-                    if !isnothing(boundary_struct)
-                        if θcombinations_to_reuse[i]
-                            row_ind = model.biv_profile_row_exists[(inds, profile_type, method)][confidence_level]
-                        else
-                            model.num_biv_profiles += 1
-                            row_ind = model.num_biv_profiles * 1
-                            model.biv_profile_row_exists[(inds, profile_type, method)][confidence_level] = row_ind
-                        end
-
-                        if θcombinations_to_merge[i]
-                            model.biv_profiles_dict[row_ind] = merge(model.biv_profiles_dict[row_ind], boundary_struct)
-                        else
-                            model.biv_profiles_dict[row_ind] = boundary_struct
-                        end
-
-                        set_biv_profiles_row!(model, row_ind, inds, !save_internal_points, true, boundary_not_ordered, confidence_level, profile_type, method, num_points)        
+                    if isnothing(boundary_struct); continue end
+                    
+                    if θcombinations_to_reuse[i]
+                        row_ind = model.biv_profile_row_exists[(inds, profile_type, method)][confidence_level]
+                    else
+                        model.num_biv_profiles += 1
+                        row_ind = model.num_biv_profiles * 1
+                        model.biv_profile_row_exists[(inds, profile_type, method)][confidence_level] = row_ind
                     end
+
+                    if θcombinations_to_merge[i]
+                        model.biv_profiles_dict[row_ind] = merge(model.biv_profiles_dict[row_ind], boundary_struct)
+                    else
+                        model.biv_profiles_dict[row_ind] = boundary_struct
+                    end
+
+                    set_biv_profiles_row!(model, row_ind, inds, !save_internal_points, true, boundary_not_ordered,
+                        confidence_level, profile_type, method, num_points)        
                 end
             end
         else
@@ -443,24 +444,25 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
                                         method, mle_targetll,
                                         save_internal_points, channel)
     
-                    if !isnothing(boundary_struct)
-                        if θcombinations_to_reuse[i]
-                            row_ind = model.biv_profile_row_exists[(inds, profile_type, method)][confidence_level]
-                        else
-                            model.num_biv_profiles += 1
-                            row_ind = model.num_biv_profiles * 1
-                            model.biv_profile_row_exists[(inds, profile_type, method)][confidence_level] = row_ind
-                        end
+                    if isnothing(boundary_struct); continue end
 
-                        if θcombinations_to_merge[i]
-                            model.biv_profiles_dict[row_ind] = merge(model.biv_profiles_dict[row_ind], boundary_struct)
-                        else
-                            model.biv_profiles_dict[row_ind] = boundary_struct
-                        end
-
-                        set_biv_profiles_row!(model, row_ind, inds, !save_internal_points, true, boundary_not_ordered, confidence_level, profile_type, method, num_points)
+                    if θcombinations_to_reuse[i]
+                        row_ind = model.biv_profile_row_exists[(inds, profile_type, method)][confidence_level]
+                    else
+                        model.num_biv_profiles += 1
+                        row_ind = model.num_biv_profiles * 1
+                        model.biv_profile_row_exists[(inds, profile_type, method)][confidence_level] = row_ind
                     end
-                end
+
+                    if θcombinations_to_merge[i]
+                        model.biv_profiles_dict[row_ind] = merge(model.biv_profiles_dict[row_ind], boundary_struct)
+                    else
+                        model.biv_profiles_dict[row_ind] = boundary_struct
+                    end
+
+                    set_biv_profiles_row!(model, row_ind, inds, !save_internal_points, true, boundary_not_ordered,
+                        confidence_level, profile_type, method, num_points)
+                    end
                 put!(channel, false)
             end
         end

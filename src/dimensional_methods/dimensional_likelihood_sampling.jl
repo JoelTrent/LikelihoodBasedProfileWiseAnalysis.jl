@@ -513,27 +513,26 @@ function dimensional_likelihood_samples!(model::LikelihoodModel,
             put!(channel, false)
 
             for (i, (θs, sample_struct)) in enumerate(profiles_to_add)
-                
-                if !isnothing(sample_struct)
-                    num_points_kept = length(sample_struct.ll)
-                    if num_points_kept == 0
-                        @warn string("no sampled points for θindices, ", θs, ", were in the confidence region of the profile likelihood within the supplied bounds: try increasing num_points_to_sample or changing the bounds")
-                        continue
-                    end
+                if isnothing(sample_struct); continue end
 
-                    if θs_to_overwrite[i]
-                        row_ind = model.dim_samples_row_exists[(θs, sample_type)][confidence_level]
-                    else
-                        model.num_dim_samples += 1
-                        row_ind = model.num_dim_samples * 1
-                        model.dim_samples_row_exists[(θs, sample_type)][confidence_level] = row_ind
-                    end
-
-                    model.dim_samples_dict[row_ind] = sample_struct
-                    
-                    set_dim_samples_row!(model, row_ind, θs, true, confidence_level, sample_type,
-                                            num_points_kept)
+                num_points_kept = length(sample_struct.ll)
+                if num_points_kept == 0
+                    @warn string("no sampled points for θindices, ", θs, ", were in the confidence region of the profile likelihood within the supplied bounds: try increasing num_points_to_sample or changing the bounds")
+                    continue
                 end
+
+                if θs_to_overwrite[i]
+                    row_ind = model.dim_samples_row_exists[(θs, sample_type)][confidence_level]
+                else
+                    model.num_dim_samples += 1
+                    row_ind = model.num_dim_samples * 1
+                    model.dim_samples_row_exists[(θs, sample_type)][confidence_level] = row_ind
+                end
+
+                model.dim_samples_dict[row_ind] = sample_struct
+                
+                set_dim_samples_row!(model, row_ind, θs, true, confidence_level, sample_type,
+                                        num_points_kept)
             end
         end
     end

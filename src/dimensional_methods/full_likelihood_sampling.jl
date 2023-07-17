@@ -403,6 +403,7 @@ function full_likelihood_sample!(model::LikelihoodModel,
                     println(stdout)
                     println(stdout)
                 end
+                put!(channel, false)
                 return nothing
             end
             put!(channel, false)
