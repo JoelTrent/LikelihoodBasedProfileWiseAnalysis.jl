@@ -31,7 +31,8 @@ using EllipseSampling
             N = 8
             expected_points = generate_N_equally_spaced_points(N, a, b, α, Cx, Cy, start_point_shift=0.0)
     
-            m = initialiseLikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes, show_progress=false)
+            m = initialiseLikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub,  par_magnitudes, show_progress=false, 
+                find_zero_atol=0.0)
             getMLE_ellipse_approximation!(m)
         
             # should find exactly the same points as `expected_points`
@@ -46,12 +47,14 @@ using EllipseSampling
         end
 
         @testset "GetIntervalPoints_EllipseLikelihood" begin
-            m1 = initialiseLikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes, show_progress=false)
+            m1 = initialiseLikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes, show_progress=false, 
+                find_zero_atol=0.0)
 
             N=20
             univariate_confidenceintervals!(m1, [1], num_points_in_interval=N, additional_width=0.2)
 
-            m2 = initialiseLikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes)
+            m2 = initialiseLikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes, 
+                find_zero_atol=0.0)
 
             univariate_confidenceintervals!(m2, [1])
             get_points_in_intervals!(m2, N, additional_width=0.2)
@@ -76,7 +79,8 @@ using EllipseSampling
         @testset "BoundaryIsAZero_EllipseLikelihood" begin        
             N = 50
     
-            m = initialiseLikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes, show_progress=false)
+            m = initialiseLikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes, show_progress=false, 
+                find_zero_atol=0.0)
             getMLE_ellipse_approximation!(m)
 
             # UNIVARIATE
@@ -141,7 +145,8 @@ using EllipseSampling
         @testset "BoundaryIsAZeroMethodExtensions_EllipseLikelihood" begin        
             N = 50
     
-            m = initialiseLikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes, show_progress=false)
+            m = initialiseLikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes, show_progress=false, 
+                find_zero_atol=0.0)
 
             # UNIVARIATE
             targetll = PlaceholderLikelihood.get_target_loglikelihood(m, 0.95, EllipseApprox(), 1)
@@ -154,7 +159,8 @@ using EllipseSampling
                 @test m.num_uni_profiles == 1
             end
 
-            m = initialiseLikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes, show_progress=false)
+            m = initialiseLikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes, show_progress=false, 
+                find_zero_atol=0.0)
             univariate_confidenceintervals!(m, 1)
 
             for i in 1:1
@@ -174,7 +180,8 @@ using EllipseSampling
                 @test m.num_biv_profiles == 1
             end
 
-            m = initialiseLikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes, show_progress=false)
+            m = initialiseLikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes, show_progress=false, 
+                find_zero_atol=0.0)
             bivariate_confidenceprofiles!(m, 2, N) # will get set to 1
 
             for i in 1:1
@@ -261,7 +268,7 @@ using EllipseSampling
         end
 
         @testset "SetMagnitudes_EllipseLikelihood" begin
-            m = initialiseLikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes, show_progress=false)
+            m = initialiseLikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes)
 
             @test isapprox(m.core.θmagnitudes, par_magnitudes)
 
@@ -271,7 +278,7 @@ using EllipseSampling
         end
         
         @testset "SetBounds_EllipseLikelihood" begin
-            m = initialiseLikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes, show_progress=false)
+            m = initialiseLikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes)
 
             setbounds!(m, lb=[-100.0, -50.0], ub=[2.0, 4.0])
 
@@ -319,6 +326,7 @@ using EllipseSampling
             @test_throws DomainError   univariate_confidenceintervals!(m, 0)
             @test_throws DomainError   univariate_confidenceintervals!(m, confidence_level=-0.1)
             @test_throws DomainError   univariate_confidenceintervals!(m, confidence_level=1.0)
+            @test_throws DomainError   univariate_confidenceintervals!(m, find_zero_atol=-0.1)
             @test_throws DomainError   univariate_confidenceintervals!(m, num_points_in_interval=-1)
             @test_throws DomainError   univariate_confidenceintervals!(m, additional_width=-1.0)
             @test_throws DomainError   univariate_confidenceintervals!(m, [1,4,2,3])
@@ -330,6 +338,7 @@ using EllipseSampling
             @test_throws DomainError   bivariate_confidenceprofiles!(m, 0, 10)
             @test_throws DomainError   bivariate_confidenceprofiles!(m, 10, confidence_level=-0.1)
             @test_throws DomainError   bivariate_confidenceprofiles!(m, 10, confidence_level=1.0)
+            @test_throws DomainError   bivariate_confidenceprofiles!(m, 10, find_zero_atol=-0.1)
             @test_throws DomainError   bivariate_confidenceprofiles!(m, [[1,2],[2,4],[5,1]], 10)
             @test_throws ArgumentError bivariate_confidenceprofiles!(m, [[1,2], [1]], 10)
             @test_throws ArgumentError bivariate_confidenceprofiles!(m, 10, existing_profiles=:something)
@@ -451,7 +460,8 @@ using EllipseSampling
         @testset "BoundaryIsAZeroRealLikelihood" begin
             N = 50
 
-            m = initialiseLikelihoodModel(loglhood, data, θnames, θG, lb, ub, par_magnitudes, show_progress=false)
+            m = initialiseLikelihoodModel(loglhood, data, θnames, θG, lb, ub, par_magnitudes, show_progress=false, 
+                find_zero_atol=0.0)
             getMLE_ellipse_approximation!(m)
 
             # UNIVARIATE

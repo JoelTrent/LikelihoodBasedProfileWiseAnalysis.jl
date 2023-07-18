@@ -174,8 +174,9 @@ Initialises a [`LikelihoodModel`](@ref) struct, which contains all model informa
 
 # Keyword Arguments
 - `uni_row_prealloaction_size`: number of rows of `uni_profiles_df` to preallocate. Default is NaN (a single row).
-- `biv_row_preallocation_size`:number of rows of `biv_profiles_df` to preallocate. Default is NaN (a single row).
+- `biv_row_preallocation_size`: number of rows of `biv_profiles_df` to preallocate. Default is NaN (a single row).
 - `dim_row_preallocation_size`: number of rows of `dim_samples_df` to preallocate. Default is NaN (a single row).
+- `find_zero_atol`: a `Real` number greater than zero for the absolute tolerance of the log-likelihood function value from the target value to be used when searching for confidence intervals/boundaries. Default is `0.001`.
 - `show_progress`: Whether to show the progress of profiling across sets of interest parameters. 
 """
 function initialiseLikelihoodModel(loglikefunction::Function,
@@ -186,10 +187,11 @@ function initialiseLikelihoodModel(loglikefunction::Function,
     θlb::AbstractVector{<:Real},
     θub::AbstractVector{<:Real},
     θmagnitudes::AbstractVector{<:Real}=Float64[];
-    uni_row_prealloaction_size=NaN,
-    biv_row_preallocation_size=NaN,
-    dim_row_preallocation_size=NaN,
-    show_progress=true)
+    uni_row_prealloaction_size::Real=NaN,
+    biv_row_preallocation_size::Real=NaN,
+    dim_row_preallocation_size::Real=NaN,
+    find_zero_atol::Real=0.001,
+    show_progress::Bool=true)
 
     # Initialise CoreLikelihoodModel, finding the MLE solution
     θnameToIndex = Dict{Symbol,Int}(name=>i for (i, name) in enumerate(θnames))
@@ -248,7 +250,7 @@ function initialiseLikelihoodModel(loglikefunction::Function,
                                     dim_samples_row_exists,
                                     uni_profiles_dict, biv_profiles_dict, dim_samples_dict,
                                     uni_predictions_dict, biv_predictions_dict,
-                                    dim_predictions_dict, 
+                                    dim_predictions_dict, find_zero_atol,
                                     show_progress)
 
     return likelihoodmodel
@@ -273,15 +275,17 @@ function initialiseLikelihoodModel(loglikefunction::Function,
     θlb::Vector{<:Float64},
     θub::Vector{<:Float64},
     θmagnitudes::Vector{<:Real}=zeros(0);
-    uni_row_prealloaction_size=NaN,
-    biv_row_preallocation_size=NaN,
-    dim_row_preallocation_size=NaN,
-    show_progress=true)
+    uni_row_prealloaction_size::Real=NaN,
+    biv_row_preallocation_size::Real=NaN,
+    dim_row_preallocation_size::Real=NaN,
+    find_zero_atol::Real=0.001,
+    show_progress::Bool=true)
 
     return initialiseLikelihoodModel(loglikefunction, missing, data, θnames,
                                         θinitialGuess, θlb, θub, θmagnitudes,
                                         uni_row_prealloaction_size=uni_row_prealloaction_size,
                                         biv_row_preallocation_size=biv_row_preallocation_size,
                                         dim_row_preallocation_size=dim_row_preallocation_size, 
+                                        find_zero_atol=find_zero_atol,
                                         show_progress=show_progress)
 end

@@ -121,6 +121,7 @@ end
         ind2::Int,
         mle_targetll::Float64,
         save_internal_points::Bool, 
+        find_zero_atol::Real, 
         channel::RemoteChannel)
 
 Implementation of [`Fix1AxisMethod`](@ref).
@@ -133,6 +134,7 @@ function bivariate_confidenceprofile_fix1axis(bivariate_optimiser::Function,
                                                 ind2::Int,
                                                 mle_targetll::Float64,
                                                 save_internal_points::Bool, 
+                                                find_zero_atol::Real, 
                                                 channel::RemoteChannel)
 
     newLb, newUb, initGuess, θranges, ωranges = init_nuisance_parameters(model, ind1, ind2)
@@ -164,7 +166,7 @@ function bivariate_confidenceprofile_fix1axis(bivariate_optimiser::Function,
 
             p.ψ_x[1] = x_vec[k]
 
-            ψ_y1 = find_zero(bivariate_optimiser, (y_vec[1,k], y_vec[2,k]), Roots.Brent(); p=p)
+            ψ_y1 = find_zero(bivariate_optimiser, (y_vec[1,k], y_vec[2,k]), Roots.Brent(); atol=find_zero_atol, p=p)
 
             boundary[i, count] = x_vec[k]
             boundary[j, count] = ψ_y1

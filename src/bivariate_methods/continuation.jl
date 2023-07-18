@@ -35,6 +35,7 @@ end
         target_confidence_ll::Float64, 
         search_directions::Matrix{Float64},
         start_level_set_2D::Matrix{Float64}, 
+        find_zero_atol::Real,
         channel::RemoteChannel;
         start_level_set_all::Matrix{Float64}=zeros(0,0),
         level_set_not_smoothed::Bool=true,
@@ -54,6 +55,7 @@ function continuation_line_search!(p::NamedTuple,
                                     target_confidence_ll::Float64, 
                                     search_directions::Matrix{Float64},
                                     start_level_set_2D::Matrix{Float64}, 
+                                    find_zero_atol::Real,
                                     channel::RemoteChannel;
                                     start_level_set_all::Matrix{Float64}=zeros(0,0),
                                     level_set_not_smoothed::Bool=true,
@@ -140,13 +142,13 @@ function continuation_line_search!(p::NamedTuple,
         g = bivariate_optimiser(0.0, p) 
         if biv_opt_is_ellipse_analytical || g < 0
             
-            ψ = solve(ZeroProblem(bivariate_optimiser, v_bar_norm), Roots.Order8(); p=p)
+            ψ = solve(ZeroProblem(bivariate_optimiser, v_bar_norm), Roots.Order8(); atol=find_zero_atol, p=p)
 
             # in event Roots.Order8 fails to converge, switch to bracketing method
             if isnan(ψ) || isinf(ψ) || ψ < 0.0
                 lb = isinf(g) ? 1e-8 * v_bar_norm : 0.0
                 # value of v_bar_norm that satisfies the equation boundpoint = p.pointa + ψ*p.uhat
-                ψ = find_zero(bivariate_optimiser, (lb, v_bar_norm), Roots.Brent(); p=p)
+                ψ = find_zero(bivariate_optimiser, (lb, v_bar_norm), Roots.Brent(); atol=find_zero_atol, p=p)
             end
 
             boundarypoint .= p.pointa + ψ*p.uhat
@@ -208,6 +210,7 @@ end
         search_directions::Matrix{Float64},
         start_level_set_2D::Matrix{Float64},
         is_a_zero::BitVector,
+        find_zero_atol::Real,
         channel::RemoteChannel)
 
 Implementation of the inwards radial search for an initial level set at `target_confidence_ll` given an initial ellipse solution for [`ContinuationMethod`](@ref). The `search_directions` for each point is a vector between the maximum likelihood estimate point in interest parameter space and the ellipse solution.
@@ -222,6 +225,7 @@ function continuation_inwards_radial_search!(p::NamedTuple,
                                                 search_directions::Matrix{Float64},
                                                 start_level_set_2D::Matrix{Float64},
                                                 is_a_zero::BitVector,
+                                                find_zero_atol::Real,
                                                 channel::RemoteChannel)
 
     mle_point = model.core.θmle[[ind1, ind2]]
@@ -244,7 +248,7 @@ function continuation_inwards_radial_search!(p::NamedTuple,
         if is_a_zero[i]
             ψ = v_bar_norm # to extract nuisance parameter values
         else
-            ψ = find_zero(bivariate_optimiser, (0.0, v_bar_norm), Roots.Brent(); p=p)
+            ψ = find_zero(bivariate_optimiser, (0.0, v_bar_norm), Roots.Brent(); atol=find_zero_atol, p=p)
         end
 
         boundarypoint .= p.pointa + ψ*p.uhat
@@ -280,6 +284,7 @@ end
         ellipse_confidence_level::Float64,
         target_confidence_ll::Float64,
         ellipse_start_point_shift::Float64, 
+        find_zero_atol::Real,
         channel::RemoteChannel)
 
 
@@ -304,6 +309,7 @@ function initial_continuation_solution!(p::NamedTuple,
                                         ellipse_confidence_level::Float64,
                                         target_confidence_ll::Float64,
                                         ellipse_start_point_shift::Float64, 
+                                        find_zero_atol::Real,
                                         channel::RemoteChannel)
     
     check_ellipse_approx_exists!(model)
@@ -362,6 +368,7 @@ function initial_continuation_solution!(p::NamedTuple,
                                             model, 
                                             num_points, ind1, ind2,
                                             corrected_ll, search_directions, ellipse_points,
+                                            find_zero_atol, 
                                             channel,
                                             is_a_zero=is_a_zero
                                             )
@@ -374,7 +381,7 @@ function initial_continuation_solution!(p::NamedTuple,
         a, b = continuation_inwards_radial_search!(p, bivariate_optimiser, model, 
                                                     num_points, ind1, ind2,
                                                     corrected_ll, search_directions, ellipse_points,
-                                                    is_a_zero, channel)
+                                                    is_a_zero, find_zero_atol, channel)
         return a, b, search_directions, target_confidence_ll, point_is_on_bounds
     end
 
@@ -386,7 +393,7 @@ function initial_continuation_solution!(p::NamedTuple,
     a, b = continuation_inwards_radial_search!(p, bivariate_optimiser, model, 
                                                 num_points, ind1, ind2, 
                                                 corrected_ll, search_directions, ellipse_points, 
-                                                is_a_zero, channel)
+                                                is_a_zero, find_zero_atol, channel)
     return a, b, search_directions, max_ll, point_is_on_bounds
 end
 
@@ -405,8 +412,8 @@ end
         level_set_spacing::Symbol,
         mle_targetll::Float64,
         save_internal_points::Bool,
-        channel::RemoteChannel
-        )
+        find_zero_atol::Real, 
+        channel::RemoteChannel)
 
 Implementation of [`ContinuationMethod`](@ref).
 """
@@ -424,8 +431,8 @@ function bivariate_confidenceprofile_continuation(bivariate_optimiser::Function,
                                                     level_set_spacing::Symbol,
                                                     mle_targetll::Float64,
                                                     save_internal_points::Bool,
-                                                    channel::RemoteChannel
-                                                    )
+                                                    find_zero_atol::Real, 
+                                                    channel::RemoteChannel)
 
     newLb, newUb, initGuess, θranges, ωranges = init_nuisance_parameters(model, ind1, ind2)
     
@@ -453,7 +460,8 @@ function bivariate_confidenceprofile_continuation(bivariate_optimiser::Function,
         initial_continuation_solution!(p, bivariate_optimiser, 
                                         model, num_points, ind1, ind2, profile_type,
                                         ellipse_confidence_level, initial_target_ll, 
-                                        ellipse_start_point_shift, channel)
+                                        ellipse_start_point_shift, 
+                                        find_zero_atol, channel)
 
     if initial_ll == initial_target_ll
         return current_level_set_all
@@ -497,7 +505,7 @@ function bivariate_confidenceprofile_continuation(bivariate_optimiser::Function,
             continuation_line_search!(p, point_is_on_bounds, 
                                         bivariate_optimiser, 
                                         model, num_points, ind1, ind2, level_set_ll, search_directions,
-                                        current_level_set_2D, channel,
+                                        current_level_set_2D, find_zero_atol, channel,
                                         start_level_set_all=current_level_set_all,
                                         level_set_not_smoothed=level_set_not_smoothed)
 

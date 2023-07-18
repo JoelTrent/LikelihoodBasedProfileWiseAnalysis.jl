@@ -130,6 +130,7 @@ end
         method::AbstractBivariateMethod,
         mle_targetll::Float64,
         save_internal_points::Bool,
+        find_zero_atol::Real,
         channel::RemoteChannel)
 
 Returns a [`BivariateConfidenceStruct`](@ref) containing the `num_points` boundary points and internal points (if `save_internal_points=true`) for the specified combination of parameters `ind1` and `ind2`, and `profile_type` at `confidence_level` using `method`. Calls the desired `method`. Called by [`bivariate_confidenceprofiles!`](@ref).
@@ -145,6 +146,7 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
                                         method::AbstractBivariateMethod,
                                         mle_targetll::Float64,
                                         save_internal_points::Bool,
+                                        find_zero_atol::Real,
                                         channel::RemoteChannel)
 
     try 
@@ -173,13 +175,15 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
                 boundary, internal = bivariate_confidenceprofile_fix1axis(
                                         bivariate_optimiser, model, 
                                         num_points, consistent, ind1, ind2,
-                                        mle_targetll, save_internal_points, channel)
+                                        mle_targetll, save_internal_points,
+                                        find_zero_atol, channel)
                 
             elseif method isa SimultaneousMethod
                 boundary, internal = bivariate_confidenceprofile_vectorsearch(
                                         bivariate_optimiser, model, 
                                         num_points, consistent, ind1, ind2,
-                                        mle_targetll, save_internal_points, channel,
+                                        mle_targetll, save_internal_points, 
+                                        find_zero_atol, channel,
                                         min_proportion_unique=method.min_proportion_unique,
                                         use_MLE_point=method.use_MLE_point)
 
@@ -187,7 +191,8 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
                 boundary, internal = bivariate_confidenceprofile_vectorsearch(
                                         bivariate_optimiser, model, 
                                         num_points, consistent, ind1, ind2,
-                                        mle_targetll, save_internal_points, channel,
+                                        mle_targetll, save_internal_points, 
+                                        find_zero_atol, channel,
                                         num_radial_directions=method.num_radial_directions,
                                         use_MLE_point=method.use_MLE_point)
 
@@ -195,7 +200,8 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
                 boundary, internal = bivariate_confidenceprofile_vectorsearch(
                                         bivariate_optimiser, model, 
                                         num_points, consistent, ind1, ind2,
-                                        mle_targetll, save_internal_points, channel,
+                                        mle_targetll, save_internal_points, 
+                                        find_zero_atol, channel,
                                         ellipse_confidence_level=0.1,
                                         ellipse_start_point_shift=method.ellipse_start_point_shift,
                                         ellipse_sqrt_distortion=method.ellipse_sqrt_distortion)
@@ -209,7 +215,8 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
                                         method.ellipse_start_point_shift,
                                         method.num_level_sets,
                                         method.level_set_spacing,
-                                        mle_targetll, save_internal_points, channel)
+                                        mle_targetll, save_internal_points,
+                                        find_zero_atol, channel)
             
             elseif method isa IterativeBoundaryMethod
                 boundary, internal = bivariate_confidenceprofile_iterativeboundary(
@@ -218,7 +225,8 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
                                         method.initial_num_points, method.angle_points_per_iter,
                                         method.edge_points_per_iter, method.radial_start_point_shift,
                                         method.ellipse_sqrt_distortion, method.use_ellipse,
-                                        mle_targetll, save_internal_points, channel)
+                                        mle_targetll, save_internal_points,
+                                        find_zero_atol, channel)
             end
 
             return BivariateConfidenceStruct(boundary, internal)
@@ -266,6 +274,7 @@ Finds `num_points` `profile_type` boundary points at a specified `confidence_lev
 - `method`: a method of type [`AbstractBivariateMethod`](@ref). For a list of available methods use `bivariate_methods()` ([`bivariate_methods`](@ref)). Default is `RadialRandomMethod(3)` ([`RadialRandomMethod`](@ref)).
 - `save_internal_points`: boolean variable specifying whether to save points found inside the boundary during boundary computation. Internal points can be plotted in bivariate profile plots and will be used to generate predictions from a given bivariate profile. Default is `true`.
 - `existing_profiles`: `Symbol ∈ [:ignore, :merge, :overwrite]` specifying what to do if profiles already exist for a given `θcombination`, `confidence_level`, `profile_type` and `method`. See below for each symbol's meanings. Default is `:merge`.
+- `find_zero_atol`: a `Real` number greater than zero for the absolute tolerance of the log-likelihood function value from the target value to be used when searching for confidence intervals. Default is `model.find_zero_atol`.
 - `show_progress`: boolean variable specifying whether to display progress bars on the percentage of `θcombinations` completed and estimated time of completion. Default is `model.show_progress`.
 - `use_distributed`: boolean variable specifying whether to use a normal for loop or a `@distributed` for loop across combinations of interest parameters. The variable makes no difference if [Distributed.jl](https://docs.julialang.org/en/v1/stdlib/Distributed/) is not being used - setting it to `false` is intended for use when simulating parameter confidence boundary coverage (see [`check_bivariate_parameter_coverage`](@ref)). 
 
@@ -277,6 +286,10 @@ Finds `num_points` `profile_type` boundary points at a specified `confidence_lev
 # Details
 
 Using [`PlaceholderLikelihood.bivariate_confidenceprofile`](@ref) this function calls the algorithm/method specified by `method` for each interest parameter combination in `θcombinations` (depending on the setting for `existing_profiles` and `num_points` if these profiles already exist). Nuisance parameters of each point in bivariate interest parameter space are found by maximising the log-likelihood function given by `profile_type`. Updates `model.biv_profiles_df` for each successful profile and saves their results as a [`BivariateConfidenceStruct`](@ref) in `model.biv_profiles_dict`, where the keys for the dictionary is the row number in `model.biv_profiles_df` of the corresponding profile. `model.biv_profiles_df.num_points` is the number of points found on the bivariate boundary (it does not include the number of saved internal points).
+
+## Valid bounds
+
+For methods that use points placed on parameter bounds to bracket for the confidence boundary, the bracketing method utilised via Roots.jl's [`find_zero`](https://juliamath.github.io/Roots.jl/stable/reference/#Roots.find_zero) will be unlikely to converge to the true confidence boundary for a given pair of interest parameters if the bounds on either parameter are +/- Inf or the log-likelihood function evaluates to +/- Inf. Bounds should be set to prevent this from occurring.
 
 ## Preventing predictions from being forgotten when merging or overwriting profiles
 
@@ -298,6 +311,7 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
                                         method::AbstractBivariateMethod=RadialRandomMethod(3),
                                         save_internal_points::Bool=true,
                                         existing_profiles::Symbol=:merge,
+                                        find_zero_atol::Real=model.find_zero_atol,
                                         show_progress::Bool=model.show_progress,
                                         use_distributed::Bool=true)
                                     
@@ -306,6 +320,7 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
 
         method isa CombinedBivariateMethod && throw(ArgumentError("CombinedBivariateMethod is not a valid method"))
         model.core isa CoreLikelihoodModel || throw(ArgumentError("model does not contain a log-likelihood function. Add it using add_loglikelihood_function!"))
+        find_zero_atol ≥ 0.0 || throw(DomainError("find_zero_atol must be greater than or equal to zero"))
         
         # for each combination, enforce ind1 < ind2 and make sure only unique combinations are run
         sort!.(θcombinations); unique!.(θcombinations)
@@ -408,7 +423,8 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
                                                     confidence_level, consistent, 
                                                     θcombinations[i][1], θcombinations[i][2], profile_type,
                                                     method, mle_targetll,
-                                                    save_internal_points, channel))]
+                                                    save_internal_points,
+                                                    find_zero_atol, channel))]
                 end
                 put!(channel, false)
 
@@ -442,7 +458,8 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
                                         confidence_level, consistent,
                                         θcombinations[i][1], θcombinations[i][2], profile_type,
                                         method, mle_targetll,
-                                        save_internal_points, channel)
+                                        save_internal_points, 
+                                        find_zero_atol, channel)
     
                     if isnothing(boundary_struct); continue end
 
@@ -487,6 +504,7 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
                                         method::AbstractBivariateMethod=RadialRandomMethod(3),
                                         save_internal_points::Bool=true,
                                         existing_profiles::Symbol=:merge,
+                                        find_zero_atol::Real=model.find_zero_atol,
                                         show_progress::Bool=model.show_progress,
                                         use_distributed::Bool=true)
 
@@ -497,6 +515,7 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
             method=method,
             save_internal_points=save_internal_points,
             existing_profiles=existing_profiles,
+            find_zero_atol=find_zero_atol,
             show_progress=show_progress,
             use_distributed=use_distributed)
     return nothing
@@ -518,6 +537,7 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
                                         method::AbstractBivariateMethod=RadialRandomMethod(3),
                                         save_internal_points::Bool=true,
                                         existing_profiles::Symbol=:merge,
+                                        find_zero_atol::Real=model.find_zero_atol,
                                         show_progress::Bool=model.show_progress,
                                         use_distributed::Bool=true)
 
@@ -532,6 +552,7 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
             method=method,
             save_internal_points=save_internal_points,
             existing_profiles=existing_profiles,
+            find_zero_atol=find_zero_atol,
             show_progress=show_progress,
             use_distributed=use_distributed)
     return nothing
@@ -551,6 +572,7 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
                                         method::AbstractBivariateMethod=RadialRandomMethod(3),
                                         save_internal_points::Bool=true,
                                         existing_profiles::Symbol=:merge,
+                                        find_zero_atol::Real=model.find_zero_atol,
                                         show_progress::Bool=model.show_progress,
                                         use_distributed::Bool=true)
 
@@ -561,6 +583,7 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
             method=method,
             save_internal_points=save_internal_points,
             existing_profiles=existing_profiles,
+            find_zero_atol=find_zero_atol,
             show_progress=show_progress,
             use_distributed=use_distributed)
     return nothing

@@ -19,7 +19,8 @@ function optimise(fun, θ₀, lb, ub;
     opt.max_objective = tomax
     opt.lower_bounds = lb       # Lower bound
     opt.upper_bounds = ub       # Upper bound
-    opt.local_optimizer = Opt(:LN_NELDERMEAD, length(θ₀))
+    # opt.local_optimizer = Opt(:LN_NELDERMEAD, length(θ₀))
+    opt.xtol_rel=1e-6
     # opt.maxeval=4000
     opt.maxtime=15
     res = optimize(opt, θ₀)

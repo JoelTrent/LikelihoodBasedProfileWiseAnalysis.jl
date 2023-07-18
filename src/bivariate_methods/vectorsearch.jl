@@ -354,6 +354,7 @@ end
         ind2::Int,
         mle_targetll::Float64,
         save_internal_points::Bool,
+        find_zero_atol::Real, 
         channel::RemoteChannel;
         num_radial_directions::Int=0,
         min_proportion_unique::Real=1.0,
@@ -372,6 +373,7 @@ function bivariate_confidenceprofile_vectorsearch(bivariate_optimiser::Function,
                                                     ind2::Int,
                                                     mle_targetll::Float64,
                                                     save_internal_points::Bool,
+                                                    find_zero_atol::Real, 
                                                     channel::RemoteChannel;
                                                     num_radial_directions::Int=0,
                                                     min_proportion_unique::Real=1.0,
@@ -429,7 +431,7 @@ function bivariate_confidenceprofile_vectorsearch(bivariate_optimiser::Function,
             v_bar_norm = norm(v_bar, 2)
             p.uhat .= v_bar ./ v_bar_norm
 
-            ψ = find_zero(bivariate_optimiser, (0.0, v_bar_norm), Roots.Brent(); p=p)
+            ψ = find_zero(bivariate_optimiser, (0.0, v_bar_norm), Roots.Brent(); atol=find_zero_atol, p=p)
             
             boundary[[ind1, ind2], i] .= p.pointa + ψ*p.uhat
             if !biv_opt_is_ellipse_analytical; bivariate_optimiser(ψ, p) end

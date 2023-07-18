@@ -129,7 +129,9 @@ end
         mle_targetll::Float64,
         use_existing_profiles::Bool,
         num_points_in_interval::Int,
-        additional_width::Real)
+        additional_width::Real,
+        find_zero_atol::Real,
+        channel::RemoteChannel)
 
 Returns a [`UnivariateConfidenceStruct`](@ref) containing the likelihood-based confidence interval for interest parameter `θi` at `confidence_level`, and any additional points within the interval if `num_points_in_interval > 0` as well as outside the interval if `num_points_in_interval > 0` and `additional_width > 0`. Log-likelihood values, standardised to 0.0 at the MLE point, for all points found in the interval are also stored in the [`UnivariateConfidenceStruct`](@ref).
 
@@ -147,6 +149,7 @@ function univariate_confidenceinterval(univariate_optimiser::Function,
                                         use_existing_profiles::Bool,
                                         num_points_in_interval::Int,
                                         additional_width::Real,
+                                        find_zero_atol::Real,
                                         channel::RemoteChannel)
 
     try
@@ -213,7 +216,7 @@ function univariate_confidenceinterval(univariate_optimiser::Function,
                     # make bracket a tiny bit smaller
                     if isinf(g); bracket_l[1] = bracket_l[1] + 1e-8 * diff(bracket_l)[1] end
 
-                    interval[1] = find_zero(univariate_optimiser, bracket_l, Roots.Brent(), p=p) 
+                    interval[1] = find_zero(univariate_optimiser, bracket_l, Roots.Brent(), atol=find_zero_atol, p=p) 
                     interval_points[θi,1] = interval[1]
                     univariate_optimiser(interval[1], p)
                     variablemapping!(@view(interval_points[:,1]), p.ω_opt, θranges, ωranges)
@@ -228,7 +231,7 @@ function univariate_confidenceinterval(univariate_optimiser::Function,
                     # make bracket a tiny bit smaller
                     if isinf(g); bracket_r[2] = bracket_r[2] - 1e-8 * diff(bracket_r)[1] end
 
-                    interval[2] = find_zero(univariate_optimiser, bracket_r, Roots.Brent(), p=p)
+                    interval[2] = find_zero(univariate_optimiser, bracket_r, Roots.Brent(), atol=find_zero_atol, p=p)
                     interval_points[θi,2] = interval[2]
                     univariate_optimiser(interval[2], p)
                     variablemapping!(@view(interval_points[:,2]), p.ω_opt, θranges, ωranges)
@@ -293,6 +296,7 @@ Computes likelihood-based confidence interval profiles for the provided `θs_to_
 - `num_points_in_interval`: an integer number of points to optionally evaluate within the confidence interval for each interest parameter using [`get_points_in_intervals!`](@ref). Points are linearly spaced in the interval and have their optimised log-likelihood value recorded. Useful for plots that visualise the confidence interval or for predictions from univariate profiles. Default is 0. 
 - `additional_width`: a `Real` number greater than or equal to zero. Specifies the additional width to optionally evaluate outside the confidence interval's width if `num_points_in_interval` is greater than 0 using [`get_points_in_intervals!`](@ref). Half of this additional width will be placed on either side of the confidence interval. If the additional width goes outside a bound on the parameter, only up to the bound will be considered. The spacing of points in the additional width will try to match the spacing of points evaluated inside the interval. Useful for plots that visualise the confidence interval as it shows the trend of the log-likelihood profile outside the interval range. Default is `0.0`.
 - `existing_profiles`: `Symbol ∈ [:ignore, :overwrite]` specifying what to do if profiles already exist for a given interest parameter, `confidence_level` and `profile_type`. See below for each symbol's meanings. Default is `:merge`.
+- `find_zero_atol`: a `Real` number greater than zero for the absolute tolerance of the log-likelihood function value from the target value to be used when searching for confidence intervals. Default is `model.find_zero_atol`.
 - `show_progress`: boolean variable specifying whether to display progress bars on the percentage of `θs_to_profile` completed and estimated time of completion. Default is `model.show_progress`.
 - `use_distributed`: boolean variable specifying whether to use a normal for loop or a `@distributed` for loop across combinations of interest parameters. The variable makes no difference if [Distributed.jl](https://docs.julialang.org/en/v1/stdlib/Distributed/) is not being used - setting it to `false` is intended for use when simulating parameter confidence interval coverage (see [`check_univariate_parameter_coverage`](@ref)). 
 
@@ -303,6 +307,10 @@ Computes likelihood-based confidence interval profiles for the provided `θs_to_
 # Details
 
 By calling [`PlaceholderLikelihood.univariate_confidenceinterval`](@ref) this function finds each side of the confidence interval using a bracketing method for interest parameters in `θs_to_profile` (depending on the setting for `existing_profiles` if these profiles already exist). Nuisance parameters of each point in univariate interest parameter space are found by maximising the log-likelihood function given by `profile_type`. Updates `model.uni_profiles_df` for each successful profile and saves their results as a [`UnivariateConfidenceStruct`](@ref) in `model.uni_profiles_dict`, where the keys for the dictionary is the row number in `model.uni_profiles_df` of the corresponding profile. `model.uni_profiles_df.num_points` is the number of points currently saved within the confidence interval inclusive.
+
+## Valid bounds
+
+The bracketing method utilised via Roots.jl's [`find_zero`](https://juliamath.github.io/Roots.jl/stable/reference/#Roots.find_zero) will be unlikely to converge to the true confidence interval for a given parameter if the bounds on that parameter are +/- Inf or the log-likelihood function evaluates to +/- Inf. Bounds should be set to prevent this from occurring.
 
 ## Distributed Computing Implementation
 
@@ -320,6 +328,7 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
                                         num_points_in_interval::Int=0,
                                         additional_width::Real=0.0,
                                         existing_profiles::Symbol=:ignore,
+                                        find_zero_atol::Real=model.find_zero_atol,
                                         show_progress::Bool=model.show_progress,
                                         use_distributed::Bool=true)
     
@@ -328,6 +337,7 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
         additional_width >= 0 || throw(DomainError("additional_width must be greater than or equal to zero"))
         existing_profiles ∈ [:ignore, :overwrite] || throw(ArgumentError("existing_profiles can only take value :ignore or :overwrite"))
         model.core isa CoreLikelihoodModel || throw(ArgumentError("model does not contain a log-likelihood function. Add it using add_loglikelihood_function!"))
+        find_zero_atol ≥ 0.0 || throw(DomainError("find_zero_atol must be greater than or equal to zero"))
 
         (sort(θs_to_profile); unique!(θs_to_profile))
         1 ≤ θs_to_profile[1] && θs_to_profile[end] ≤ model.core.num_pars || throw(DomainError("θs_to_profile can only contain parameter indexes between 1 and the number of model parameters"))
@@ -394,7 +404,8 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
                                                         mle_targetll,
                                                         use_existing_profiles,
                                                         num_points_in_interval,
-                                                        additional_width, channel))]
+                                                        additional_width, find_zero_atol,
+                                                        channel))]
                 end
 
                 for (i, (θi, interval_struct)) in enumerate(profiles_to_add)
@@ -422,7 +433,8 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
                                                                     mle_targetll,
                                                                     use_existing_profiles,
                                                                     num_points_in_interval,
-                                                                    additional_width, channel)
+                                                                    additional_width, find_zero_atol,
+                                                                    channel)
 
                     if isnothing(interval_struct); continue end
 
@@ -462,6 +474,7 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
                                         num_points_in_interval::Int=0,
                                         additional_width::Real=0.0,
                                         existing_profiles::Symbol=:ignore,
+                                        find_zero_atol::Real=model.find_zero_atol,
                                         show_progress::Bool=model.show_progress,
                                         use_distributed::Bool=true)
 
@@ -472,6 +485,7 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
                                 num_points_in_interval=num_points_in_interval,
                                 additional_width=additional_width,
                                 existing_profiles=existing_profiles,
+                                find_zero_atol=find_zero_atol,
                                 show_progress=show_progress,
                                 use_distributed=use_distributed)
     return nothing
@@ -492,6 +506,7 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
                                         num_points_in_interval::Int=0,
                                         additional_width::Real=0.0,
                                         existing_profiles::Symbol=:ignore,
+                                        find_zero_atol::Real=model.find_zero_atol,
                                         show_progress::Bool=model.show_progress,
                                         use_distributed::Bool=true)
 
@@ -506,6 +521,7 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
                                 num_points_in_interval=num_points_in_interval,
                                 additional_width=additional_width,
                                 existing_profiles=existing_profiles,
+                                find_zero_atol=find_zero_atol,
                                 show_progress=show_progress,
                                 use_distributed=use_distributed)
     return nothing

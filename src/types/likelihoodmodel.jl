@@ -136,6 +136,7 @@ Mutable struct containing all the information required to compute profiles, samp
 - `uni_predictions_dict`: a dictionary with keys of type Integer and values of type [`PredictionStruct`](@ref) containing the predictions from the profiles in `uni_profiles_dict` for each valid row in `uni_profiles_df`. The row index of `uni_profiles_df` is the key for the corresponding prediction, if that prediction has been calculated using [`generate_predictions_univariate!`](@ref). 
 - `biv_predictions_dict`: a dictionary with keys of type Integer and values of type [`PredictionStruct`](@ref) containing the predictions from the profiles in `biv_profiles_dict` for each valid row in `biv_profiles_df`. The row index of `biv_profiles_df` is the key for the corresponding prediction, if that prediction has been calculated using [`generate_predictions_bivariate!`](@ref). 
 - `dim_predictions_dict`: a dictionary with keys of type Integer and values of type [`PredictionStruct`](@ref) containing the predictions from the profiles in `dim_samples_dict` for each valid row in `dim_samples_df`. The row index of `dim_samples_df` is the key for the corresponding prediction, if that prediction has been calculated using [`generate_predictions_dim_samples!`](@ref). 
+- `find_zero_atol`: a `Real` number greater than zero for the absolute tolerance of the log-likelihood function value from the target value to be used when searching for confidence intervals/boundaries.
 - `show_progress`: a boolean specifying whether to show the progress of profile methods with respect to sets of interest parameter(s).
 
 # Supertype Hiearachy
@@ -167,5 +168,6 @@ mutable struct LikelihoodModel
     dim_predictions_dict::Dict{Int, AbstractPredictionStruct}
 
     # misc arguments
+    find_zero_atol::Real
     show_progress::Bool
 end

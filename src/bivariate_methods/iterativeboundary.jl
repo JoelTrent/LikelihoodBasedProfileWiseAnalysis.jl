@@ -124,6 +124,7 @@ end
         ellipse_sqrt_distortion::Float64,
         use_ellipse::Bool,
         save_internal_points::Bool,
+        find_zero_atol::Real,
         channel::RemoteChannel)
 
 Finds the initial boundary of [`IterativeBoundaryMethod`](@ref), containing `initial_num_points`, returning it and initialised parameter values. 
@@ -142,6 +143,7 @@ function iterativeboundary_init(bivariate_optimiser::Function,
                                 ellipse_sqrt_distortion::Float64,
                                 use_ellipse::Bool,
                                 save_internal_points::Bool,
+                                find_zero_atol::Real, 
                                 channel::RemoteChannel)
 
     boundary = zeros(2, num_points)
@@ -182,7 +184,7 @@ function iterativeboundary_init(bivariate_optimiser::Function,
             v_bar_norm = norm(v_bar, 2)
             p.uhat .= v_bar ./ v_bar_norm
 
-            ψ = find_zero(bivariate_optimiser, (0.0, v_bar_norm), Roots.Brent(); p=p)
+            ψ = find_zero(bivariate_optimiser, (0.0, v_bar_norm), Roots.Brent(); atol=find_zero_atol, p=p)
             
             boundary[:,i] .= p.pointa + ψ*p.uhat
             boundary_all[[ind1, ind2], i] .= boundary[:,i]
@@ -289,7 +291,8 @@ function newboundarypoint!(p::NamedTuple,
                             ve2::Int,
                             relative_magnitude::Float64,
                             bound_warning::Bool,
-                            save_internal_points::Bool)
+                            save_internal_points::Bool,
+                            find_zero_atol::Real)
 
     failure = false
 
@@ -337,7 +340,7 @@ function newboundarypoint!(p::NamedTuple,
                 
                 lb = isinf(g) ? 1e-12 * v_bar_norm : 0.0
 
-                ψ = find_zero(bivariate_optimiser, (lb, v_bar_norm), Roots.Brent(); p=p)
+                ψ = find_zero(bivariate_optimiser, (lb, v_bar_norm), Roots.Brent(); atol=find_zero_atol, p=p)
 
                 boundarypoint = p.pointa + ψ*p.uhat
                 boundary[:, num_vertices] .= boundarypoint
@@ -386,14 +389,14 @@ function newboundarypoint!(p::NamedTuple,
             v_bar_norm = norm(v_bar, 2)
             p.uhat .= v_bar ./ v_bar_norm
 
-            ψ = solve(ZeroProblem(bivariate_optimiser, v_bar_norm), Roots.Order8(); p=p)
+            ψ = solve(ZeroProblem(bivariate_optimiser, v_bar_norm), Roots.Order8(); atol=find_zero_atol, p=p)
 
             boundarypoint = p.pointa + ψ*p.uhat
 
             if isnan(ψ) || isinf(ψ) || isapprox(boundarypoint, p.pointa)
                 # failure=true
                 f(x) = bivariate_optimiser(x, p)
-                ψs = find_zeros(f, 0.0, v_bar_norm; p=p)
+                ψs = find_zeros(f, 0.0, v_bar_norm; atol=find_zero_atol, p=p)
                 if length(ψs) == 0
                     failure=true
                 elseif length(ψs) == 1
@@ -645,6 +648,7 @@ end
         use_ellipse::Bool,
         mle_targetll::Float64,
         save_internal_points::Bool,
+        find_zero_atol::Real, 
         channel::RemoteChannel)
 
 Implementation of [`IterativeBoundaryMethod`](@ref).
@@ -663,6 +667,7 @@ function bivariate_confidenceprofile_iterativeboundary(bivariate_optimiser::Func
                                                 use_ellipse::Bool,
                                                 mle_targetll::Float64,
                                                 save_internal_points::Bool,
+                                                find_zero_atol::Real, 
                                                 channel::RemoteChannel)
 
     num_points ≥ initial_num_points || throw(ArgumentError("num_points must be greater than or equal to initial_num_points"))
@@ -683,7 +688,7 @@ function bivariate_confidenceprofile_iterativeboundary(bivariate_optimiser::Func
     return_tuple = iterativeboundary_init(bivariate_optimiser, model, num_points, p, ind1, ind2,
                                             initial_num_points, biv_opt_is_ellipse_analytical,
                                             radial_start_point_shift, ellipse_sqrt_distortion,
-                                            use_ellipse, save_internal_points, channel)
+                                            use_ellipse, save_internal_points, find_zero_atol, channel)
 
     if return_tuple[1]
         return return_tuple[2], return_tuple[3]
@@ -716,7 +721,8 @@ function bivariate_confidenceprofile_iterativeboundary(bivariate_optimiser::Func
                                                                     biv_opt_is_ellipse_analytical, 
                                                                     ve1, ve2, relative_magnitude,
                                                                     bound_warning,
-                                                                    save_internal_points)
+                                                                    save_internal_points,
+                                                                    find_zero_atol)
 
             if failure # appears we have found two distinct level sets - break the edges and join to form two separate polygons
                 num_vertices -= 1
@@ -752,7 +758,8 @@ function bivariate_confidenceprofile_iterativeboundary(bivariate_optimiser::Func
                                                                     biv_opt_is_ellipse_analytical, 
                                                                     vi, adj_vertex, relative_magnitude,
                                                                     bound_warning,
-                                                                    save_internal_points)
+                                                                    save_internal_points,
+                                                                    find_zero_atol)
             
             if failure # appears we have found two distinct level sets - break the edges and join to form two separate polygons
                 ve1 = vi
