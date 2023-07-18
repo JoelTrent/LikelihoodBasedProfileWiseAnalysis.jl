@@ -40,7 +40,7 @@ using EllipseSampling
             bivariate_confidenceprofiles!(m, N, method=RadialMLEMethod(0.0, 1.0), profile_type=EllipseApproxAnalytical())
             bivariate_confidenceprofiles!(m, N, method=AnalyticalEllipseMethod(0.0, 1.0), profile_type=EllipseApproxAnalytical())
     
-            for i in 1:3
+            for i in 1:4
                @test isapprox(m.biv_profiles_dict[i].confidence_boundary, expected_points, atol=1e-14)
             end
         end
@@ -49,7 +49,6 @@ using EllipseSampling
             m1 = initialiseLikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes, show_progress=false)
 
             N=20
-
             univariate_confidenceintervals!(m1, [1], num_points_in_interval=N, additional_width=0.2)
 
             m2 = initialiseLikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes)

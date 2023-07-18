@@ -97,7 +97,7 @@ function check_bivariate_parameter_coverage(data_generator::Function,
         extrema(length.(θcombinations)) == (2, 2) || throw(ArgumentError("θcombinations must only contain vectors of length 2"))
         return nothing
     end
-    
+    local combine_methods::Bool
     argument_handling!()
 
     len_θs = length(θcombinations)

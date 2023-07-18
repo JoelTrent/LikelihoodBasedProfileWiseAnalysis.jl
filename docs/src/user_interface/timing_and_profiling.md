@@ -11,7 +11,7 @@ The macro will only work correctly if distributed computing via [`Distributed.jl
 
 The exact timings extracted using this macro may not be quite true if function evaluation is very fast due to it's overhead. However, it's main value is in recording the number of function evaluations that are made. 
 
-```
+```julia
 using PlaceholderLikelihood
 
 # model definition ...
