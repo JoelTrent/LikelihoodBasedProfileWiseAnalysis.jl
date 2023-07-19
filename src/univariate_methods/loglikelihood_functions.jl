@@ -34,7 +34,9 @@ function univariateψ(ψ::Real, p::NamedTuple)
     function fun(ω, q)
         θs=zeros(eltype(ω), q.consistent.num_pars)
         θs[q.ind] = ψ
-        variablemapping!(θs, ω, q.θranges, q.ωranges)
+        θs[q.θranges[1]] .= ω[q.ωranges[1]]
+        θs[q.θranges[2]] .= ω[q.ωranges[2]]
+        # variablemapping!(θs, ω, q.θranges, q.ωranges)
         @timeit_debug timer "Likelihood evaluation" begin
             return -q.consistent.loglikefunction(θs, q.consistent.data)
         end
