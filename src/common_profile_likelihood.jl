@@ -119,7 +119,7 @@ function get_consistent_tuple(model::LikelihoodModel,
 
     if profile_type isa LogLikelihood 
         return (targetll=targetll, num_pars=model.core.num_pars,
-                 loglikefunction=model.core.loglikefunction, data=model.core.data)
+                loglikefunction=model.core.loglikefunction, data=model.core.data)
     elseif profile_type isa AbstractEllipseProfileType
         return (targetll=targetll, num_pars=model.core.num_pars, 
                 loglikefunction=ellipse_loglike, 

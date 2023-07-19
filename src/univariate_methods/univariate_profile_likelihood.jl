@@ -161,6 +161,7 @@ function univariate_confidenceinterval(univariate_optimiser::Function,
 
             p=(ind=θi, newLb=newLb, newUb=newUb, initGuess=initGuess, 
                 θranges=θranges, ωranges=ωranges, consistent=consistent, 
+                options=model.core.optimizationsettings,
                 ω_opt=zeros(model.core.num_pars-1))
 
             if use_existing_profiles

@@ -412,7 +412,6 @@ using EllipseSampling
             @test_throws ArgumentError check_bivariate_boundary_coverage(data_gen, data, m, 10, 3, [10, 10], [1.0, 2.0], [[1, 2]], sample_type=LatinHypercubeSamples())
             @test_throws ArgumentError check_bivariate_boundary_coverage(data_gen, data, m, 10, 3, [10], [1.0, 2.0], [[1, 2]], sample_type=UniformGridSamples())
 
-            
             PlaceholderLikelihood.TimerOutputs.enable_debug_timings(PlaceholderLikelihood)
             @test_throws ArgumentError dimensional_likelihood_samples!(m, 1, 10; use_threads=true)
             @test_throws ArgumentError full_likelihood_sample!(m, 10; use_distributed=false, use_threads=true)

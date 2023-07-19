@@ -30,17 +30,18 @@ end
 Given a log-likelihood function (`p.consistent.loglikefunction`) which is bounded in parameter space and may be an ellipse approximation, this function finds the values of the nuisance parameters ω that optimise the function fixed values of the interest parameter ψ and returns the log-likelihood value minus the confidence interval target threshold. The returned function value will be zero at the locations of the approximate confidence interval for ψ. Nuisance parameter values are stored in the NamedTuple `p` at `p.ω_opt`. 
 """
 function univariateψ(ψ::Real, p::NamedTuple)
-    θs=zeros(p.consistent.num_pars)
-
-    function fun(ω)
-        θs[p.ind] = ψ
+    
+    function fun(ω, q)
+        θs=zeros(eltype(ω), q.consistent.num_pars)
+        θs[q.ind] = ψ
+        variablemapping!(θs, ω, q.θranges, q.ωranges)
         @timeit_debug timer "Likelihood evaluation" begin
-            return p.consistent.loglikefunction(variablemapping!(θs, ω, p.θranges, p.ωranges), p.consistent.data) 
+            return -q.consistent.loglikefunction(θs, q.consistent.data)
         end
     end
 
     @timeit_debug timer "Likelihood nuisance parameter optimisation" begin
-        (xopt,fopt)=optimise(fun, p.initGuess, p.newLb, p.newUb)
+        (xopt,fopt)=optimise(fun, p, p.options, p.initGuess, p.newLb, p.newUb)
     end
     llb=fopt-p.consistent.targetll
     p.ω_opt .= xopt

@@ -187,7 +187,7 @@ Initialises a [`LikelihoodModel`](@ref) struct, which contains all model informa
 - `θmagnitudes`: a vector of the relative magnitude of each parameter. If not provided, it will be estimated using the difference of `θlb` and `θub` with [`PlaceholderLikelihood.calculate_θmagnitudes`](@ref). Can be updated after initialisation using [`setmagnitudes!`](@ref).
 
 # Keyword Arguments
-- 
+- `optimizationsettings`: optimization settings used to optimize the log-likelihood function using [Optimization.jl](https://docs.sciml.ai/Optimization/stable/). Default is `defaultOptimizationSettings()` (see [`defaultOptimizationSettings`](@ref)).
 - `uni_row_prealloaction_size`: number of rows of `uni_profiles_df` to preallocate. Default is NaN (a single row).
 - `biv_row_preallocation_size`: number of rows of `biv_profiles_df` to preallocate. Default is NaN (a single row).
 - `dim_row_preallocation_size`: number of rows of `dim_samples_df` to preallocate. Default is NaN (a single row).

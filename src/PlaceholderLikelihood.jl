@@ -1,7 +1,11 @@
 module PlaceholderLikelihood
 
 using DataStructures, DataFrames, Accessors, StaticArrays, TrackingHeaps
-using SciMLBase, Optimization, OptimizationNLopt
+using SciMLBase, Optimization
+
+using Reexport
+@reexport using OptimizationNLopt, ADTypes
+
 using Roots
 using ForwardDiff, LinearAlgebra
 using EllipseSampling
