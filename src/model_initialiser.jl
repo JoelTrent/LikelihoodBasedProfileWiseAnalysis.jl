@@ -150,10 +150,24 @@ function calculate_θmagnitudes(θlb::Vector{<:Float64}, θub::Vector{<:Float64}
 end
 
 """
+    defaultOptimizationSettings()
+
+Creates a [`OptimizationSettings`](@ref) struct with defaults of:
+- `adtype`: `SciMLBase.NoAD()` (no automatic differentiation). 
+- `solve_alg`: `NLopt.LN_BOBYQA()`.
+- `solve_kwargs`: `(maxtime=15, xtol_rel=1e-9)`
+
+If this function causes an error then `PlaceholderLikelihood` needs to be loaded. Alternatively, the packages `SciMLBase`, `Optimization` and `OptimizationNLopt` need to be loaded.
+"""
+function defaultOptimizationSettings()
+    return OptimizationSettings(SciMLBase.NoAD(), NLopt.LN_BOBYQA(), (maxtime=15, xtol_rel=1e-9))
+end
+
+"""
     initialiseLikelihoodModel(loglikefunction::Function,
         predictfunction::Union{Function, Missing},
         data::Union{Tuple, NamedTuple},
-        θnames::Vector{<:Symbol},
+        θnams::Vector{<:Symbol},
         θinitialguess::AbstractVector{<:Real},
         θlb::AbstractVector{<:Real},
         θub::AbstractVector{<:Real},
@@ -163,7 +177,7 @@ end
 Initialises a [`LikelihoodModel`](@ref) struct, which contains all model information, profiles, samples and predictions. Solves for the maximum likelihood estimate of `loglikefunction`.
 
 # Arguments
-- `loglikefunction`: a log-likelihood function which takes two arguments, `θ` and `data`, in that order, where θ is a vector containing the values of each parameter in `θnames` and `data` is a Tuple or NamedTuple - see `data` below.
+- `loglikefunction`: a log-likelihood function to maximise which takes two arguments, `θ` and `data`, in that order, where θ is a vector containing the values of each parameter in `θnames` and `data` is a Tuple or NamedTuple - see `data` below. Set up to be used in a maximisation objective.
 - `predictfunction`: a prediction function to generate model predictions from that is paired with the `loglikefunction`. Requirements for the prediction function can be seen in [`add_prediction_function!`](@ref). It can also be `missing` if no function is provided to [`initialiseLikelihoodModel`](@ref), because predictions are not required when evaluating parameter profiles. The function can be added at a later point using [`add_prediction_function!`](@ref).
 - `data`: a Tuple or a NamedTuple containing any additional information required by the log-likelihood function, such as the time points to be evaluated at.
 - `θnames`: a vector of symbols containing the names of each parameter, e.g. `[:λ, :K, :C0]`.
@@ -173,6 +187,7 @@ Initialises a [`LikelihoodModel`](@ref) struct, which contains all model informa
 - `θmagnitudes`: a vector of the relative magnitude of each parameter. If not provided, it will be estimated using the difference of `θlb` and `θub` with [`PlaceholderLikelihood.calculate_θmagnitudes`](@ref). Can be updated after initialisation using [`setmagnitudes!`](@ref).
 
 # Keyword Arguments
+- 
 - `uni_row_prealloaction_size`: number of rows of `uni_profiles_df` to preallocate. Default is NaN (a single row).
 - `biv_row_preallocation_size`: number of rows of `biv_profiles_df` to preallocate. Default is NaN (a single row).
 - `dim_row_preallocation_size`: number of rows of `dim_samples_df` to preallocate. Default is NaN (a single row).
@@ -187,6 +202,7 @@ function initialiseLikelihoodModel(loglikefunction::Function,
     θlb::AbstractVector{<:Real},
     θub::AbstractVector{<:Real},
     θmagnitudes::AbstractVector{<:Real}=Float64[];
+    optimizationsettings::OptimizationSettings=defaultOptimizationSettings(),
     uni_row_prealloaction_size::Real=NaN,
     biv_row_preallocation_size::Real=NaN,
     dim_row_preallocation_size::Real=NaN,
@@ -197,8 +213,8 @@ function initialiseLikelihoodModel(loglikefunction::Function,
     θnameToIndex = Dict{Symbol,Int}(name=>i for (i, name) in enumerate(θnames))
     num_pars = length(θnames)
 
-    function funmle(θ); return loglikefunction(θ, data) end
-    (θmle, maximisedmle) = optimise(funmle, θinitialguess, θlb, θub)
+    function negloglikefunction(θ, data); return -loglikefunction(θ, data) end
+    (θmle, maximisedmle) = optimise(negloglikefunction, data, optimizationsettings, θinitialguess, θlb, θub)
 
     ymle=zeros(0,0)
     if !ismissing(predictfunction)
@@ -209,9 +225,8 @@ function initialiseLikelihoodModel(loglikefunction::Function,
         θmagnitudes = calculate_θmagnitudes(θlb, θub)
     end
 
-    corelikelihoodmodel = CoreLikelihoodModel(loglikefunction, predictfunction, data, θnames, θnameToIndex,
-                                        θlb.*1.0, θub.*1.0, θmagnitudes.*1.0, θmle, ymle, maximisedmle, num_pars)
-
+    corelikelihoodmodel = CoreLikelihoodModel(loglikefunction, predictfunction, optimizationsettings, data, θnames,
+                            θnameToIndex, θlb.*1.0, θub.*1.0, θmagnitudes.*1.0, θmle, ymle, maximisedmle, num_pars)
 
     # conf_levels_evaluated = DefaultDict{Float64, Bool}(false)
     # When initialising a new confidence level, the first line should be written as: 

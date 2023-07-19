@@ -17,6 +17,28 @@ struct EllipseMLEApprox
 end
 
 """
+    OptimizationSettings(adtype::SciMLBase.AbstractADType,
+        solve_alg,
+        solve_kwargs::NamedTuple)
+
+Contains the optimization settings used to solve for nuisance parameters of the log-likelihood function using [Optimization.jl](https://docs.sciml.ai/Optimization/stable/). Note: Optimization.jl uses a minimisation objective, while the log-likelihood functions are setup with a maximisation objective in mind. This is handled inside the package. 
+
+# Fields
+- `adtype`: a method for automatically generating derivative functions of the log-likelihood function being optimised. For available settings see [Automatic Differentiation Construction Choice Recommendations](https://docs.sciml.ai/Optimization/stable/API/optimization_function/#Automatic-Differentiation-Construction-Choice-Recommendations). Note: the corresponding package to `adtype` needs to be loaded with `using`. e.g. setting `adtype = AutoFiniteDiff()` requires `using FiniteDiff`. Derivative-based algorithms in `solve_alg` will require an `adtype` to be specified.
+- `solve_alg`: an algorithm to use to solve for the nuisance parameters of the log-likelihood function defined within [Optimization.jl](https://docs.sciml.ai/Optimization/stable/). The package is loaded with the Optimization integration of NLopt, so any of the NLopt algorithms are available without having to load another package (see [OptimizationNLopt](https://docs.sciml.ai/Optimization/stable/optimization_packages/nlopt/)). Good starting methods may be `NLopt.LN_BOBYQA()`, `NLopt.LN_NELDERMEAD()` and `NLopt.LD_LBFGS`. Other packages can be used as well - see [Overview of the Optimizers](https://docs.sciml.ai/Optimization/stable/#Overview-of-the-Optimizers).
+- `solve_kwargs`: a `NamedTuple` of keyword arguments used to set solver options like `maxiters` and `maxtime`. For a list of common solver arguments see: [Common Solver Options](https://docs.sciml.ai/Optimization/stable/API/solve/#Common-Solver-Options-(Solve-Keyword-Arguments)). Other specific package arguments may also be available. For NLopt see (Methods)[https://docs.sciml.ai/Optimization/stable/optimization_packages/nlopt/#Methods].
+
+# Supertype Hiearachy
+
+`OptimizationSettings <: Any`
+"""
+struct OptimizationSettings 
+    adtype::SciMLBase.AbstractADType
+    solve_alg
+    solve_kwargs::NamedTuple
+end
+
+"""
     CoreLikelihoodModel(loglikefunction::Function, 
         predictfunction::Union{Function, Missing}, 
         data::Union{Tuple, NamedTuple}, 
@@ -33,8 +55,9 @@ end
 Struct containing the core information required to define a [`LikelihoodModel`](@ref). For additional information on parameters (where repeated), see [`initialiseLikelihoodModel`](@ref).
 
 # Fields
-- `loglikefunction`: a log-likelihood function which takes two arguments, `θ` and `data`, in that order.
+- `loglikefunction`: a log-likelihood function which takes two arguments, `θ` and `data`, in that order. Set up to be used in a maximisation objective.
 - `predictfunction`: a prediction function to generate model predictions from that is paired with the `loglikefunction`. 
+- `optimizationsettings`: a [`OptimizationSettings`](@ref) struct of settings to use for optimisation unless others are specified.
 - `data`: a Tuple or a NamedTuple containing any additional information required by the log-likelihood function, such as the time points to be evaluated at.
 - `θnames`: a vector of symbols containing the names of each parameter, e.g. `[:λ, :K, :C0]`.
 - `θname_to_index`: a dictionary with keys of type Symbol and values of type Int, with the key being an element of `θnames` and the value being the corresponding index of the key in `θnames`.
@@ -53,6 +76,7 @@ Struct containing the core information required to define a [`LikelihoodModel`](
 struct CoreLikelihoodModel
     loglikefunction::Function
     predictfunction::Union{Function, Missing}
+    optimizationsettings::OptimizationSettings
     data::Union{Tuple, NamedTuple}
     θnames::AbstractVector
     θname_to_index::Dict{Symbol, Int}

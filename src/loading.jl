@@ -30,19 +30,21 @@ function remove_functions_from_core!(model::LikelihoodModel)
 end
 
 """
-    add_loglikelihood_function!(model::LikelihoodModel, loglikefunction::Function)
+    add_loglikelihood_function!(model::LikelihoodModel, loglikefunction::Function; 
+        optimizationsettings::OptimizationSettings=defaultOptimizationSettings())
 
-Adds a log-likelihood function, `loglikefunction`, to `model`.
+Adds a log-likelihood function, `loglikefunction`, to `model` as well as optimization settings, `optimizationsettings`, using [`defaultOptimizationSettings`](@ref). PlaceholderLikelihood needs to loaded for [`defaultOptimizationSettings`](@ref) to work.
     
 Requirements for `loglikefunction`: loglikelihood function which takes two arguments, `θ` and `data`, in that order, where θ is a vector containing the values of each parameter in `θnames` and `data` is a Tuple or NamedTuple containing any additional information required by the log-likelihood function, such as the time points to be evaluated at.
 """
-function add_loglikelihood_function!(model::LikelihoodModel, loglikefunction::Function)
+function add_loglikelihood_function!(model::LikelihoodModel, loglikefunction::Function;
+        optimizationsettings::OptimizationSettings=defaultOptimizationSettings())
 
     if model.core isa CoreLikelihoodModel
         return nothing
     end
     corelikelihoodmodel = model.core
-    model.core = CoreLikelihoodModel(vcat([loglikefunction, missing], 
+    model.core = CoreLikelihoodModel(vcat([loglikefunction, missing, optimizationsettings], 
                                             [getfield(corelikelihoodmodel, k)
                                             for k ∈ fieldnames(BaseLikelihoodModel)])...)
     return nothing

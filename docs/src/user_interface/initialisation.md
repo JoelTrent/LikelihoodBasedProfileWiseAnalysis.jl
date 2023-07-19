@@ -12,6 +12,15 @@ To initialise a model for profile likelihood evaluation we use [`initialiseLikel
 initialiseLikelihoodModel
 ```
 
+## Optimization Settings
+
+We can set our default optimisation settings using a [`OptimizationSettings`](@ref) struct. This will be contained within [`CoreLikelihoodModel`](@ref) and can be passed as an option to [`initialiseLikelihoodModel`](@ref).
+
+```@docs
+defaultOptimizationSettings
+OptimizationSettings
+```
+
 ## Model Representation
 
 ```@docs

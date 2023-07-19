@@ -29,7 +29,7 @@ using BSON: @load
 ## Potential Issues When Loading
 
 There are a couple of things to watch out for if the model saved had functions defined in `model.core`:
-- The log-likelihood function (and if defined, the prediction function) must be defined with the same name and be available in the scope we are loading `model` in. 
+- The log-likelihood function (and if defined, the prediction function) must be defined with the same name and be available in the scope we are loading `model` in. Functions used within `model.core.optimizationsettings` must also be defined in the scope we are loading `model` in (i.e. by loading `PlaceholderLikelihood`).
 - The variable name `model` has when saved is the same name it needs to be loaded with.
 
 ## Fixing Issues
@@ -46,9 +46,10 @@ core_original = remove_functions_from_core!(model)
 model.core = core_original 
 ```
 
-If we want to add the log-likelihood function to this loaded version of the `model` we can use [`add_loglikelihood_function!`](@ref).
+If we want to add the log-likelihood function to this loaded version of the `model` we can use [`add_loglikelihood_function!`](@ref) after loading `PlaceholderLikelihood`.
 
 ```julia
+using PlaceholderLikelihood
 # log-likelihood function function definition
 function loglikefunction(θ, data); return ... end
 add_loglikelihood_function!(model, loglikefunction)

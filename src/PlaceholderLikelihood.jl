@@ -1,7 +1,8 @@
 module PlaceholderLikelihood
 
 using DataStructures, DataFrames, Accessors, StaticArrays, TrackingHeaps
-using NLopt, Roots
+using SciMLBase, Optimization, OptimizationNLopt
+using Roots
 using ForwardDiff, LinearAlgebra
 using EllipseSampling
 using LatinHypercubeSampling
@@ -21,7 +22,7 @@ using TimerOutputs
 const timer = TimerOutput()
 
 # TYPES ###################################################################################
-export EllipseMLEApprox, CoreLikelihoodModel, BaseLikelihoodModel, LikelihoodModel,
+export EllipseMLEApprox, OptimizationSettings, CoreLikelihoodModel, BaseLikelihoodModel, LikelihoodModel,
 
     AbstractProfileType, AbstractEllipseProfileType, LogLikelihood, EllipseApprox, EllipseApproxAnalytical,
     
@@ -40,7 +41,7 @@ export EllipseMLEApprox, CoreLikelihoodModel, BaseLikelihoodModel, LikelihoodMod
 
 
 # FUNCTIONS ###############################################################################
-export initialiseLikelihoodModel,
+export initialiseLikelihoodModel, defaultOptimizationSettings,
     getMLE_ellipse_approximation!, check_ellipse_approx_exists!,
     setmagnitudes!, setbounds!,
 
@@ -64,9 +65,6 @@ export initialiseLikelihoodModel,
 
     trim_model_dfs!, remove_functions_from_core!, add_loglikelihood_function!
 
-# OPTIMISER ###############################################################################
-include("NLopt_optimiser.jl")
-
 # TYPES ###################################################################################
 include("types/bivariate_methods.jl")
 include("types/bivariate_hull_methods.jl")
@@ -75,6 +73,9 @@ include("types/predictions.jl")
 include("types/profiletypes.jl")
 include("types/sampletypes.jl")
 include("types/likelihoodmodel.jl")
+
+# OPTIMISER ###############################################################################
+include("optimiser.jl")
 
 # CORE FUNCTIONS ##########################################################################
 include("model_initialiser.jl")
