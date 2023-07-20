@@ -1,7 +1,7 @@
 """
     optimise(fun, p, options::OptimizationSettings, θ₀, lb, ub)
 
-Optimization.jl optimiser used for calculating the values of nuisance parameters. Default values of options use NLopt.jl algorithms [`defaultOptimizationSettings`](@ref).
+Optimization.jl optimiser used for calculating the values of nuisance parameters. Default values of options use NLopt.jl algorithms (see[`default_OptimizationSettings`](@ref)).
 """
 function optimise(fun, q, options::OptimizationSettings, θ₀, lb, ub)
     fopt = OptimizationFunction(fun, options.adtype)
@@ -13,7 +13,7 @@ end
 """
     optimise_unbounded(fun, p, options::OptimizationSettings, θ₀)
 
-Alternative version of [`optimise`](@ref) without nuisance parameter bounds. Used for computing the nuisance parameters of [`EllipseApproxAnalytical`](@ref) profiles. Default values of options use NLopt.jl algorithms [`defaultOptimizationSettings`](@ref).
+Alternative version of [`optimise`](@ref) without nuisance parameter bounds. Used for computing the nuisance parameters of [`EllipseApproxAnalytical`](@ref) profiles. Default values of options use NLopt.jl algorithms (see[`default_OptimizationSettings`](@ref)).
 """
 function optimise_unbounded(fun, q, options::OptimizationSettings, θ₀)
     fopt = OptimizationFunction(fun, options.adtype)

@@ -150,42 +150,7 @@ function calculate_θmagnitudes(θlb::Vector{<:Float64}, θub::Vector{<:Float64}
 end
 
 """
-    defaultOptimizationSettings()
-
-Creates a [`OptimizationSettings`](@ref) struct with defaults of:
-- `adtype`: `SciMLBase.NoAD()` (no automatic differentiation). 
-- `solve_alg`: [`NLopt.LN_BOBYQA()`](https://nlopt.readthedocs.io/en/latest/NLopt_Algorithms/#bobyqa).
-- `solve_kwargs`: `(maxtime=15, xtol_rel=1e-9)`.
-
-If this function causes an error then `PlaceholderLikelihood` needs to be loaded. Alternatively, the packages `SciMLBase`, `Optimization` and `OptimizationNLopt` need to be loaded.
-"""
-function defaultOptimizationSettings()
-    return OptimizationSettings(SciMLBase.NoAD(), NLopt.LN_BOBYQA(), (maxtime=15, xtol_rel=1e-9))
-end
-
-"""
-    createOptimizationSettings(;
-        adtype::Union{SciMLBase.AbstractADType, Missing}=missing, 
-        solve_alg=missing, 
-        solve_kwargs::Union{NamedTuple, Missing}=missing)
-
-Method for creating a [`OptimizationSettings`](@ref) struct with each field of the struct as a keyword argument. If a keyword argument is not provided, then the default setting in [`defaultOptimizationSettings`](@ref) is used.
-"""
-function createOptimizationSettings(;
-    adtype::Union{SciMLBase.AbstractADType, Missing}=missing, 
-    solve_alg=missing, 
-    solve_kwargs::Union{NamedTuple, Missing}=missing)
-
-    defaults = defaultOptimizationSettings()
-    adtype       = ismissing(adtype)       ? defaults.adtype       : adtype
-    solve_alg    = ismissing(solve_alg)    ? defaults.solve_alg    : solve_alg
-    solve_kwargs = ismissing(solve_kwargs) ? defaults.solve_kwargs : solve_kwargs
-
-    return OptimizationSettings(adtype, solve_alg, solve_kwargs)
-end
-
-"""
-    initialiseLikelihoodModel(loglikefunction::Function,
+    initialise_LikelihoodModel(loglikefunction::Function,
         predictfunction::Union{Function, Missing},
         data::Union{Tuple, NamedTuple},
         θnams::Vector{<:Symbol},
@@ -199,7 +164,7 @@ Initialises a [`LikelihoodModel`](@ref) struct, which contains all model informa
 
 # Arguments
 - `loglikefunction`: a log-likelihood function to maximise which takes two arguments, `θ` and `data`, in that order, where θ is a vector containing the values of each parameter in `θnames` and `data` is a Tuple or NamedTuple - see `data` below. Set up to be used in a maximisation objective.
-- `predictfunction`: a prediction function to generate model predictions from that is paired with the `loglikefunction`. Requirements for the prediction function can be seen in [`add_prediction_function!`](@ref). It can also be `missing` if no function is provided to [`initialiseLikelihoodModel`](@ref), because predictions are not required when evaluating parameter profiles. The function can be added at a later point using [`add_prediction_function!`](@ref).
+- `predictfunction`: a prediction function to generate model predictions from that is paired with the `loglikefunction`. Requirements for the prediction function can be seen in [`add_prediction_function!`](@ref). It can also be `missing` if no function is provided to [`initialise_LikelihoodModel`](@ref), because predictions are not required when evaluating parameter profiles. The function can be added at a later point using [`add_prediction_function!`](@ref).
 - `data`: a Tuple or a NamedTuple containing any additional information required by the log-likelihood function, such as the time points to be evaluated at.
 - `θnames`: a vector of symbols containing the names of each parameter, e.g. `[:λ, :K, :C0]`.
 - `θinitialguess`: a vector containing the initial guess for the values of each parameter. Used to find the MLE point.
@@ -208,14 +173,14 @@ Initialises a [`LikelihoodModel`](@ref) struct, which contains all model informa
 - `θmagnitudes`: a vector of the relative magnitude of each parameter. If not provided, it will be estimated using the difference of `θlb` and `θub` with [`PlaceholderLikelihood.calculate_θmagnitudes`](@ref). Can be updated after initialisation using [`setmagnitudes!`](@ref).
 
 # Keyword Arguments
-- `optimizationsettings`: optimization settings used to optimize the log-likelihood function using [Optimization.jl](https://docs.sciml.ai/Optimization/stable/). Default is `defaultOptimizationSettings()` (see [`defaultOptimizationSettings`](@ref)).
+- `optimizationsettings`: optimization settings used to optimize the log-likelihood function using [Optimization.jl](https://docs.sciml.ai/Optimization/stable/). Default is `default_OptimizationSettings()` (see [`default_OptimizationSettings`](@ref)).
 - `uni_row_prealloaction_size`: number of rows of `uni_profiles_df` to preallocate. Default is NaN (a single row).
 - `biv_row_preallocation_size`: number of rows of `biv_profiles_df` to preallocate. Default is NaN (a single row).
 - `dim_row_preallocation_size`: number of rows of `dim_samples_df` to preallocate. Default is NaN (a single row).
 - `find_zero_atol`: a `Real` number greater than zero for the absolute tolerance of the log-likelihood function value from the target value to be used when searching for confidence intervals/boundaries. Default is `0.001`.
 - `show_progress`: Whether to show the progress of profiling across sets of interest parameters. 
 """
-function initialiseLikelihoodModel(loglikefunction::Function,
+function initialise_LikelihoodModel(loglikefunction::Function,
     predictfunction::Union{Function, Missing},
     data::Union{Tuple, NamedTuple},
     θnames::Vector{<:Symbol},
@@ -223,7 +188,7 @@ function initialiseLikelihoodModel(loglikefunction::Function,
     θlb::AbstractVector{<:Real},
     θub::AbstractVector{<:Real},
     θmagnitudes::AbstractVector{<:Real}=Float64[];
-    optimizationsettings::OptimizationSettings=defaultOptimizationSettings(),
+    optimizationsettings::OptimizationSettings=default_OptimizationSettings(),
     uni_row_prealloaction_size::Real=NaN,
     biv_row_preallocation_size::Real=NaN,
     dim_row_preallocation_size::Real=NaN,
@@ -293,7 +258,7 @@ function initialiseLikelihoodModel(loglikefunction::Function,
 end
 
 """
-    initialiseLikelihoodModel(loglikefunction::Function,
+    initialise_LikelihoodModel(loglikefunction::Function,
         data::Union{Tuple, NamedTuple},
         θnames::Vector{<:Symbol},
         θinitialGuess::Vector{<:Float64},
@@ -302,23 +267,25 @@ end
         θmagnitudes::Vector{<:Real}=zeros(0);
         <keyword arguments>)
 
-Alternate version of [`initialiseLikelihoodModel`](@ref) that can be called without a prediction function. The function can be added at a later point using [`add_prediction_function!`](@ref).
+Alternate version of [`initialise_LikelihoodModel`](@ref) that can be called without a prediction function. The function can be added at a later point using [`add_prediction_function!`](@ref).
 """
-function initialiseLikelihoodModel(loglikefunction::Function,
+function initialise_LikelihoodModel(loglikefunction::Function,
     data::Union{Tuple, NamedTuple},
     θnames::Vector{<:Symbol},
     θinitialGuess::Vector{<:Float64},
     θlb::Vector{<:Float64},
     θub::Vector{<:Float64},
     θmagnitudes::Vector{<:Real}=zeros(0);
+    optimizationsettings::OptimizationSettings=default_OptimizationSettings(),
     uni_row_prealloaction_size::Real=NaN,
     biv_row_preallocation_size::Real=NaN,
     dim_row_preallocation_size::Real=NaN,
     find_zero_atol::Real=0.001,
     show_progress::Bool=true)
 
-    return initialiseLikelihoodModel(loglikefunction, missing, data, θnames,
+    return initialise_LikelihoodModel(loglikefunction, missing, data, θnames,
                                         θinitialGuess, θlb, θub, θmagnitudes,
+                                        optimizationsettings=optimizationsettings,
                                         uni_row_prealloaction_size=uni_row_prealloaction_size,
                                         biv_row_preallocation_size=biv_row_preallocation_size,
                                         dim_row_preallocation_size=dim_row_preallocation_size, 

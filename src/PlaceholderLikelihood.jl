@@ -43,9 +43,9 @@ export EllipseMLEApprox, OptimizationSettings, CoreLikelihoodModel, BaseLikeliho
 
     AbstractPredictionStruct, PredictionStruct
 
-
 # FUNCTIONS ###############################################################################
-export initialiseLikelihoodModel, defaultOptimizationSettings, createOptimizationSettings,
+export initialise_LikelihoodModel, 
+    default_OptimizationSettings, create_OptimizationSettings, set_OptimizationSettings!,
     getMLE_ellipse_approximation!, check_ellipse_approx_exists!,
     setmagnitudes!, setbounds!,
 
@@ -76,14 +76,15 @@ include("types/levelsets.jl")
 include("types/predictions.jl")
 include("types/profiletypes.jl")
 include("types/sampletypes.jl")
+include("types/optimizationsettings.jl")
 include("types/likelihoodmodel.jl")
 
 # OPTIMISER ###############################################################################
 include("optimiser.jl")
+include("optimizationsettings.jl")
 
 # CORE FUNCTIONS ##########################################################################
 include("model_initialiser.jl")
-# include("combination_relationships.jl")
 include("transform_bounds.jl")
 include("common_profile_likelihood.jl")
 include("ellipse_likelihood.jl")

@@ -6,20 +6,10 @@ Pages = ["initialisation.md"]
 
 ## Model Initialisation
 
-To initialise a model for profile likelihood evaluation we use [`initialiseLikelihoodModel`](@ref) which returns a struct of type [`LikelihoodModel`](@ref).
+To initialise a model for profile likelihood evaluation we use [`initialise_LikelihoodModel`](@ref) which returns a struct of type [`LikelihoodModel`](@ref).
 
 ```@docs
-initialiseLikelihoodModel
-```
-
-## Optimization Settings
-
-We can set our default optimisation settings using a [`OptimizationSettings`](@ref) struct. This will be contained within [`CoreLikelihoodModel`](@ref) and can be passed as an option to [`initialiseLikelihoodModel`](@ref).
-
-```@docs
-defaultOptimizationSettings
-createOptimizationSettings
-OptimizationSettings
+initialise_LikelihoodModel
 ```
 
 ## Model Representation
@@ -52,10 +42,15 @@ transformbounds
 transformbounds_NLopt
 ```
 
-## Optimisation of Nuisance Parameters
+## Optimization Settings
 
-This is presently done using a predefined NLopt optimiser. 
+We can set our default optimisation settings using a [`OptimizationSettings`](@ref) struct. This will be contained within the [`CoreLikelihoodModel`](@ref) field of a [`LikelihoodModel`](@ref) and can be passed as an option to [`initialise_LikelihoodModel`](@ref).
+
 ```@docs
+default_OptimizationSettings
+create_OptimizationSettings
+set_OptimizationSettings!
+OptimizationSettings
 optimise
 optimise_unbounded
 ```
