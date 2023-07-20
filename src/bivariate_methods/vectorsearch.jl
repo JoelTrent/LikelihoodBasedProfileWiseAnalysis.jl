@@ -287,13 +287,15 @@ end
         ind2::Int,
         ellipse_confidence_level::Float64,
         ellipse_start_point_shift::Float64,
-        ellipse_sqrt_distortion::Float64)
+        ellipse_sqrt_distortion::Float64,
+        optimizationsettings::OptimizationSettings,
+        use_threads::Bool)
 
 Implementation of finding pairs of points that bracket the bivariate confidence boundary for [`RadialMLEMethod`](@ref).
 
 Search directions from the MLE point are given by points placed on a ellipse approximation around the point using [`generate_N_clustered_points`](https://joeltrent.github.io/EllipseSampling.jl/stable/user_interface/#EllipseSampling.generate_N_clustered_points) from [EllipseSampling.jl](https://joeltrent.github.io/EllipseSampling.jl/stable). 
 """
-function findNpointpairs_radialMLE!(p::NamedTuple, 
+function findNpointpairs_radialMLE!(q::NamedTuple, 
                                     bivariate_optimiser::Function, 
                                     model::LikelihoodModel, 
                                     num_points::Int, 
@@ -301,14 +303,16 @@ function findNpointpairs_radialMLE!(p::NamedTuple,
                                     ind2::Int,
                                     ellipse_confidence_level::Float64,
                                     ellipse_start_point_shift::Float64,
-                                    ellipse_sqrt_distortion::Float64)
+                                    ellipse_sqrt_distortion::Float64,
+                                    optimizationsettings::OptimizationSettings,
+                                    use_threads::Bool)
 
     mle_point = model.core.θmle[[ind1, ind2]]
     internal = zeros(2,num_points) .= mle_point
     external = zeros(2,num_points)
     point_is_on_bounds = falses(num_points)
     # warn if bound prevents reaching boundary
-    bound_warning=true
+    bound_inds = [(0, 'a') for _ in 1:num_points]
 
     check_ellipse_approx_exists!(model)
     ellipse_points = generate_N_clustered_points(num_points, model.ellipse_MLE_approx.Γmle,
@@ -317,8 +321,13 @@ function findNpointpairs_radialMLE!(p::NamedTuple,
                                                         start_point_shift=ellipse_start_point_shift, 
                                                         sqrt_distortion=ellipse_sqrt_distortion)
 
-    bound_ind=0
-    for i in 1:num_points
+    ex = use_threads ? ThreadedEx() : ThreadedEx(basesize=num_points)
+    @floop ex for i in 1:num_points
+        pointa = zeros(2)
+        uhat = zeros(2)
+        ω_opt = zeros(model.core.num_pars - 2)
+        p = (ω_opt=ω_opt, pointa=pointa, uhat=uhat, q=q, options=optimizationsettings)
+
         dir_vector = ellipse_points[:,i] .- mle_point
         external[:,i], bound_ind, upper_or_lower = findpointonbounds(model, mle_point, dir_vector, ind1, ind2, true)
 
@@ -326,11 +335,7 @@ function findNpointpairs_radialMLE!(p::NamedTuple,
         g = bivariate_optimiser(0.0, p)
         if g ≥ 0
             point_is_on_bounds[i] = true
-
-            if bound_warning
-                @warn string("The ", upper_or_lower, " bound on variable ", model.core.θnames[bound_ind], " is inside the confidence boundary")
-                bound_warning = false
-            end
+            bound_inds[i] = (bound_ind, upper_or_lower)
         else
             # make bracket a tiny bit smaller
             if isinf(g)
@@ -340,9 +345,15 @@ function findNpointpairs_radialMLE!(p::NamedTuple,
         end
     end
 
+    if any(point_is_on_bounds)
+        _bound_ind, _upper_or_lower = bound_inds[findfirst(point_is_on_bounds)]
+        _upper_or_lower = _upper_or_lower == 'U' ? "upper" : "lower"
+        @warn string("The ", _upper_or_lower, " bound on variable ", model.core.θnames[_bound_ind], " is inside the confidence boundary")
+    end
+
     internal_all = zeros(model.core.num_pars, 0)
     ll_values = zeros(0)
-    return internal, internal_all, ll_values, external, point_is_on_bounds, bound_warning
+    return internal, internal_all, ll_values, external, point_is_on_bounds, any(point_is_on_bounds)
 end
 
 """
@@ -355,6 +366,8 @@ end
         mle_targetll::Float64,
         save_internal_points::Bool,
         find_zero_atol::Real, 
+        optimizationsettings::OptimizationSettings,
+        use_threads::Bool,
         channel::RemoteChannel;
         num_radial_directions::Int=0,
         min_proportion_unique::Real=1.0,
@@ -374,6 +387,8 @@ function bivariate_confidenceprofile_vectorsearch(bivariate_optimiser::Function,
                                                     mle_targetll::Float64,
                                                     save_internal_points::Bool,
                                                     find_zero_atol::Real, 
+                                                    optimizationsettings::OptimizationSettings,
+                                                    use_threads::Bool,
                                                     channel::RemoteChannel;
                                                     num_radial_directions::Int=0,
                                                     min_proportion_unique::Real=1.0,
@@ -386,22 +401,17 @@ function bivariate_confidenceprofile_vectorsearch(bivariate_optimiser::Function,
 
     biv_opt_is_ellipse_analytical = bivariate_optimiser==bivariateψ_ellipse_analytical_vectorsearch
     
-    pointa = [0.0,0.0]
-    uhat   = [0.0,0.0]
     boundary = zeros(model.core.num_pars, num_points)
 
-    if biv_opt_is_ellipse_analytical
-        p=(ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, pointa=pointa, uhat=uhat,
-                    θranges=θranges, ωranges=ωranges, consistent=consistent)
-    else
-        p=(ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, pointa=pointa, uhat=uhat,
-                    θranges=θranges, ωranges=ωranges, consistent=consistent, ω_opt=zeros(model.core.num_pars-2))
-    end
+    q=(ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess,
+        θranges=θranges, ωranges=ωranges, consistent=consistent)
+
 
     if ellipse_confidence_level !== -1.0
         internal, internal_all, ll_values, external, point_is_on_bounds, _ = 
-            findNpointpairs_radialMLE!(p, bivariate_optimiser, model, num_points, ind1, ind2, 
-                                        ellipse_confidence_level, ellipse_start_point_shift, ellipse_sqrt_distortion)
+            findNpointpairs_radialMLE!(q, bivariate_optimiser, model, num_points, ind1, ind2, 
+                                        ellipse_confidence_level, ellipse_start_point_shift, ellipse_sqrt_distortion,
+                                        optimizationsettings, use_threads)
 
     else
         if num_radial_directions == 0
@@ -419,34 +429,42 @@ function bivariate_confidenceprofile_vectorsearch(bivariate_optimiser::Function,
         point_is_on_bounds = falses(num_points)
     end
 
-    for i in 1:num_points
-        if point_is_on_bounds[i]
-            p.pointa .= external[:,i]
-            bivariate_optimiser(0, p)
-            boundary[[ind1, ind2], i] .= external[:,i]
-        else
-            p.pointa .= internal[:,i]
-            v_bar = external[:,i] .- internal[:,i]
+    ex = use_threads ? ThreadedEx() : ThreadedEx(basesize=num_points)
+    let internal=internal; let point_is_on_bounds=point_is_on_bounds; let external=external
+        @floop ex for i in 1:num_points
+            FLoops.@init pointa = zeros(2)
+            FLoops.@init uhat = zeros(2)
+            FLoops.@init ω_opt = zeros(model.core.num_pars-2)
+            p = (ω_opt=ω_opt, pointa=pointa, uhat=uhat, q=q, options=optimizationsettings)
 
-            v_bar_norm = norm(v_bar, 2)
-            p.uhat .= v_bar ./ v_bar_norm
+            if point_is_on_bounds[i]
+                p.pointa .= external[:,i]
+                bivariate_optimiser(0, p)
+                boundary[[ind1, ind2], i] .= external[:,i]
+            else
+                p.pointa .= internal[:,i]
+                v_bar = external[:,i] .- internal[:,i]
 
-            ψ = find_zero(bivariate_optimiser, (0.0, v_bar_norm), Roots.Brent(); atol=find_zero_atol, p=p)
-            
-            boundary[[ind1, ind2], i] .= p.pointa + ψ*p.uhat
-            if !biv_opt_is_ellipse_analytical; bivariate_optimiser(ψ, p) end
+                v_bar_norm = norm(v_bar, 2)
+                p.uhat .= v_bar ./ v_bar_norm
+
+                ψ = find_zero(bivariate_optimiser, (0.0, v_bar_norm), Roots.Brent(); atol=find_zero_atol, p=p)
+                
+                boundary[[ind1, ind2], i] .= p.pointa + ψ*p.uhat
+                if !biv_opt_is_ellipse_analytical; bivariate_optimiser(ψ, p) end
+            end
+            if !biv_opt_is_ellipse_analytical
+                variablemapping!(@view(boundary[:, i]), p.ω_opt, θranges, ωranges)
+            end
+            put!(channel, true)
         end
-        if !biv_opt_is_ellipse_analytical
-            variablemapping!(@view(boundary[:, i]), p.ω_opt, θranges, ωranges)
-        end
-        put!(channel, true)
-    end
+    end; end; end
 
     if biv_opt_is_ellipse_analytical
         return get_ωs_bivariate_ellipse_analytical!(@view(boundary[[ind1, ind2], :]), num_points,
-                                                    consistent, ind1, ind2, 
-                                                    model.core.num_pars, initGuess,
-                                                    θranges, ωranges, boundary), PointsAndLogLikelihood(internal_all, ll_values)
+                    consistent, ind1, ind2, model.core.num_pars, initGuess, θranges, ωranges, 
+                    optimizationsettings, use_threads, boundary), 
+                    PointsAndLogLikelihood(internal_all, ll_values)
     end
 
     return boundary, PointsAndLogLikelihood(internal_all, ll_values)

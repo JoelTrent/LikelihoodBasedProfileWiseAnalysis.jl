@@ -50,7 +50,7 @@ function findpointonbounds(model::LikelihoodModel,
     end
 
     if returnboundindex
-        upper_or_lower = (r_pos==1 && quadrant ∈ [1,4]) || quadrant ∈ [1,2]  ? "upper" : "lower"
+        upper_or_lower = (r_pos==1 && quadrant ∈ [1,4]) || quadrant ∈ [1,2]  ? 'U' : 'L'
         return boundpoint, bound_ind, upper_or_lower
     end
 

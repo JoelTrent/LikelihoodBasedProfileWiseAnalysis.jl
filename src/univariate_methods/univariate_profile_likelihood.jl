@@ -322,7 +322,7 @@ The bracketing method utilised via Roots.jl's [`find_zero`](https://juliamath.gi
 
 ## Distributed Computing Implementation
 
-If [Distributed.jl](https://docs.julialang.org/en/v1/stdlib/Distributed/) is being used and `use_distributed` is `true`, then the univariate profiles of each interest parameter will be computed in parallel across `Distributed.nworkers()` workers. If `use_distributed` is `false` and `use_threads` is `true` then after the confidence intervals of each interest parameter have been computed, any interval points specified using `num_points_in_interval` will be computed in parallel for each interest parameter.
+If [Distributed.jl](https://docs.julialang.org/en/v1/stdlib/Distributed/) is being used and `use_distributed` is `true`, then the univariate profiles of each interest parameter will be computed in parallel across `Distributed.nworkers()` workers. If `use_distributed` is `false` and `use_threads` is `true` then after the confidence intervals of each interest parameter have been computed, any interval points specified using `num_points_in_interval` will be computed in parallel across `Threads.nthreads()` threads for each interest parameter.
 
 ## Iteration Speed Of the Progress Meter
 
@@ -354,6 +354,7 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
 
         (!use_distributed && use_threads && timeit_debug_enabled()) &&
             throw(ArgumentError("use_threads cannot be true when debug timings from TimerOutputs are enabled and use_distributed is false. Either set use_threads to false or disable debug timings using `PlaceholderLikelihood.TimerOutputs.disable_debug_timings(PlaceholderLikelihood)`"))
+        return nothing
     end
 
     argument_handling!()

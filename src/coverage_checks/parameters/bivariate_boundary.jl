@@ -148,14 +148,14 @@ function check_bivariate_boundary_coverage(data_generator::Function,
                 for (j, methodj) in enumerate(method)
                     bivariate_confidenceprofiles!(m_new, θcombinations, num_points[j];
                         confidence_level=confidence_level, profile_type=profile_type, method=methodj,
-                        show_progress=false)
+                        show_progress=false, use_threads=false)
                 end
                 combine_bivariate_boundaries!(m_new, confidence_level=confidence_level,
                     not_evaluated_predictions=true)
             else
                 bivariate_confidenceprofiles!(m_new, θcombinations, num_points;
                     confidence_level=confidence_level, profile_type=profile_type, method=method,
-                    show_progress=false)
+                    show_progress=false, use_threads=false)
             end
 
             for row_ind in 1:m_new.num_biv_profiles
@@ -218,14 +218,14 @@ function check_bivariate_boundary_coverage(data_generator::Function,
                         for (j, methodj) in enumerate(method)
                             bivariate_confidenceprofiles!(m_new, θcombinations, num_points[j];
                                 confidence_level=confidence_level, profile_type=profile_type, method=methodj,
-                                show_progress=false)
+                                show_progress=false, use_distributed=false, use_threads=false)
                         end
                         combine_bivariate_boundaries!(m_new, confidence_level=confidence_level,
                             not_evaluated_predictions=true)
                     else
                         bivariate_confidenceprofiles!(m_new, θcombinations, num_points;
                             confidence_level=confidence_level, profile_type=profile_type, method=method,
-                            show_progress=false)
+                            show_progress=false, use_distributed=false, use_threads=false)
                     end
 
                     for row_ind in 1:m_new.num_biv_profiles

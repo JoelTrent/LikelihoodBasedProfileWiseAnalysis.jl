@@ -88,6 +88,7 @@ end
         initGuess::Vector{<:Float64}, 
         θranges::Tuple{T, T, T}, 
         ωranges::Tuple{T, T, T},
+        optimizationsettings::OptimizationSettings,
         samples_all_pars::Union{Missing, Matrix{Float64}}=missing) where T<:UnitRange
 
 Determines the nuisance parameters for a [`EllipseApproxAnalytical`](@ref) boundary profile by optimising over the unbounded ellipse approximation of the log-likelihood centred at the MLE. At higher confidence levels, where the ellipse approximation is less accurate, it is likely that predictions produced by running the model with these optimised nuisance parameters will be unrealistic and/or the parameters themselves may be infeasible for the model. 
@@ -101,17 +102,21 @@ function get_ωs_bivariate_ellipse_analytical!(boundary,
                                                 initGuess::Vector{<:Float64}, 
                                                 θranges::Tuple{T, T, T}, 
                                                 ωranges::Tuple{T, T, T},
+                                                optimizationsettings::OptimizationSettings,
+                                                use_threads::Bool,
                                                 samples_all_pars::Union{Missing, Matrix{Float64}}=missing) where T<:UnitRange
 
-    p=(ind1=ind1, ind2=ind2, initGuess=initGuess,
-                θranges=θranges, ωranges=ωranges, consistent=consistent)
+    q=(ind1=ind1, ind2=ind2, initGuess=initGuess,
+        θranges=θranges, ωranges=ωranges, consistent=consistent)
+    p=(q=q, options=optimizationsettings)
     
     if ismissing(samples_all_pars)
         samples_all_pars = zeros(num_pars, num_points)
         samples_all_pars[[ind1, ind2], :] .= boundary
     end
 
-    for i in 1:num_points
+    ex = use_threads ? ThreadedEx() : ThreadedEx(basesize=num_points)
+    @floop ex for i in 1:num_points
         variablemapping!(@view(samples_all_pars[:, i]), bivariateψ_ellipse_unbounded(boundary[:,i], p), θranges, ωranges)
     end
 
@@ -131,6 +136,7 @@ end
         mle_targetll::Float64,
         save_internal_points::Bool,
         find_zero_atol::Real,
+        optimizationsettings::OptimizationSettings,
         channel::RemoteChannel)
 
 Returns a [`BivariateConfidenceStruct`](@ref) containing the `num_points` boundary points and internal points (if `save_internal_points=true`) for the specified combination of parameters `ind1` and `ind2`, and `profile_type` at `confidence_level` using `method`. Calls the desired `method`. Called by [`bivariate_confidenceprofiles!`](@ref).
@@ -147,6 +153,8 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
                                         mle_targetll::Float64,
                                         save_internal_points::Bool,
                                         find_zero_atol::Real,
+                                        optimizationsettings::OptimizationSettings,
+                                        use_threads::Bool,
                                         channel::RemoteChannel)
 
     try 
@@ -167,7 +175,8 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
                                     num_points,
                                     consistent, ind1, ind2, 
                                     model.core.num_pars, initGuess,
-                                    θranges, ωranges)
+                                    θranges, ωranges,
+                                    optimizationsettings, use_threads)
 
                 put!(channel, true)
                 
@@ -176,14 +185,16 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
                                         bivariate_optimiser, model, 
                                         num_points, consistent, ind1, ind2,
                                         mle_targetll, save_internal_points,
-                                        find_zero_atol, channel)
+                                        find_zero_atol, optimizationsettings, 
+                                        use_threads, channel)
                 
             elseif method isa SimultaneousMethod
                 boundary, internal = bivariate_confidenceprofile_vectorsearch(
                                         bivariate_optimiser, model, 
                                         num_points, consistent, ind1, ind2,
                                         mle_targetll, save_internal_points, 
-                                        find_zero_atol, channel,
+                                        find_zero_atol, optimizationsettings,
+                                        use_threads, channel,
                                         min_proportion_unique=method.min_proportion_unique,
                                         use_MLE_point=method.use_MLE_point)
 
@@ -192,7 +203,8 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
                                         bivariate_optimiser, model, 
                                         num_points, consistent, ind1, ind2,
                                         mle_targetll, save_internal_points, 
-                                        find_zero_atol, channel,
+                                        find_zero_atol, optimizationsettings,
+                                        use_threads, channel,
                                         num_radial_directions=method.num_radial_directions,
                                         use_MLE_point=method.use_MLE_point)
 
@@ -201,7 +213,8 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
                                         bivariate_optimiser, model, 
                                         num_points, consistent, ind1, ind2,
                                         mle_targetll, save_internal_points, 
-                                        find_zero_atol, channel,
+                                        find_zero_atol, optimizationsettings,
+                                        use_threads, channel,
                                         ellipse_confidence_level=0.1,
                                         ellipse_start_point_shift=method.ellipse_start_point_shift,
                                         ellipse_sqrt_distortion=method.ellipse_sqrt_distortion)
@@ -216,7 +229,8 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
                                         method.num_level_sets,
                                         method.level_set_spacing,
                                         mle_targetll, save_internal_points,
-                                        find_zero_atol, channel)
+                                        find_zero_atol, optimizationsettings,
+                                        use_threads, channel)
             
             elseif method isa IterativeBoundaryMethod
                 boundary, internal = bivariate_confidenceprofile_iterativeboundary(
@@ -226,7 +240,8 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
                                         method.edge_points_per_iter, method.radial_start_point_shift,
                                         method.ellipse_sqrt_distortion, method.use_ellipse,
                                         mle_targetll, save_internal_points,
-                                        find_zero_atol, channel)
+                                        find_zero_atol, optimizationsettings, 
+                                        use_threads, channel)
             end
 
             return BivariateConfidenceStruct(boundary, internal)
@@ -275,8 +290,10 @@ Finds `num_points` `profile_type` boundary points at a specified `confidence_lev
 - `save_internal_points`: boolean variable specifying whether to save points found inside the boundary during boundary computation. Internal points can be plotted in bivariate profile plots and will be used to generate predictions from a given bivariate profile. Default is `true`.
 - `existing_profiles`: `Symbol ∈ [:ignore, :merge, :overwrite]` specifying what to do if profiles already exist for a given `θcombination`, `confidence_level`, `profile_type` and `method`. See below for each symbol's meanings. Default is `:merge`.
 - `find_zero_atol`: a `Real` number greater than zero for the absolute tolerance of the log-likelihood function value from the target value to be used when searching for confidence intervals. Default is `model.find_zero_atol`.
+- `optimizationsettings`: a [`OptimizationSettings`](@ref) containing the optimisation settings used to find optimal values of nuisance parameters for a given pair of interest parameter values. Default is `missing` (will use `model.core.optimizationsettings`).
 - `show_progress`: boolean variable specifying whether to display progress bars on the percentage of `θcombinations` completed and estimated time of completion. Default is `model.show_progress`.
-- `use_distributed`: boolean variable specifying whether to use a normal for loop or a `@distributed` for loop across combinations of interest parameters. The variable makes no difference if [Distributed.jl](https://docs.julialang.org/en/v1/stdlib/Distributed/) is not being used - setting it to `false` is intended for use when simulating parameter confidence boundary coverage (see [`check_bivariate_parameter_coverage`](@ref)). 
+- `use_distributed`: boolean variable specifying whether to use a normal for loop or a `@distributed` for loop across combinations of interest parameters. Set this variable to `false` if [Distributed.jl](https://docs.julialang.org/en/v1/stdlib/Distributed/) is not being used. Default is `true`.
+- `use_threads`: boolean variable specifying, if `use_distributed` is false, whether to use parallelised for loops across `Threads.nthreads()` threads or a non-parallel for loops to find boundary points from `methods` where boundary points are found independently. [`IterativeBoundaryMethod`](@ref), is the main method that is not parallelised. Default is `true`.
 
 !!! note "existing_profiles meanings"
     - :ignore means profiles that already exist will not be recomputed even if they contain fewer `num_points` boundary points. 
@@ -297,7 +314,7 @@ To prevent predictions from being lost from existing profiles that would be over
 
 ## Distributed Computing Implementation
 
-If [Distributed.jl](https://docs.julialang.org/en/v1/stdlib/Distributed/) is being used and `use_distributed` is `true`, then the bivariate profiles of distinct interest parameter combinations will be computed in parallel across `Distributed.nworkers()` workers.
+If [Distributed.jl](https://docs.julialang.org/en/v1/stdlib/Distributed/) is being used and `use_distributed` is `true`, then the bivariate profiles of distinct interest parameter combinations will be computed in parallel across `Distributed.nworkers()` workers. If `use_distributed` is `false` and `use_threads` is `true` then for methods where finding boundary points is independent they will be computed in parallel across `Threads.nthreads()` threads for each pair of interest parameters.
 
 ## Iteration Speed Of the Progress Meter
 
@@ -312,8 +329,10 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
                                         save_internal_points::Bool=true,
                                         existing_profiles::Symbol=:merge,
                                         find_zero_atol::Real=model.find_zero_atol,
+                                        optimizationsettings::Union{OptimizationSettings,Missing}=missing,
                                         show_progress::Bool=model.show_progress,
-                                        use_distributed::Bool=true)
+                                        use_distributed::Bool=true,
+                                        use_threads::Bool=true)
                                     
     function argument_handling!()
         existing_profiles ∈ [:ignore, :merge, :overwrite] || throw(ArgumentError("existing_profiles can only take value :ignore, :merge or :overwrite"))
@@ -328,10 +347,14 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
         1 ≤ first.(θcombinations)[1] && maximum(last.(θcombinations)) ≤ model.core.num_pars || throw(DomainError("θcombinations can only contain parameter indexes between 1 and the number of model parameters"))
         
         extrema(length.(θcombinations)) == (2,2) || throw(ArgumentError("θcombinations must only contain vectors of length 2"))
+
+        (!use_distributed && use_threads && timeit_debug_enabled()) &&
+            throw(ArgumentError("use_threads cannot be true when debug timings from TimerOutputs are enabled and use_distributed is false. Either set use_threads to false or disable debug timings using `PlaceholderLikelihood.TimerOutputs.disable_debug_timings(PlaceholderLikelihood)`"))
         return nothing
     end
     
     argument_handling!()
+    optimizationsettings = ismissing(optimizationsettings) ? model.core.optimizationsettings : optimizationsettings
     
     # need at least 3 boundary points for some algorithms to work
     num_points = max(3, num_points)
@@ -424,7 +447,9 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
                                                     θcombinations[i][1], θcombinations[i][2], profile_type,
                                                     method, mle_targetll,
                                                     save_internal_points,
-                                                    find_zero_atol, channel))]
+                                                    find_zero_atol,
+                                                    optimizationsettings, false,
+                                                    channel))]
                 end
                 put!(channel, false)
 
@@ -459,7 +484,9 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
                                         θcombinations[i][1], θcombinations[i][2], profile_type,
                                         method, mle_targetll,
                                         save_internal_points, 
-                                        find_zero_atol, channel)
+                                        find_zero_atol, 
+                                        optimizationsettings, use_threads,
+                                        channel)
     
                     if isnothing(boundary_struct); continue end
 
@@ -505,8 +532,10 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
                                         save_internal_points::Bool=true,
                                         existing_profiles::Symbol=:merge,
                                         find_zero_atol::Real=model.find_zero_atol,
+                                        optimizationsettings::Union{OptimizationSettings,Missing}=missing,
                                         show_progress::Bool=model.show_progress,
-                                        use_distributed::Bool=true)
+                                        use_distributed::Bool=true,
+                                        use_threads::Bool=true)
 
     θcombinations = convertθnames_toindices(model, θcombinations_symbols)
 
@@ -516,8 +545,10 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
             save_internal_points=save_internal_points,
             existing_profiles=existing_profiles,
             find_zero_atol=find_zero_atol,
+            optimizationsettings=optimizationsettings,
             show_progress=show_progress,
-            use_distributed=use_distributed)
+            use_distributed=use_distributed,
+            use_threads=use_threads)
     return nothing
 end
 
@@ -538,8 +569,10 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
                                         save_internal_points::Bool=true,
                                         existing_profiles::Symbol=:merge,
                                         find_zero_atol::Real=model.find_zero_atol,
+                                        optimizationsettings::Union{OptimizationSettings,Missing}=missing,
                                         show_progress::Bool=model.show_progress,
-                                        use_distributed::Bool=true)
+                                        use_distributed::Bool=true,
+                                        use_threads::Bool=true)
 
     profile_m_random_combinations = max(0, min(profile_m_random_combinations, binomial(model.core.num_pars, 2)))
     profile_m_random_combinations > 0 || throw(DomainError("profile_m_random_combinations must be a strictly positive integer"))
@@ -553,8 +586,10 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
             save_internal_points=save_internal_points,
             existing_profiles=existing_profiles,
             find_zero_atol=find_zero_atol,
+            optimizationsettings=optimizationsettings,
             show_progress=show_progress,
-            use_distributed=use_distributed)
+            use_distributed=use_distributed,
+            use_threads=use_threads)
     return nothing
 end
 
@@ -573,8 +608,10 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
                                         save_internal_points::Bool=true,
                                         existing_profiles::Symbol=:merge,
                                         find_zero_atol::Real=model.find_zero_atol,
+                                        optimizationsettings::Union{OptimizationSettings,Missing}=missing,
                                         show_progress::Bool=model.show_progress,
-                                        use_distributed::Bool=true)
+                                        use_distributed::Bool=true,
+                                        use_threads::Bool=true)
 
     θcombinations = collect(combinations(1:model.core.num_pars, 2))
 
@@ -584,8 +621,10 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
             save_internal_points=save_internal_points,
             existing_profiles=existing_profiles,
             find_zero_atol=find_zero_atol,
+            optimizationsettings=optimizationsettings,
             show_progress=show_progress,
-            use_distributed=use_distributed)
+            use_distributed=use_distributed,
+            use_threads=use_threads)
     return nothing
 end
 
