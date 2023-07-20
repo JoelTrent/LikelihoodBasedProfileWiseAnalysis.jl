@@ -3,9 +3,9 @@
 
 Optimization.jl optimiser used for calculating the values of nuisance parameters. Default values of options use NLopt.jl algorithms [`defaultOptimizationSettings`](@ref).
 """
-function optimise(fun, p, options::OptimizationSettings, θ₀, lb, ub)
+function optimise(fun, q, options::OptimizationSettings, θ₀, lb, ub)
     fopt = OptimizationFunction(fun, options.adtype)
-    prob = OptimizationProblem(fopt, θ₀, p; lb=lb, ub=ub, options.solve_kwargs...)
+    prob = OptimizationProblem(fopt, θ₀, q; lb=lb, ub=ub, options.solve_kwargs...)
     sol = solve(prob, options.solve_alg)
     return sol.u, -sol.objective
 end
@@ -15,9 +15,9 @@ end
 
 Alternative version of [`optimise`](@ref) without nuisance parameter bounds. Used for computing the nuisance parameters of [`EllipseApproxAnalytical`](@ref) profiles. Default values of options use NLopt.jl algorithms [`defaultOptimizationSettings`](@ref).
 """
-function optimise_unbounded(fun, p, options::OptimizationSettings, θ₀)
+function optimise_unbounded(fun, q, options::OptimizationSettings, θ₀)
     fopt = OptimizationFunction(fun, options.adtype)
-    prob = OptimizationProblem(fopt, θ₀, p, options.solve_kwargs...)
+    prob = OptimizationProblem(fopt, θ₀, q; options.solve_kwargs...)
     sol = solve(prob, options.solve_alg)
     return sol.u, -sol.objective
 end
@@ -70,7 +70,7 @@ function optimise_unbounded(fun, θ₀;
 
     opt = Opt(method,length(θ₀))
     opt.max_objective = tomax
-    opt.local_optimizer = Opt(:LN_NELDERMEAD, length(θ₀))
+    # opt.local_optimizer = Opt(:LN_NELDERMEAD, length(θ₀))
     res = NLopt.optimize(opt, θ₀)
     return res[[2,1]]
 end

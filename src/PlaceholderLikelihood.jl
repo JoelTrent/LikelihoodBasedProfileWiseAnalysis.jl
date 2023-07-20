@@ -45,7 +45,7 @@ export EllipseMLEApprox, OptimizationSettings, CoreLikelihoodModel, BaseLikeliho
 
 
 # FUNCTIONS ###############################################################################
-export initialiseLikelihoodModel, defaultOptimizationSettings,
+export initialiseLikelihoodModel, defaultOptimizationSettings, createOptimizationSettings,
     getMLE_ellipse_approximation!, check_ellipse_approx_exists!,
     setmagnitudes!, setbounds!,
 

@@ -32,7 +32,7 @@ Performs a simulation to estimate the coverage of univariate confidence interval
 
 # Details
 
-This simulated coverage check is used to estimate the performance of parameter confidence intervals. 
+This simulated coverage check is used to estimate the performance of parameter confidence intervals. The simulation uses [Distributed.jl](https://docs.julialang.org/en/v1/stdlib/Distributed/) to parallelise the workload.
 
 For a 95% confidence interval of a interest parameter `θi` it is expected that under repeated experiments from an underlying true model (data generation) which are used to construct a confidence interval for `θi` using the method used in [`univariate_confidenceintervals!`](@ref), 95% of the intervals constructed would contain the true value for `θi`. In the simulation where the values of the true parameters, `θtrue`, are known, this is equivalent to whether the confidence interval for `θi` contains the value `θtrue[θi]`. 
 
@@ -90,7 +90,7 @@ function check_univariate_parameter_coverage(data_generator::Function,
             m_new = initialiseLikelihoodModel(model.core.loglikefunction, new_data, model.core.θnames, θinitialguess, model.core.θlb, model.core.θub, model.core.θmagnitudes; uni_row_prealloaction_size=len_θs, show_progress=false)
 
             univariate_confidenceintervals!(m_new, θs; 
-                confidence_level=confidence_level, profile_type=profile_type, show_progress=false)
+                confidence_level=confidence_level, profile_type=profile_type, show_progress=false, use_threads=false)
 
             for row_ind in 1:m_new.num_uni_profiles
                 θi = m_new.uni_profiles_df[row_ind, :θindex]
@@ -126,7 +126,7 @@ function check_univariate_parameter_coverage(data_generator::Function,
                         model.core.θmagnitudes; uni_row_prealloaction_size=len_θs, show_progress=false)
 
                     univariate_confidenceintervals!(m_new, θs; 
-                        confidence_level=confidence_level, profile_type=profile_type, show_progress=false, use_distributed=false)
+                        confidence_level=confidence_level, profile_type=profile_type, show_progress=false, use_distributed=false, use_threads=false)
 
                     for row_ind in 1:m_new.num_uni_profiles
                         θi = m_new.uni_profiles_df[row_ind, :θindex]

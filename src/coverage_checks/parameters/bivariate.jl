@@ -35,7 +35,7 @@ Performs a simulation to estimate the coverage of bivariate confidence boundarie
 
 # Details
 
-This simulated coverage check is used to estimate the performance of bivariate parameter confidence boundaries.
+This simulated coverage check is used to estimate the performance of bivariate parameter confidence boundaries. The simulation uses [Distributed.jl](https://docs.julialang.org/en/v1/stdlib/Distributed/) to parallelise the workload.
 
 For a 95% confidence boundary of a pair of interest parameters `[θi, θj]` it is expected that under repeated experiments from an underlying true model (data generation) which are used to construct a 2D confidence boundary for `[θi, θj]`, 95% of the true boundaries, would contain the true value `[θi, θj]`. In the simulation where the values of the true parameters, `θtrue`, are known, this is equivalent to whether the minimum perimeter polygon of the 2d boundary points for `[θi, θj]` AND the true confidence boundary contains the value `θtrue[[θi, θj]]`.
 

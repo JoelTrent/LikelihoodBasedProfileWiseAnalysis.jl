@@ -150,6 +150,7 @@ function univariate_confidenceinterval(univariate_optimiser::Function,
                                         num_points_in_interval::Int,
                                         additional_width::Real,
                                         find_zero_atol::Real,
+                                        use_threads::Bool,
                                         channel::RemoteChannel)
 
     try
@@ -159,10 +160,9 @@ function univariate_confidenceinterval(univariate_optimiser::Function,
             interval_points = zeros(model.core.num_pars, 2)
             newLb, newUb, initGuess, θranges, ωranges = init_nuisance_parameters(model, θi)
 
-            p=(ind=θi, newLb=newLb, newUb=newUb, initGuess=initGuess, 
-                θranges=θranges, ωranges=ωranges, consistent=consistent, 
-                options=model.core.optimizationsettings,
-                ω_opt=zeros(model.core.num_pars-1))
+            q=(ind=θi, newLb=newLb, newUb=newUb, initGuess=initGuess, 
+                θranges=θranges, ωranges=ωranges, consistent=consistent)
+            p=(ω_opt=zeros(model.core.num_pars-1), q=q, options=model.core.optimizationsettings)
 
             if use_existing_profiles
                 bracket_l, bracket_r = get_interval_brackets(model, θi, confidence_level,
@@ -181,7 +181,7 @@ function univariate_confidenceinterval(univariate_optimiser::Function,
             use_find_zero = true
             if univariate_optimiser == univariateψ_ellipse_unbounded
 
-                out = analytic_ellipse_loglike_1D_soln(θi, consistent.data_analytic, mle_targetll)            
+                out = analytic_ellipse_loglike_1D_soln(θi, consistent.data_analytic, mle_targetll)
 
                 if !isnothing(out)
                     use_find_zero = false
@@ -259,7 +259,8 @@ function univariate_confidenceinterval(univariate_optimiser::Function,
             if num_points_in_interval > 0
                 points = get_points_in_interval_single_row(univariate_optimiser, model,
                                                             num_points_in_interval, θi,
-                                                            profile_type, points, additional_width)
+                                                            profile_type, points, additional_width,
+                                                            use_threads)
                 put!(channel, true)
             end
 
@@ -299,7 +300,8 @@ Computes likelihood-based confidence interval profiles for the provided `θs_to_
 - `existing_profiles`: `Symbol ∈ [:ignore, :overwrite]` specifying what to do if profiles already exist for a given interest parameter, `confidence_level` and `profile_type`. See below for each symbol's meanings. Default is `:merge`.
 - `find_zero_atol`: a `Real` number greater than zero for the absolute tolerance of the log-likelihood function value from the target value to be used when searching for confidence intervals. Default is `model.find_zero_atol`.
 - `show_progress`: boolean variable specifying whether to display progress bars on the percentage of `θs_to_profile` completed and estimated time of completion. Default is `model.show_progress`.
-- `use_distributed`: boolean variable specifying whether to use a normal for loop or a `@distributed` for loop across combinations of interest parameters. The variable makes no difference if [Distributed.jl](https://docs.julialang.org/en/v1/stdlib/Distributed/) is not being used - setting it to `false` is intended for use when simulating parameter confidence interval coverage (see [`check_univariate_parameter_coverage`](@ref)). 
+- `use_distributed`: boolean variable specifying whether to use a normal for loop or a `@distributed` for loop across combinations of interest parameters. Set this variable to `false` if [Distributed.jl](https://docs.julialang.org/en/v1/stdlib/Distributed/) is not being used. Default is `true`.
+- `use_threads`: boolean variable specifying, if `use_distributed` is false, whether to use a parallelised for loop across `Threads.nthreads()` threads or a non-parallel for loop within the call to [`get_points_in_intervals!`](@ref). Default is `true`.
 
 !!! note "existing_profiles meanings"
     - :ignore means profiles that already exist will not be recomputed. 
@@ -315,7 +317,7 @@ The bracketing method utilised via Roots.jl's [`find_zero`](https://juliamath.gi
 
 ## Distributed Computing Implementation
 
-If [Distributed.jl](https://docs.julialang.org/en/v1/stdlib/Distributed/) is being used and `use_distributed` is `true`, then the univariate profiles of each interest parameter will be computed in parallel across `Distributed.nworkers()` workers.
+If [Distributed.jl](https://docs.julialang.org/en/v1/stdlib/Distributed/) is being used and `use_distributed` is `true`, then the univariate profiles of each interest parameter will be computed in parallel across `Distributed.nworkers()` workers. If `use_distributed` is `false` and `use_threads` is `true` then after the confidence intervals of each interest parameter have been computed, any interval points specified using `num_points_in_interval` will be computed in parallel for each interest parameter.
 
 ## Iteration Speed Of the Progress Meter
 
@@ -331,7 +333,8 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
                                         existing_profiles::Symbol=:ignore,
                                         find_zero_atol::Real=model.find_zero_atol,
                                         show_progress::Bool=model.show_progress,
-                                        use_distributed::Bool=true)
+                                        use_distributed::Bool=true,
+                                        use_threads::Bool=true)
     
     function argument_handling!()
         num_points_in_interval >= 0 || throw(DomainError("num_points_in_interval must be a strictly positive integer"))
@@ -342,6 +345,9 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
 
         (sort(θs_to_profile); unique!(θs_to_profile))
         1 ≤ θs_to_profile[1] && θs_to_profile[end] ≤ model.core.num_pars || throw(DomainError("θs_to_profile can only contain parameter indexes between 1 and the number of model parameters"))
+
+        (!use_distributed && use_threads && timeit_debug_enabled()) &&
+            throw(ArgumentError("use_threads cannot be true when debug timings from TimerOutputs are enabled and use_distributed is false. Either set use_threads to false or disable debug timings using `PlaceholderLikelihood.TimerOutputs.disable_debug_timings(PlaceholderLikelihood)`"))
     end
 
     argument_handling!()
@@ -406,7 +412,7 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
                                                         use_existing_profiles,
                                                         num_points_in_interval,
                                                         additional_width, find_zero_atol,
-                                                        channel))]
+                                                        false, channel))]
                 end
 
                 for (i, (θi, interval_struct)) in enumerate(profiles_to_add)
@@ -435,7 +441,7 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
                                                                     use_existing_profiles,
                                                                     num_points_in_interval,
                                                                     additional_width, find_zero_atol,
-                                                                    channel)
+                                                                    use_threads, channel)
 
                     if isnothing(interval_struct); continue end
 
@@ -477,7 +483,8 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
                                         existing_profiles::Symbol=:ignore,
                                         find_zero_atol::Real=model.find_zero_atol,
                                         show_progress::Bool=model.show_progress,
-                                        use_distributed::Bool=true)
+                                        use_distributed::Bool=true,
+                                        use_threads::Bool=true)
 
     indices_to_profile = convertθnames_toindices(model, θs_to_profile)
     univariate_confidenceintervals!(model, indices_to_profile, confidence_level=confidence_level,
@@ -488,7 +495,8 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
                                 existing_profiles=existing_profiles,
                                 find_zero_atol=find_zero_atol,
                                 show_progress=show_progress,
-                                use_distributed=use_distributed)
+                                use_distributed=use_distributed,
+                                use_threads=use_threads)
     return nothing
 end
 
@@ -509,7 +517,8 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
                                         existing_profiles::Symbol=:ignore,
                                         find_zero_atol::Real=model.find_zero_atol,
                                         show_progress::Bool=model.show_progress,
-                                        use_distributed::Bool=true)
+                                        use_distributed::Bool=true,
+                                        use_threads::Bool=true)
 
     profile_m_random_parameters = max(0, min(profile_m_random_parameters, model.core.num_pars))
     profile_m_random_parameters > 0 || throw(DomainError("profile_m_random_parameters must be a strictly positive integer"))
@@ -524,6 +533,7 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
                                 existing_profiles=existing_profiles,
                                 find_zero_atol=find_zero_atol,
                                 show_progress=show_progress,
-                                use_distributed=use_distributed)
+                                use_distributed=use_distributed,
+                                use_threads=use_threads)
     return nothing
 end

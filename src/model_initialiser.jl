@@ -154,8 +154,8 @@ end
 
 Creates a [`OptimizationSettings`](@ref) struct with defaults of:
 - `adtype`: `SciMLBase.NoAD()` (no automatic differentiation). 
-- `solve_alg`: `NLopt.LN_BOBYQA()`.
-- `solve_kwargs`: `(maxtime=15, xtol_rel=1e-9)`
+- `solve_alg`: [`NLopt.LN_BOBYQA()`](https://nlopt.readthedocs.io/en/latest/NLopt_Algorithms/#bobyqa).
+- `solve_kwargs`: `(maxtime=15, xtol_rel=1e-9)`.
 
 If this function causes an error then `PlaceholderLikelihood` needs to be loaded. Alternatively, the packages `SciMLBase`, `Optimization` and `OptimizationNLopt` need to be loaded.
 """

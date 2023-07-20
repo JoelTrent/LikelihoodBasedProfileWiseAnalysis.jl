@@ -40,7 +40,7 @@ Performs a simulation to estimate the coverage of approximate bivariate confiden
 
 # Details
 
-This simulated coverage check is used to estimate the performance of the approximations of the true bivariate parameter confidence boundaries. Namely, how well the approximation contains the true boundary. 
+This simulated coverage check is used to estimate the performance of the approximations of the true bivariate parameter confidence boundaries. Namely, how well the approximation contains the true boundary. The simulation uses [Distributed.jl](https://docs.julialang.org/en/v1/stdlib/Distributed/) to parallelise the workload.
 
 Tests how well the boundary polygon created by a `method` with a given number of points and turned into a polygon hull using `hullmethod` contains the theoretical boundary by testing how many samples from a [`AbstractSampleType`](@ref) within the true boundary are within the boundary polygon.
 

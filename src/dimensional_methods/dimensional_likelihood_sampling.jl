@@ -378,10 +378,9 @@ Samples `num_points_to_sample` points from interest parameter space, for each in
 - `sample_type`: the sampling method used to sample parameter space. Available sample types are [`UniformGridSamples`](@ref), [`UniformRandomSamples`](@ref) and [`LatinHypercubeSamples`](@ref). Default is `LatinHypercubeSamples()` ([`LatinHypercubeSamples`](@ref)).
 - `lb`: optional vector of lower bounds on interest parameters. Use to specify interest parameter lower bounds to sample over that are different than those contained in `model.core` (must be the same length as original bounds). Default is `Float64[]` (use lower bounds from `model.core`).
 - `ub`: optional vector of upper bounds on interest parameters. Use to specify interest parameter upper bounds to sample over that are different than those contained in `model.core` (must be the same length as original bounds). Default is `Float64[]` (use upper bounds from `model.core`).
-- `use_distributed`: boolean variable specifying whether to use a threaded for loop or distributed for loop to evaluate the log-likelihood at each sampled point. This should be set to true if Julia instances have been started with low numbers of threads or distributed computing is being used. Default is `false`.
-- `use_threads`: boolean variable specifying, if `use_distributed` is false, whether to use a parallelised for loop across `Threads.nthreads()` threads or a non-parallel for loop to evaluate the log-likelihood at each sampled point. Default is `true`.
 - `existing_profiles`: `Symbol ∈ [:ignore, :overwrite]` specifying what to do if samples already exist for a given `confidence_level` and `sample_type`.  Default is `:overwrite`.
 - `show_progress`: boolean variable specifying whether to display progress bars on the percentage of `θcombinations` completed and estimated time of completion. Default is `model.show_progress`.
+- `use_threads`: boolean variable specifying, if the number of workers for distributed computing is not greater than 1 (`!Distributed.nworkers()>1`), to use a parallelised for loop across `Threads.nthreads()` threads to evaluate the log-likelihood at each sampled point. Default is `false`.
 
 # Details
 
@@ -389,7 +388,7 @@ Using [`dimensional_likelihood_sample`](@ref) this function calls the sample met
 
 ## Parallel Computing Implementation
 
-If [Distributed.jl](https://docs.julialang.org/en/v1/stdlib/Distributed/) is being used and `use_distributed` is `true`, then the dimensional samples of distinct interest parameter combinations will be computed in parallel across `Distributed.nworkers()` workers. If `use_distributed` is `false` and `use_threads` is `true` then the log-likelihood value of sampled points will be computed in parallel across `Threads.nthreads()` threads.
+If [Distributed.jl](https://docs.julialang.org/en/v1/stdlib/Distributed/) is being used then the dimensional samples of distinct interest parameter combinations will be computed in parallel across `Distributed.nworkers()` workers. If it is not being used (`Distributed.nworkers()` is equal to `1`) and `use_threads` is `true` then the dimensional samples of each distinct interest parameter combination will be computed in parallel across `Threads.nthreads()` threads. It is highly recommended to set `use_threads` to `true` in that situation.
 
 ## Iteration Speed Of the Progress Meter
 
@@ -402,9 +401,9 @@ function dimensional_likelihood_samples!(model::LikelihoodModel,
                                         sample_type::AbstractSampleType=LatinHypercubeSamples(),
                                         lb::AbstractVector{<:Real}=Float64[],
                                         ub::AbstractVector{<:Real}=Float64[],
-                                        use_threads::Bool=false,
                                         existing_profiles::Symbol=:overwrite,
-                                        show_progress::Bool=model.show_progress)
+                                        show_progress::Bool=model.show_progress,
+                                        use_threads::Bool=false)
 
     function argument_handling()
         model.core isa CoreLikelihoodModel || throw(ArgumentError("model does not contain a log-likelihood function. Add it using add_loglikelihood_function!"))
@@ -424,6 +423,9 @@ function dimensional_likelihood_samples!(model::LikelihoodModel,
 
         (use_threads && timeit_debug_enabled()) &&
             throw(ArgumentError("use_threads cannot be true when debug timings from TimerOutputs are enabled. Either set use_threads to false or disable debug timings using `PlaceholderLikelihood.TimerOutputs.disable_debug_timings(PlaceholderLikelihood)`"))
+
+        (use_threads && nworkers()>1) &&
+            throw(ArgumentError("use_threads cannot be true when the number of workers for distributed computing is greater than 1 (`Distributed.nworkers()>1`). Either set use_threads to false or remove these workers using `Distributed.rmprocs(workers())`"))
         return nothing
     end
     
@@ -555,18 +557,18 @@ function dimensional_likelihood_samples!(model::LikelihoodModel,
     sample_type::AbstractSampleType=LatinHypercubeSamples(),
     lb::AbstractVector{<:Real}=Float64[],
     ub::AbstractVector{<:Real}=Float64[],
-    use_threads::Bool=true,
     existing_profiles::Symbol=:overwrite,
-    show_progress::Bool=model.show_progress)
+    show_progress::Bool=model.show_progress,
+    use_threads::Bool=true)
 
     θindices = convertθnames_toindices(model, θnames)
 
     dimensional_likelihood_samples!(model, θindices, num_points_to_sample,
                                     confidence_level=confidence_level, sample_type=sample_type,
                                     lb=lb, ub=ub,
-                                    use_threads=use_threads,
                                     existing_profiles=existing_profiles,
-                                    show_progress=show_progress)
+                                    show_progress=show_progress,
+                                    use_threads=use_threads)
     return nothing
 end
 
@@ -587,9 +589,9 @@ function dimensional_likelihood_samples!(model::LikelihoodModel,
     sample_type::AbstractSampleType=LatinHypercubeSamples(),
     lb::AbstractVector{<:Real}=Float64[],
     ub::AbstractVector{<:Real}=Float64[],
-    use_threads::Bool=true,
     existing_profiles::Symbol=:overwrite,
-    show_progress::Bool=model.show_progress)
+    show_progress::Bool=model.show_progress,
+    use_threads::Bool=true)
 
     sample_m_random_combinations = max(0, min(sample_m_random_combinations, binomial(model.core.num_pars, sample_dimension)))
     sample_m_random_combinations > 0 || throw(DomainError("sample_m_random_combinations must be a strictly positive integer"))
@@ -600,9 +602,8 @@ function dimensional_likelihood_samples!(model::LikelihoodModel,
     dimensional_likelihood_samples!(model, θcombinations, num_points_to_sample,
                                     confidence_level=confidence_level, sample_type=sample_type,
                                     lb=lb, ub=ub,
-                                    use_threads=use_threads,
                                     existing_profiles=existing_profiles,
-                                    show_progress=show_progress)
+                                    show_progress=show_progress,                                    use_threads=use_threads)
     return nothing
 end
 
@@ -621,17 +622,17 @@ function dimensional_likelihood_samples!(model::LikelihoodModel,
     sample_type::AbstractSampleType=LatinHypercubeSamples(),
     lb::AbstractVector{<:Real}=Float64[],
     ub::AbstractVector{<:Real}=Float64[],
-    use_threads::Bool=true,
     existing_profiles::Symbol=:overwrite,
-    show_progress::Bool=model.show_progress)
+    show_progress::Bool=model.show_progress,
+    use_threads::Bool=true)
 
     θcombinations = collect(combinations(1:model.core.num_pars, sample_dimension))
 
     dimensional_likelihood_samples!(model, θcombinations, num_points_to_sample,
                                     confidence_level=confidence_level, sample_type=sample_type,
                                     lb=lb, ub=ub,
-                                    use_threads=use_threads,
                                     existing_profiles=existing_profiles,
-                                    show_progress=show_progress)
+                                    show_progress=show_progress,
+                                    use_threads=use_threads)
     return nothing
 end

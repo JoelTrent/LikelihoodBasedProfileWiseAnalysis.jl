@@ -319,10 +319,10 @@ Samples `num_points_to_sample` points from full parameter space, evaluating the 
 - `sample_type`: the sampling method used to sample parameter space. Available sample types are [`UniformGridSamples`](@ref), [`UniformRandomSamples`](@ref) and [`LatinHypercubeSamples`](@ref). Default is `LatinHypercubeSamples()` ([`LatinHypercubeSamples`](@ref)).
 - `lb`: optional vector of lower bounds on parameters. Use to specify parameter lower bounds to sample over that are different than those contained in `model.core`. Default is `Float64[]` (use lower bounds from `model.core`).
 - `ub`: optional vector of upper bounds on parameters. Use to specify parameter upper bounds to sample over that are different than those contained in `model.core`. Default is `Float64[]` (use upper bounds from `model.core`).
-- `use_distributed`: boolean variable specifying whether to use a threaded for loop or distributed for loop to evaluate the log-likelihood at each sampled point. This should be set to true if Julia instances have been started with low numbers of threads or distributed computing is being used. Default is `false`.
-- `use_threads`: boolean variable specifying, if `use_distributed` is false, whether to use a parallelised for loop across `Threads.nthreads()` threads or a non-parallel for loop to evaluate the log-likelihood at each sampled point. Default is true.
 - `existing_profiles`: `Symbol ∈ [:ignore, :overwrite]` specifying what to do if samples already exist for a given `confidence_level` and `sample_type`.  Default is `:overwrite`.
 - `show_progress`: boolean variable specifying whether to display progress bars on the percentage of `θcombinations` completed and estimated time of completion. Default is `model.show_progress`.
+- `use_distributed`: boolean variable specifying whether to use a threaded for loop or distributed for loop to evaluate the log-likelihood at each sampled point. This should be set to true if Julia instances have been started with low numbers of threads or distributed computing is being used. Default is `false`.
+- `use_threads`: boolean variable specifying, if `use_distributed` is false, whether to use a parallelised for loop across `Threads.nthreads()` threads or a non-parallel for loop to evaluate the log-likelihood at each sampled point. Default is true.
 
 # Details
 
@@ -342,10 +342,10 @@ function full_likelihood_sample!(model::LikelihoodModel,
                                     sample_type::AbstractSampleType=LatinHypercubeSamples(),
                                     lb::AbstractVector{<:Real}=Float64[],
                                     ub::AbstractVector{<:Real}=Float64[],
-                                    use_distributed::Bool=false,
-                                    use_threads::Bool=true,
                                     existing_profiles::Symbol=:overwrite,
-                                    show_progress::Bool=model.show_progress)
+                                    show_progress::Bool=model.show_progress,
+                                    use_distributed::Bool=false,
+                                    use_threads::Bool=true)
     
     function argument_handling()
         model.core isa CoreLikelihoodModel || throw(ArgumentError("model does not contain a log-likelihood function. Add it using add_loglikelihood_function!"))
