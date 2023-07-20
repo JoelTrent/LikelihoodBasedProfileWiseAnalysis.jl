@@ -43,6 +43,7 @@ function get_points_in_interval_single_row(univariate_optimiser::Function,
                                 profile_type::AbstractProfileType,
                                 current_interval_points::PointsAndLogLikelihood,
                                 additional_width::Real,
+                                optimizationsettings::OptimizationSettings,
                                 use_threads::Bool)
 
     num_points_in_interval > 0 || throw(DomainError("num_points_in_interval must be a strictly positive integer"))
@@ -55,7 +56,7 @@ function get_points_in_interval_single_row(univariate_optimiser::Function,
     consistent = get_consistent_tuple(model, 0.0, profile_type, 1)
     q=(ind=θi, newLb=newLb, newUb=newUb, initGuess=initGuess, 
         θranges=θranges, ωranges=ωranges, consistent=consistent, 
-        options=model.core.optimizationsettings)
+        options=optimizationsettings)
     
     point_locations = zeros(0)
 
@@ -143,6 +144,7 @@ function get_points_in_interval_single_row(model::LikelihoodModel,
                                 uni_row_number::Int,
                                 num_points_in_interval::Int,
                                 additional_width::Real,
+                                optimizationsettings::OptimizationSettings,
                                 use_threads::Bool,
                                 channel::RemoteChannel)
 
@@ -154,7 +156,7 @@ function get_points_in_interval_single_row(model::LikelihoodModel,
             current_interval_points = get_uni_confidence_interval_points(model, uni_row_number)
             
             output = get_points_in_interval_single_row(univariate_optimiser, model, num_points_in_interval,
-                θi, profile_type, current_interval_points, additional_width, use_threads)
+                θi, profile_type, current_interval_points, additional_width, optimizationsettings, use_threads)
             put!(channel, true)
             return output 
         end
@@ -187,6 +189,7 @@ Evaluate and save `num_points_in_interval` linearly spaced points between the co
 - `confidence_levels`: a vector of confidence levels. If empty, all confidence levels of univariate profiles will be considered for finding interval points. Otherwise, only confidence levels in `confidence_levels` will be considered. Default is `Float64[]` (any confidence level).
 - `profile_types`: a vector of `AbstractProfileType` structs. If empty, all profile types of univariate profiles are considered. Otherwise, only profiles with matching profile types will be considered. Default is `AbstractProfileType[]` (any profile type).
 - `not_evaluated_predictions`: a boolean specifying whether to only get points in intervals of profiles that have not had predictions evaluated (true) or for all profiles (false). If `false`, then any existing predictions will be forgotten by the `model` and overwritten the next time predictions are evaluated for each profile. Default is `true`.
+- `optimizationsettings`: a [`OptimizationSettings`](@ref) containing the optimisation settings used to find optimal values of nuisance parameters for a given interest parameter value. Default is `missing` (will use `model.core.optimizationsettings`).
 - `show_progress`: boolean variable specifying whether to display progress bars on the percentage of `θs_to_profile` completed and estimated time of completion. Default is `model.show_progress`.
 - `use_threads`: boolean variable specifying, if the number of workers for distributed computing is not greater than 1 (`!Distributed.nworkers()>1`), to use a parallelised for loop across `Threads.nthreads()` threads to evaluate the interval points. Default is `false`.
 
@@ -210,12 +213,15 @@ function get_points_in_intervals!(model::LikelihoodModel,
                                     confidence_levels::Vector{<:Float64}=Float64[],
                                     profile_types::Vector{<:AbstractProfileType}=AbstractProfileType[],
                                     not_evaluated_predictions::Bool=true,
+                                    optimizationsettings::Union{OptimizationSettings,Missing}=missing,
                                     show_progress::Bool=model.show_progress,
                                     use_threads::Bool=false)
 
     function argument_handling()
         num_points_in_interval > 0 || throw(DomainError("num_points_in_interval must be a strictly positive integer"))
         additional_width >= 0 || throw(DomainError("additional_width must be greater than or equal to zero"))
+
+        model.core isa CoreLikelihoodModel || throw(ArgumentError("model does not contain a log-likelihood function. Add it using add_loglikelihood_function!"))
     
         (use_threads && timeit_debug_enabled()) &&
             throw(ArgumentError("use_threads cannot be true when debug timings from TimerOutputs are enabled. Either set use_threads to false or disable debug timings using `PlaceholderLikelihood.TimerOutputs.disable_debug_timings(PlaceholderLikelihood)`"))
@@ -225,6 +231,7 @@ function get_points_in_intervals!(model::LikelihoodModel,
     end
 
     argument_handling()
+    optimizationsettings = ismissing(optimizationsettings) ? model.core.optimizationsettings : optimizationsettings
 
     sub_df = desired_df_subset(model.uni_profiles_df, model.num_uni_profiles, Int[], 
                 confidence_levels, profile_types, 
@@ -246,7 +253,8 @@ function get_points_in_intervals!(model::LikelihoodModel,
         @async begin
             points_to_add = @distributed (vcat) for i in 1:nrow(sub_df)
                 [(sub_df[i, :row_ind], get_points_in_interval_single_row(model, sub_df[i, :row_ind], 
-                                            num_points_in_interval, additional_width, use_threads, channel))]
+                                            num_points_in_interval, additional_width,
+                                            optimizationsettings, use_threads, channel))]
             end
             put!(channel, false)
             

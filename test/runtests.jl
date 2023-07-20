@@ -421,6 +421,7 @@ using EllipseSampling
 
             @test remove_functions_from_core!(m) isa CoreLikelihoodModel
             @test_throws ArgumentError univariate_confidenceintervals!(m)
+            @test_throws ArgumentError get_points_in_intervals!(m, 1)
             @test_throws ArgumentError bivariate_confidenceprofiles!(m, 10)
             @test_throws ArgumentError sample_bivariate_internal_points!(m, 1)
             @test_throws ArgumentError dimensional_likelihood_samples!(m, 1, 10)

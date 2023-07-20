@@ -1,22 +1,30 @@
 """
-    dimensional_optimiser!(θs::Union{Vector, SubArray}, p::NamedTuple, targetll::Real)
+    dimensional_optimiser!(θs_opt::Union{Vector, SubArray}, 
+        q::NamedTuple, 
+        options::OptimizationSettings, 
+        targetll::Real)
 
-Given a log-likelihood function (`p.consistent.loglikefunction`) which is bounded in parameter space, this function finds the values of the nuisance parameters ω that optimise the function for fixed values of the interest parameters ψ (which are already in `θs`) and returns the log-likelihood value minus the confidence boundary target threshold. The returned function value will be zero at the locations of the approximate confidence boundary for ψ. Nuisance parameter values are stored in the corresponding indices of θs, modifying the array in place.
+Given a log-likelihood function (`q.consistent.loglikefunction`) which is bounded in parameter space, this function finds the values of the nuisance parameters ω that optimise the function for fixed values of the interest parameters ψ (which are already in `θs_opt`) and returns the log-likelihood value minus the confidence boundary target threshold. The returned function value will be zero at the locations of the approximate confidence boundary for ψ. Nuisance parameter values are stored in the corresponding indices of θs_opt, modifying the array in place.
 """
-function dimensional_optimiser!(θs::Union{Vector, SubArray}, p::NamedTuple, targetll::Real)
+function dimensional_optimiser!(θs_opt::Union{Vector,SubArray},
+    q::NamedTuple, 
+    options::OptimizationSettings, 
+    targetll::Real)
     
-    function fun(ω)
-        θs[p.ωindices] = ω
+    function fun(ω, q)
+        θs = zeros(eltype(ω), q.consistent.num_pars)
+        θs[q.θindices] .= θs_opt[q.θindices]
+        θs[q.ωindices] .= ω
         @timeit_debug timer "Likelihood evaluation" begin
-            return p.consistent.loglikefunction(θs, p.consistent.data)
+            return -q.consistent.loglikefunction(θs, q.consistent.data)
         end
     end
 
     @timeit_debug timer "Likelihood nuisance parameter optimisation" begin
-        (xopt,fopt)=optimise(fun, p.initGuess, p.newLb, p.newUb)
+        (xopt,fopt)=optimise(fun, q, options, q.initGuess, q.newLb, q.newUb)
     end
     llb=fopt-targetll
-    θs[p.ωindices] .= xopt
+    θs_opt[q.ωindices] .= xopt
     return llb
 end
 
@@ -33,11 +41,12 @@ end
 Given a `grid` of `grid_size` points in interest parameter space with `num_dims` dimensions, this function finds the values of nuisance parameters that maximise the log-likelihood function at each point and returns the points that are within the `confidence_level` log-likelihood threshold as a `num_dims * n` array, alongside a vector of their log-likelihood values. Log-likelihood values are standardised to 0.0 at the MLE point.
 """
 function valid_points(model::LikelihoodModel, 
-                        p::NamedTuple, 
+                        q::NamedTuple, 
                         grid::Matrix{Float64},
                         grid_size::Int,
                         confidence_level::Float64, 
                         num_dims::Int,
+                        optimizationsettings::OptimizationSettings,
                         use_threads::Bool,
                         channel::RemoteChannel)
 
@@ -47,7 +56,7 @@ function valid_points(model::LikelihoodModel,
 
     ex = use_threads ? ThreadedEx() : ThreadedEx(basesize=grid_size) 
     @floop ex for i in axes(grid,2)
-        ll_values[i] = dimensional_optimiser!(@view(grid[:,i]), p, targetll)
+        ll_values[i] = dimensional_optimiser!(@view(grid[:,i]), q, optimizationsettings, targetll)
         put!(channel, true)
     end
     valid_point .= ll_values .≥ 0.0
@@ -89,7 +98,8 @@ end
         points_per_dimension::Union{Int, Vector{Int}},
         confidence_level::Float64,
         lb::AbstractVector{<:Real}=Float64[],
-        ub::AbstractVector{<:Real}=Float64[];
+        ub::AbstractVector{<:Real}=Float64[],
+        optimizationsettings::OptimizationSettings=default_OptimizationSettings();
         use_threads=true,
         arguments_checked::Bool=false,
         channel::RemoteChannel=RemoteChannel(() -> Channel{Bool}(Inf)))
@@ -103,7 +113,8 @@ function uniform_grid(model::LikelihoodModel,
                         points_per_dimension::Union{Int, Vector{Int}},
                         confidence_level::Float64,
                         lb::AbstractVector{<:Real}=Float64[],
-                        ub::AbstractVector{<:Real}=Float64[];
+                        ub::AbstractVector{<:Real}=Float64[],
+                        optimizationsettings::OptimizationSettings=default_OptimizationSettings();
                         use_threads=true,
                         arguments_checked::Bool=false,
                         channel::RemoteChannel=RemoteChannel(() -> Channel{Bool}(Inf)))
@@ -119,7 +130,7 @@ function uniform_grid(model::LikelihoodModel,
 
     newLb, newUb, initGuess, ωindices = init_nuisance_parameters(model, θindices, num_dims)
     consistent = get_consistent_tuple(model, confidence_level, LogLikelihood(), num_dims)
-    p=(θindices=θindices, newLb=newLb, newUb=newUb, initGuess=initGuess,
+    q=(θindices=θindices, newLb=newLb, newUb=newUb, initGuess=initGuess,
         ωindices=ωindices, consistent=consistent)
 
     lb, ub = arguments_checked ? (lb, ub) : check_if_bounds_supplied(model, θindices, lb, ub)
@@ -133,7 +144,8 @@ function uniform_grid(model::LikelihoodModel,
         grid[θindices, i] .= point
     end
 
-    pnts, lls = valid_points(model, p, grid, grid_size, confidence_level, num_dims, use_threads, channel)
+    pnts, lls = valid_points(model, q, grid, grid_size, confidence_level, num_dims, 
+                                optimizationsettings, use_threads, channel)
     return SampledConfidenceStruct(pnts, lls)
 end
 
@@ -219,7 +231,8 @@ end
         num_points::Int,
         confidence_level::Float64,
         lb::AbstractVector{<:Real}=Float64[],
-        ub::AbstractVector{<:Real}=Float64[];
+        ub::AbstractVector{<:Real}=Float64[],
+        optimizationsettings::OptimizationSettings=default_OptimizationSettings();
         use_threads::Bool=true,
         use_distributed::Bool=false,
         arguments_checked::Bool=false,
@@ -234,7 +247,8 @@ function uniform_random(model::LikelihoodModel,
                         num_points::Int,
                         confidence_level::Float64,
                         lb::AbstractVector{<:Real}=Float64[],
-                        ub::AbstractVector{<:Real}=Float64[];
+                        ub::AbstractVector{<:Real}=Float64[],
+                        optimizationsettings::OptimizationSettings=default_OptimizationSettings();
                         use_threads::Bool=true,
                         arguments_checked::Bool=false,
                         channel::RemoteChannel=RemoteChannel(() -> Channel{Bool}(num_points+1)))
@@ -246,7 +260,7 @@ function uniform_random(model::LikelihoodModel,
     
     newLb, newUb, initGuess, ωindices = init_nuisance_parameters(model, θindices, num_dims)
     consistent = get_consistent_tuple(model, confidence_level, LogLikelihood(), num_dims)
-    p=(θindices=θindices, newLb=newLb, newUb=newUb, initGuess=initGuess,
+    q=(θindices=θindices, newLb=newLb, newUb=newUb, initGuess=initGuess,
         ωindices=ωindices, consistent=consistent)
     
     lb, ub = arguments_checked ? (lb, ub) : check_if_bounds_supplied(model, θindices, lb, ub)
@@ -257,7 +271,8 @@ function uniform_random(model::LikelihoodModel,
         grid[θindices[dim], :] .= rand(Uniform(lb[dim], ub[dim]), num_points)
     end
 
-    pnts, lls = valid_points(model, p, grid, num_points, confidence_level, num_dims, use_threads, channel)
+    pnts, lls = valid_points(model, q, grid, num_points, confidence_level, num_dims, 
+                                optimizationsettings, use_threads, channel)
     return SampledConfidenceStruct(pnts, lls)
 end
 
@@ -267,7 +282,8 @@ end
         num_points::Int,
         confidence_level::Float64,
         lb::AbstractVector{<:Real}=Float64[],
-        ub::AbstractVector{<:Real}=Float64[];
+        ub::AbstractVector{<:Real}=Float64[],
+        optimizationsettings::OptimizationSettings=default_OptimizationSettings();
         use_threads::Bool=true,
         arguments_checked::Bool=false,
         channel::RemoteChannel=RemoteChannel(() -> Channel{Bool}(num_points+1)))
@@ -281,7 +297,8 @@ function LHS(model::LikelihoodModel,
             num_points::Int,
             confidence_level::Float64,
             lb::AbstractVector{<:Real}=Float64[],
-            ub::AbstractVector{<:Real}=Float64[];
+            ub::AbstractVector{<:Real}=Float64[],
+            optimizationsettings::OptimizationSettings=default_OptimizationSettings();
             use_threads::Bool=true,
             arguments_checked::Bool=false,
             channel::RemoteChannel=RemoteChannel(() -> Channel{Bool}(num_points+1)))
@@ -294,7 +311,7 @@ function LHS(model::LikelihoodModel,
 
     newLb, newUb, initGuess, ωindices = init_nuisance_parameters(model, θindices, num_dims)
     consistent = get_consistent_tuple(model, confidence_level, LogLikelihood(), num_dims)
-    p=(θindices=θindices, newLb=newLb, newUb=newUb, initGuess=initGuess,
+    q=(θindices=θindices, newLb=newLb, newUb=newUb, initGuess=initGuess,
         ωindices=ωindices, consistent=consistent)
 
     grid = zeros(model.core.num_pars, num_points)
@@ -304,7 +321,8 @@ function LHS(model::LikelihoodModel,
 
     # grid = permutedims(scaleLHC(LHCoptim(num_points, num_dims, num_gens; kwargs...)[1], scale_range))
     
-    pnts, lls = valid_points(model, p, grid, num_points, confidence_level, num_dims, use_threads, channel)
+    pnts, lls = valid_points(model, q, grid, num_points, confidence_level, num_dims, 
+                                optimizationsettings, use_threads, channel)
     return SampledConfidenceStruct(pnts, lls)
 end
 
@@ -316,6 +334,7 @@ end
         sample_type::AbstractSampleType,
         lb::AbstractVector{<:Real},
         ub::AbstractVector{<:Real},
+        optimizationsettings::OptimizationSettings,
         use_threads::Bool,
         channel::RemoteChannel)
 
@@ -327,22 +346,26 @@ function dimensional_likelihood_sample(model::LikelihoodModel,
                                     confidence_level::Float64,
                                     sample_type::AbstractSampleType,
                                     lb::AbstractVector{<:Real},
-                                    ub::AbstractVector{<:Real},
+                                    ub::AbstractVector{<:Real}, 
+                                    optimizationsettings::OptimizationSettings,
                                     use_threads::Bool,
                                     channel::RemoteChannel)
 
     try         
         @timeit_debug timer "Dimensional likelihood sample" begin
             if sample_type isa UniformGridSamples
-                sample_struct = uniform_grid(model, θindices, num_points, confidence_level, lb, ub;
+                sample_struct = uniform_grid(model, θindices, num_points, confidence_level, lb, ub,
+                                                optimizationsettings;
                                                 use_threads=use_threads, arguments_checked=true,
                                                 channel=channel)
             elseif sample_type isa UniformRandomSamples
-                sample_struct = uniform_random(model, θindices, num_points, confidence_level, lb, ub;             
+                sample_struct = uniform_random(model, θindices, num_points, confidence_level, lb, ub,
+                                                optimizationsettings;             
                                                 use_threads=use_threads, arguments_checked=true,
                                                 channel=channel)
             elseif sample_type isa LatinHypercubeSamples
-                sample_struct = LHS(model, θindices, num_points, confidence_level, lb, ub;
+                sample_struct = LHS(model, θindices, num_points, confidence_level, lb, ub,
+                                    optimizationsettings;
                                     use_threads=use_threads, arguments_checked=true, channel=channel)
             end 
             return sample_struct
@@ -379,6 +402,7 @@ Samples `num_points_to_sample` points from interest parameter space, for each in
 - `lb`: optional vector of lower bounds on interest parameters. Use to specify interest parameter lower bounds to sample over that are different than those contained in `model.core` (must be the same length as original bounds). Default is `Float64[]` (use lower bounds from `model.core`).
 - `ub`: optional vector of upper bounds on interest parameters. Use to specify interest parameter upper bounds to sample over that are different than those contained in `model.core` (must be the same length as original bounds). Default is `Float64[]` (use upper bounds from `model.core`).
 - `existing_profiles`: `Symbol ∈ [:ignore, :overwrite]` specifying what to do if samples already exist for a given `confidence_level` and `sample_type`.  Default is `:overwrite`.
+- `optimizationsettings`: a [`OptimizationSettings`](@ref) containing the optimisation settings used to find optimal values of nuisance parameters for a given interest parameter values. Default is `missing` (will use `model.core.optimizationsettings`).
 - `show_progress`: boolean variable specifying whether to display progress bars on the percentage of `θcombinations` completed and estimated time of completion. Default is `model.show_progress`.
 - `use_threads`: boolean variable specifying, if the number of workers for distributed computing is not greater than 1 (`!Distributed.nworkers()>1`), to use a parallelised for loop across `Threads.nthreads()` threads to evaluate the log-likelihood at each sampled point. Default is `false`.
 
@@ -402,6 +426,7 @@ function dimensional_likelihood_samples!(model::LikelihoodModel,
                                         lb::AbstractVector{<:Real}=Float64[],
                                         ub::AbstractVector{<:Real}=Float64[],
                                         existing_profiles::Symbol=:overwrite,
+                                        optimizationsettings::Union{OptimizationSettings,Missing}=missing,
                                         show_progress::Bool=model.show_progress,
                                         use_threads::Bool=false)
 
@@ -430,6 +455,7 @@ function dimensional_likelihood_samples!(model::LikelihoodModel,
     end
     
     argument_handling()
+    optimizationsettings = ismissing(optimizationsettings) ? model.core.optimizationsettings : optimizationsettings
     lb, ub = check_if_bounds_supplied(model, lb, ub)
 
     # error handle confidence_level
@@ -510,7 +536,8 @@ function dimensional_likelihood_samples!(model::LikelihoodModel,
             profiles_to_add = @distributed (vcat) for θs in θindices
                 [(θs, dimensional_likelihood_sample(model, θs, num_points_to_sample,
                                                     confidence_level, sample_type,
-                                                    lb[θs], ub[θs], use_threads, channel))]
+                                                    lb[θs], ub[θs], optimizationsettings, 
+                                                    use_threads, channel))]
             end
             put!(channel, false)
 
@@ -551,15 +578,16 @@ end
 Samples just the provided `θnames` interest parameter sets, provided as a vector of vectors.
 """
 function dimensional_likelihood_samples!(model::LikelihoodModel,
-    θnames::Vector{Vector{Symbol}},
-    num_points_to_sample::Union{Int, Vector{Int}};
-    confidence_level::Float64=0.95,
-    sample_type::AbstractSampleType=LatinHypercubeSamples(),
-    lb::AbstractVector{<:Real}=Float64[],
-    ub::AbstractVector{<:Real}=Float64[],
-    existing_profiles::Symbol=:overwrite,
-    show_progress::Bool=model.show_progress,
-    use_threads::Bool=true)
+                                            θnames::Vector{Vector{Symbol}},
+                                            num_points_to_sample::Union{Int, Vector{Int}};
+                                            confidence_level::Float64=0.95,
+                                            sample_type::AbstractSampleType=LatinHypercubeSamples(),
+                                            lb::AbstractVector{<:Real}=Float64[],
+                                            ub::AbstractVector{<:Real}=Float64[],
+                                            existing_profiles::Symbol=:overwrite,
+                                            optimizationsettings::Union{OptimizationSettings,Missing}=missing,
+                                            show_progress::Bool=model.show_progress,
+                                            use_threads::Bool=true)
 
     θindices = convertθnames_toindices(model, θnames)
 
@@ -567,6 +595,7 @@ function dimensional_likelihood_samples!(model::LikelihoodModel,
                                     confidence_level=confidence_level, sample_type=sample_type,
                                     lb=lb, ub=ub,
                                     existing_profiles=existing_profiles,
+                                    optimizationsettings=optimizationsettings,                                    
                                     show_progress=show_progress,
                                     use_threads=use_threads)
     return nothing
@@ -582,16 +611,17 @@ end
 Samples m random combinations of `sample_dimension` model parameters (sampling without replacement), where `0 < m ≤ binomial(model.core.num_pars, sample_dimension)`.
 """
 function dimensional_likelihood_samples!(model::LikelihoodModel,
-    sample_dimension::Int,
-    sample_m_random_combinations::Int,
-    num_points_to_sample::Union{Int, Vector{Int}};
-    confidence_level::Float64=0.95,
-    sample_type::AbstractSampleType=LatinHypercubeSamples(),
-    lb::AbstractVector{<:Real}=Float64[],
-    ub::AbstractVector{<:Real}=Float64[],
-    existing_profiles::Symbol=:overwrite,
-    show_progress::Bool=model.show_progress,
-    use_threads::Bool=true)
+                                            sample_dimension::Int,
+                                            sample_m_random_combinations::Int,
+                                            num_points_to_sample::Union{Int, Vector{Int}};
+                                            confidence_level::Float64=0.95,
+                                            sample_type::AbstractSampleType=LatinHypercubeSamples(),
+                                            lb::AbstractVector{<:Real}=Float64[],
+                                            ub::AbstractVector{<:Real}=Float64[],
+                                            existing_profiles::Symbol=:overwrite,
+                                            optimizationsettings::Union{OptimizationSettings,Missing}=missing,
+                                            show_progress::Bool=model.show_progress,
+                                            use_threads::Bool=true)
 
     sample_m_random_combinations = max(0, min(sample_m_random_combinations, binomial(model.core.num_pars, sample_dimension)))
     sample_m_random_combinations > 0 || throw(DomainError("sample_m_random_combinations must be a strictly positive integer"))
@@ -603,6 +633,7 @@ function dimensional_likelihood_samples!(model::LikelihoodModel,
                                     confidence_level=confidence_level, sample_type=sample_type,
                                     lb=lb, ub=ub,
                                     existing_profiles=existing_profiles,
+                                    optimizationsettings=optimizationsettings,
                                     show_progress=show_progress,                                    use_threads=use_threads)
     return nothing
 end
@@ -616,15 +647,16 @@ end
 Samples all combinations of `sample_dimension` model parameters.
 """
 function dimensional_likelihood_samples!(model::LikelihoodModel,
-    sample_dimension::Int,
-    num_points_to_sample::Union{Int, Vector{Int}};
-    confidence_level::Float64=0.95,
-    sample_type::AbstractSampleType=LatinHypercubeSamples(),
-    lb::AbstractVector{<:Real}=Float64[],
-    ub::AbstractVector{<:Real}=Float64[],
-    existing_profiles::Symbol=:overwrite,
-    show_progress::Bool=model.show_progress,
-    use_threads::Bool=true)
+                                            sample_dimension::Int,
+                                            num_points_to_sample::Union{Int, Vector{Int}};
+                                            confidence_level::Float64=0.95,
+                                            sample_type::AbstractSampleType=LatinHypercubeSamples(),
+                                            lb::AbstractVector{<:Real}=Float64[],
+                                            ub::AbstractVector{<:Real}=Float64[],
+                                            existing_profiles::Symbol=:overwrite,
+                                            optimizationsettings::Union{OptimizationSettings,Missing}=missing,
+                                            show_progress::Bool=model.show_progress,
+                                            use_threads::Bool=true)
 
     θcombinations = collect(combinations(1:model.core.num_pars, sample_dimension))
 
@@ -632,6 +664,7 @@ function dimensional_likelihood_samples!(model::LikelihoodModel,
                                     confidence_level=confidence_level, sample_type=sample_type,
                                     lb=lb, ub=ub,
                                     existing_profiles=existing_profiles,
+                                    optimizationsettings=optimizationsettings,
                                     show_progress=show_progress,
                                     use_threads=use_threads)
     return nothing
