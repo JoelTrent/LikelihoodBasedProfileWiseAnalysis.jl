@@ -18,6 +18,7 @@ We can set our default optimisation settings using a [`OptimizationSettings`](@r
 
 ```@docs
 defaultOptimizationSettings
+createOptimizationSettings
 OptimizationSettings
 ```
 

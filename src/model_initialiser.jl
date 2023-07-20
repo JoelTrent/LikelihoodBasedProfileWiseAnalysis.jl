@@ -164,6 +164,27 @@ function defaultOptimizationSettings()
 end
 
 """
+    createOptimizationSettings(;
+        adtype::Union{SciMLBase.AbstractADType, Missing}=missing, 
+        solve_alg=missing, 
+        solve_kwargs::Union{NamedTuple, Missing}=missing)
+
+Method for creating a [`OptimizationSettings`](@ref) struct with each field of the struct as a keyword argument. If a keyword argument is not provided, then the default setting in [`defaultOptimizationSettings`](@ref) is used.
+"""
+function createOptimizationSettings(;
+    adtype::Union{SciMLBase.AbstractADType, Missing}=missing, 
+    solve_alg=missing, 
+    solve_kwargs::Union{NamedTuple, Missing}=missing)
+
+    defaults = defaultOptimizationSettings()
+    adtype       = ismissing(adtype)       ? defaults.adtype       : adtype
+    solve_alg    = ismissing(solve_alg)    ? defaults.solve_alg    : solve_alg
+    solve_kwargs = ismissing(solve_kwargs) ? defaults.solve_kwargs : solve_kwargs
+
+    return OptimizationSettings(adtype, solve_alg, solve_kwargs)
+end
+
+"""
     initialiseLikelihoodModel(loglikefunction::Function,
         predictfunction::Union{Function, Missing},
         data::Union{Tuple, NamedTuple},
