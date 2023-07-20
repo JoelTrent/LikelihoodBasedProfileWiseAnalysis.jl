@@ -86,7 +86,7 @@ Returns the approximated log-likelihood value minus the confidence boundary targ
 """
 function bivariateψ_ellipse_analytical(ψ::Real, p::NamedTuple)
     @timeit_debug timer "Likelihood evaluation" begin 
-        return -analytic_ellipse_loglike([p.ψ_x[1], ψ], [p.q.ind1, p.q.ind2], p.q.consistent.data_analytic) - p.q.consistent.targetll
+        return analytic_ellipse_loglike([p.ψ_x[1], ψ], [p.q.ind1, p.q.ind2], p.q.consistent.data_analytic) - p.q.consistent.targetll
     end
 end
 
@@ -97,7 +97,7 @@ Returns the approximated log-likelihood value minus the confidence boundary targ
 """
 function bivariateψ_ellipse_analytical_vectorsearch(ψ::Real, p::NamedTuple)
     @timeit_debug timer "Likelihood evaluation" begin 
-        return -analytic_ellipse_loglike(p.pointa + ψ*p.uhat, [p.q.ind1, p.q.ind2], p.q.consistent.data_analytic) - p.q.consistent.targetll
+        return analytic_ellipse_loglike(p.pointa + ψ*p.uhat, [p.q.ind1, p.q.ind2], p.q.consistent.data_analytic) - p.q.consistent.targetll
     end
 end
 
@@ -108,7 +108,7 @@ Returns the approximated log-likelihood value minus the confidence boundary targ
 """
 function bivariateψ_ellipse_analytical_continuation(ψ::Real, p::NamedTuple)
     @timeit_debug timer "Likelihood evaluation" begin 
-        return -analytic_ellipse_loglike(p.pointa + ψ*p.uhat, [p.q.ind1, p.q.ind2], p.q.consistent.data_analytic) - p.targetll
+        return analytic_ellipse_loglike(p.pointa + ψ*p.uhat, [p.q.ind1, p.q.ind2], p.q.consistent.data_analytic) - p.targetll
     end
 end
 
