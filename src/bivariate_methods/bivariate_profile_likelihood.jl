@@ -114,13 +114,14 @@ function get_ωs_bivariate_ellipse_analytical!(boundary,
         samples_all_pars = zeros(num_pars, num_points)
         samples_all_pars[[ind1, ind2], :] .= boundary
     end
-
+    
+    _samples_all_pars=samples_all_pars
     ex = use_threads ? ThreadedEx() : ThreadedEx(basesize=num_points)
     @floop ex for i in 1:num_points
-        variablemapping!(@view(samples_all_pars[:, i]), bivariateψ_ellipse_unbounded(boundary[:,i], p), θranges, ωranges)
+        variablemapping!(@view(_samples_all_pars[:, i]), bivariateψ_ellipse_unbounded(boundary[:,i], p), θranges, ωranges)
     end
 
-    return samples_all_pars
+    return _samples_all_pars
 end
 
 """
