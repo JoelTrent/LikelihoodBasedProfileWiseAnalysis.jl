@@ -430,7 +430,7 @@ function bivariate_confidenceprofile_vectorsearch(bivariate_optimiser::Function,
     end
 
     ex = use_threads ? ThreadedEx() : ThreadedEx(basesize=num_points)
-    let internal=internal; let point_is_on_bounds=point_is_on_bounds; let external=external
+    let internal=internal, point_is_on_bounds=point_is_on_bounds, external=external
         @floop ex for i in 1:num_points
             FLoops.@init pointa = zeros(2)
             FLoops.@init uhat = zeros(2)
@@ -458,7 +458,7 @@ function bivariate_confidenceprofile_vectorsearch(bivariate_optimiser::Function,
             end
             put!(channel, true)
         end
-    end; end; end
+    end
 
     if biv_opt_is_ellipse_analytical
         return get_ωs_bivariate_ellipse_analytical!(@view(boundary[[ind1, ind2], :]), num_points,
