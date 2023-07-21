@@ -73,7 +73,7 @@ For additional information on the `radial_start_point_shift` and `ellipse_sqrt_d
 
 Recommended for use with the [`LogLikelihood`](@ref) profile type. Radial directions, edge length and internal angle calculations are rescaled by the relative magnitude/scale of the two interest parameters. This is so directions and regions explored and consequently the boundary found are not dominated by the parameter with the larger magnitude.
 
-Once an initial boundary is found by pushing out from the MLE point in directions defined by either [`RadialMLEMethod`](@ref) or [`RadialRandomMethod`], the method seeks to improve this boundary by minimising an internal angle and an edge length objective, each considered sequentially, until the desired number of boundary points are found. As such, the method can be thought of as a mesh smoothing or improvement algorithm; we can consider the boundary found at a given moment in time to be a N-sided polygon with edges between adjacent boundary points (vertices). 
+Once an initial boundary is found by pushing out from the MLE point in directions defined by either [`RadialMLEMethod`](@ref) or [`RadialRandomMethod`](@ref), the method seeks to improve this boundary by minimising an internal angle and an edge length objective, each considered sequentially, until the desired number of boundary points are found. As such, the method can be thought of as a mesh smoothing or improvement algorithm; we can consider the boundary found at a given moment in time to be a N-sided polygon with edges between adjacent boundary points (vertices). 
 
 Regions we define as needing improvement are those with:
 
@@ -121,6 +121,10 @@ This method is unlikely to find boundaries that do not contain the MLE point (if
 ## Impact of parameter bounds
 
 If a parameter bound is in the way of reaching the boundary in a given search direction, the point on that bound will be returned as the boundary point. For the bracketing method to work, parameter values on the bounds need to be legal and return a non `Inf` value from the log-likelihood function. Interest parameter bounds that have ranges magnitudes larger than the range of the boundary may prevent the true boundary from being found. Additionally, the bracketing method will be less efficient if the interest parameter bounds are far from the true boundary. 
+
+# Threaded implementation
+
+This method is partially implemented with Threads parallelisation if `use_threads` is set to true when calling [`bivariate_confidenceprofiles!`](@ref). The initial boundary step is parallelised and the boundary improvement steps are not.
 
 # Internal Points
 
@@ -178,6 +182,10 @@ This method is unlikely to find boundaries that do not contain the MLE point (if
 
 If a parameter bound is in the way of reaching the boundary in a given search direction, the point on that bound will be returned as the boundary point. For the bracketing method to work, parameter values on the bounds need to be legal and return a non `Inf` value from the log-likelihood function. Interest parameter bounds that have ranges magnitudes larger than the range of the boundary may prevent the true boundary from being found. Additionally, the bracketing method will be less efficient if the interest parameter bounds are far from the true boundary. 
 
+# Threaded implementation
+
+This method is implemented with Threads parallelisation if `use_threads` is set to true when calling [`bivariate_confidenceprofiles!`](@ref).
+
 # Internal Points
 
 Finds no internal points.
@@ -225,6 +233,10 @@ This method can find multiple boundaries (if they exist).
 ## Impact of parameter bounds
 
 If a parameter bound is in the way of reaching the boundary in a given search direction, in contrast to [`RadialMLEMethod`](@ref), the point on that bound will not be returned as the boundary point. For the bracketing method to work, parameter values on the bounds need to be legal and return a non `Inf` value from the log-likelihood function. Interest parameter bounds that have ranges magnitudes larger than the range of the boundary may prevent the true boundary from being found. Additionally, the bracketing method will be less efficient if the interest parameter bounds are far from the true boundary. The method will fail if the interest parameter bounds are fully contained by the boundary.
+
+# Threaded implementation
+
+This method is partially implemented with Threads parallelisation if `use_threads` is set to true when calling [`bivariate_confidenceprofiles!`](@ref). The finding point pairs step is not parallelised and the finding boundary from point pairs step is parallelised.
 
 # Internal Points
 
@@ -279,6 +291,10 @@ Interest parameter bounds that have ranges magnitudes larger than the range of t
 
 The method will fail if the interest parameter bounds are fully contained by the boundary.
 
+# Threaded implementation
+
+This method is partially implemented with Threads parallelisation if `use_threads` is set to true when calling [`bivariate_confidenceprofiles!`](@ref). The finding point pairs step is not parallelised and the finding boundary from point pairs step is parallelised.
+
 # Internal Points
 
 Finds at least `ceil(min_proportion_unique*num_points) - 1*use_MLE_point` internal points.
@@ -318,6 +334,10 @@ This method can find multiple boundaries (if they exist).
 ## Impact of parameter bounds
 
 If a parameter bound is in the way of reaching the boundary, points will not be put on that bound. Additionally, if the true boundary is very close to a parameter bound, the method will struggle to find this region of the boundary. This is because finding the boundary in this location requires generating a random point between the boundary and the parameter bound, which becomes more difficult the closer they are. Interest parameter bounds that have ranges magnitudes larger than the range of the boundary will make finding internal points very difficult, requiring a lot of computational effort. Similarly, the inverse will be true if external points are hard to find. The method will fail if the interest parameter bounds are fully contained by the boundary.
+
+# Threaded implementation
+
+This method is implemented with Threads parallelisation if `use_threads` is set to true when calling [`bivariate_confidenceprofiles!`](@ref).
 
 # Internal Points
 
@@ -399,6 +419,10 @@ For additional information on the `ellipse_start_point_shift` and `ellipse_sqrt_
 Uses a derivative-free 1D line search algorithm to find the boundary at subsequent confidence levels. If the derivative-free approach fails, it switches to a bracketing algorithm between a given boundary point and the point on the user-provided bounds in the search direction.
 
 This method is unlikely to find boundaries that do not contain the MLE point (if they exist).
+
+# Threaded implementation
+
+This method is not implemented with Threads parallelisation.
 
 # Internal Points
 

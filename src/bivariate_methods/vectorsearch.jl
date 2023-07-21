@@ -24,7 +24,7 @@ end
 
 Implementation of finding pairs of points that bracket the bivariate confidence boundary for [`SimultaneousMethod`](@ref).
 """
-function findNpointpairs_simultaneous!(p::NamedTuple, 
+function findNpointpairs_simultaneous!(q::NamedTuple, 
                                         bivariate_optimiser::Function, 
                                         model::LikelihoodModel, 
                                         num_points::Int, 
@@ -34,7 +34,8 @@ function findNpointpairs_simultaneous!(p::NamedTuple,
                                         save_internal_points::Bool,
                                         biv_opt_is_ellipse_analytical::Bool,
                                         min_proportion_unique::Real,
-                                        use_MLE_point::Bool)
+                                        use_MLE_point::Bool,
+                                        optimizationsettings::OptimizationSettings)
 
     internal  = zeros(2,num_points)
     internal_all = zeros(model.core.num_pars, save_internal_points ? num_points : 0)
@@ -42,9 +43,10 @@ function findNpointpairs_simultaneous!(p::NamedTuple,
     external = zeros(2,num_points)
 
     min_num_unique = ceil(Int, min_proportion_unique*num_points)
-
+    
     Ninside=0; Noutside=0
     iters=0
+    p = (ω_opt=zeros(model.core.num_pars - 2), pointa=zeros(2), uhat=zeros(2), q=q, options=optimizationsettings)
 
     if use_MLE_point
         Ninside +=1
@@ -64,7 +66,7 @@ function findNpointpairs_simultaneous!(p::NamedTuple,
                 ll_values[Ninside] = g * 1.0
                 internal_all[[ind1, ind2], Ninside] .= x, y
                 if !biv_opt_is_ellipse_analytical
-                    variablemapping!(@view(internal_all[:, Ninside]), p.ω_opt, p.θranges, p.ωranges)
+                    variablemapping!(@view(internal_all[:, Ninside]), p.ω_opt, q.θranges, q.ωranges)
                 end
             end
         else
@@ -87,7 +89,7 @@ function findNpointpairs_simultaneous!(p::NamedTuple,
                 ll_values[Ninside] = g * 1.0
                 internal_all[[ind1, ind2], Ninside] .= x, y
                 if !biv_opt_is_ellipse_analytical
-                    variablemapping!(@view(internal_all[:, Ninside]), p.ω_opt, p.θranges, p.ωranges)
+                    variablemapping!(@view(internal_all[:, Ninside]), p.ω_opt, q.θranges, q.ωranges)
                 end
             end
         end
@@ -134,9 +136,10 @@ function findNpointpairs_simultaneous!(p::NamedTuple,
 
     if save_internal_points && biv_opt_is_ellipse_analytical
         get_ωs_bivariate_ellipse_analytical!(@view(internal_all[[ind1, ind2], :]), size(internal_all, 2),
-                                                    p.consistent, ind1, ind2, 
-                                                    model.core.num_pars, p.initGuess,
-                                                    p.θranges, p.ωranges, internal_all)
+                                                    q.consistent, ind1, ind2, 
+                                                    model.core.num_pars, q.initGuess,
+                                                    q.θranges, q.ωranges, 
+                                                    optimizationsettings, false, internal_all)
     end
 
     if save_internal_points; ll_values .= ll_values .+ mle_targetll end
@@ -172,7 +175,7 @@ Implementation of finding pairs of points that bracket the bivariate confidence 
 
 Distorts uniformly spaced anticlockwise angles on a circle using [`PlaceholderLikelihood.find_m_spaced_radialdirections`](@ref) to angles on an ellipse representative of the relative magnitude of each parameter. If the magnitude of a parameter is a NaN value (i.e. either bound is Inf), then the relative magnitude is set to 1.0, as no information is known about its magnitude.
 """
-function findNpointpairs_radialrandom!(p::NamedTuple, 
+function findNpointpairs_radialrandom!(q::NamedTuple, 
                                     bivariate_optimiser::Function, 
                                     model::LikelihoodModel, 
                                     num_points::Int, 
@@ -182,7 +185,8 @@ function findNpointpairs_radialrandom!(p::NamedTuple,
                                     mle_targetll::Float64,
                                     save_internal_points::Bool,
                                     biv_opt_is_ellipse_analytical::Bool, 
-                                    use_MLE_point::Bool)
+                                    use_MLE_point::Bool,
+                                    optimizationsettings::OptimizationSettings)
 
     internal  = zeros(2,num_points)
     internal_all = zeros(model.core.num_pars, save_internal_points ? num_points : 0)
@@ -195,6 +199,7 @@ function findNpointpairs_radialrandom!(p::NamedTuple,
     internal_count=0
     ω_opt = zeros(model.core.num_pars-2)
     g_ll = 0.0
+    p = (ω_opt=zeros(model.core.num_pars-2), pointa=zeros(2), uhat=zeros(2), q=q, options=optimizationsettings)
     
     if isnan(model.core.θmagnitudes[ind1]) || isnan(model.core.θmagnitudes[ind2]) 
         relative_magnitude = 1.0
@@ -252,7 +257,7 @@ function findNpointpairs_radialrandom!(p::NamedTuple,
                     ll_values[internal_count] = g_ll * 1.0
                     internal_all[[ind1, ind2], internal_count] .= x, y
                     if !biv_opt_is_ellipse_analytical
-                        variablemapping!(@view(internal_all[:, internal_count]), ω_opt, p.θranges, p.ωranges)
+                        variablemapping!(@view(internal_all[:, internal_count]), ω_opt, q.θranges, q.ωranges)
                     end
                 end
             end
@@ -269,9 +274,10 @@ function findNpointpairs_radialrandom!(p::NamedTuple,
         internal_all = internal_all[:, 1:internal_count]
         if biv_opt_is_ellipse_analytical
             get_ωs_bivariate_ellipse_analytical!(@view(internal_all[[ind1, ind2], :]), internal_count,
-                                                                p.consistent, ind1, ind2, 
-                                                                model.core.num_pars, p.initGuess,
-                                                                p.θranges, p.ωranges, internal_all)
+                                                    q.consistent, ind1, ind2, 
+                                                    model.core.num_pars, q.initGuess,
+                                                    q.θranges, q.ωranges, 
+                                                    optimizationsettings, false, internal_all)
         end
     end
 
@@ -323,9 +329,9 @@ function findNpointpairs_radialMLE!(q::NamedTuple,
 
     ex = use_threads ? ThreadedEx() : ThreadedEx(basesize=num_points)
     @floop ex for i in 1:num_points
-        pointa = zeros(2)
-        uhat = zeros(2)
-        ω_opt = zeros(model.core.num_pars - 2)
+        FLoops.@init pointa = zeros(2)
+        FLoops.@init uhat = zeros(2)
+        FLoops.@init ω_opt = zeros(model.core.num_pars-2)
         p = (ω_opt=ω_opt, pointa=pointa, uhat=uhat, q=q, options=optimizationsettings)
 
         dir_vector = ellipse_points[:,i] .- mle_point
@@ -416,21 +422,23 @@ function bivariate_confidenceprofile_vectorsearch(bivariate_optimiser::Function,
     else
         if num_radial_directions == 0
             internal, internal_all, ll_values, external = 
-                findNpointpairs_simultaneous!(p, bivariate_optimiser, model, num_points, ind1, ind2,
+                findNpointpairs_simultaneous!(q, bivariate_optimiser, model, num_points, ind1, ind2,
                                                 mle_targetll, save_internal_points, biv_opt_is_ellipse_analytical,
-                                                min_proportion_unique, use_MLE_point)
+                                                min_proportion_unique, use_MLE_point,
+                                                optimizationsettings)
         else
             internal, internal_all, ll_values, external = 
-                findNpointpairs_radialrandom!(p, bivariate_optimiser, model, num_points, 
+                findNpointpairs_radialrandom!(q, bivariate_optimiser, model, num_points, 
                                                 num_radial_directions, ind1, ind2,
                                                 mle_targetll, save_internal_points,
-                                                biv_opt_is_ellipse_analytical, use_MLE_point)
+                                                biv_opt_is_ellipse_analytical, use_MLE_point,
+                                                optimizationsettings,)
         end
         point_is_on_bounds = falses(num_points)
     end
 
     ex = use_threads ? ThreadedEx() : ThreadedEx(basesize=num_points)
-    let internal=internal, point_is_on_bounds=point_is_on_bounds, external=external
+    let internal=internal, external=external, point_is_on_bounds=point_is_on_bounds
         @floop ex for i in 1:num_points
             FLoops.@init pointa = zeros(2)
             FLoops.@init uhat = zeros(2)

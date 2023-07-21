@@ -5,25 +5,29 @@
         num_points::Int, 
         ind1::Int, 
         ind2::Int,
-        bound_warning::Bool,
-        radial_start_point_shift::Float64)
+        radial_start_point_shift::Float64,
+        optimizationsettings::OptimizationSettings,
+        use_threads::Bool)
 
 Implementation of finding pairs of points that bracket the bivariate confidence boundary for [`IterativeBoundaryMethod`](@ref), searching radially from the MLE point for points on the bounds, in search directions similar to those used by [`RadialRandomMethod`](@ref). If a point on the bounds is inside the confidence boundary, that point will represent the boundary in that search direction.
 
 Search directions are given by distorting uniformly spaced anticlockwise angles on a circle to angles on an ellipse representative of the relative magnitude of each parameter. If the magnitude of a parameter is a NaN value (i.e. either bound is Inf), then the relative magnitude is set to 1.0, as no information is known about its magnitude.
 """
-function findNpointpairs_radialMLE!(p::NamedTuple, 
+function findNpointpairs_radialMLE!(q::NamedTuple, 
                                     bivariate_optimiser::Function, 
                                     model::LikelihoodModel, 
                                     num_points::Int, 
                                     ind1::Int, 
                                     ind2::Int,
-                                    bound_warning::Bool,
-                                    radial_start_point_shift::Float64)
+                                    radial_start_point_shift::Float64,
+                                    optimizationsettings::OptimizationSettings,
+                                    use_threads::Bool)
 
     mle_point = model.core.θmle[[ind1, ind2]]
     external = zeros(2,num_points)
     point_is_on_bounds = falses(num_points)
+    # warn if bound prevents reaching boundary
+    bound_inds = [(0, 'a') for _ in 1:num_points]
     
     if isnan(model.core.θmagnitudes[ind1]) || isnan(model.core.θmagnitudes[ind2]) 
         relative_magnitude = 1.0
@@ -33,30 +37,40 @@ function findNpointpairs_radialMLE!(p::NamedTuple,
 
     radial_dirs = find_m_spaced_radialdirections(num_points, start_point_shift=radial_start_point_shift)
 
-    for i in 1:num_points
-        dir_vector = [relative_magnitude * cospi(radial_dirs[i]), sinpi(radial_dirs[i]) ]
-        external[:,i], bound_ind, upper_or_lower = findpointonbounds(model, mle_point, dir_vector, ind1, ind2, true)
+    ex = use_threads ? ThreadedEx() : ThreadedEx(basesize=num_points)
+    let relative_magnitude=relative_magnitude
+        @floop ex for i in 1:num_points
+            FLoops.@init pointa = zeros(2)
+            FLoops.@init uhat = zeros(2)
+            FLoops.@init ω_opt = zeros(model.core.num_pars-2)
+            p = (ω_opt=ω_opt, pointa=pointa, uhat=uhat, q=q, options=optimizationsettings)
 
-        # if bound point is a point inside the boundary, note that this is the case
-        p.pointa .= external[:,i]
-        g = bivariate_optimiser(0.0, p)
-        if g ≥ 0
-            point_is_on_bounds[i] = true
+            dir_vector = [relative_magnitude * cospi(radial_dirs[i]), sinpi(radial_dirs[i]) ]
+            external[:,i], bound_ind, upper_or_lower = findpointonbounds(model, mle_point, dir_vector, ind1, ind2, true)
 
-            if bound_warning
-                @warn string("The ", upper_or_lower, " bound on variable ", model.core.θnames[bound_ind], " is inside the confidence boundary")
-                bound_warning = false
-            end
-        else
-            # make bracket a tiny bit smaller
-            if isinf(g)
-                v_bar = external[:,i] .- mle_point
-                external[:,i] .= mle_point .+ ((1.0-1e-12) .* v_bar)
+            # if bound point is a point inside the boundary, note that this is the case
+            p.pointa .= external[:,i]
+            g = bivariate_optimiser(0.0, p)
+            if g ≥ 0
+                point_is_on_bounds[i] = true
+                bound_inds[i] = (bound_ind, upper_or_lower)
+            else
+                # make bracket a tiny bit smaller
+                if isinf(g)
+                    v_bar = external[:,i] .- mle_point
+                    external[:,i] .= mle_point .+ ((1.0-1e-12) .* v_bar)
+                end
             end
         end
     end
 
-    return external, point_is_on_bounds, bound_warning
+    if any(point_is_on_bounds)
+        _bound_ind, _upper_or_lower = bound_inds[findfirst(point_is_on_bounds)]
+        _upper_or_lower = _upper_or_lower == 'U' ? "upper" : "lower"
+        @warn string("The ", _upper_or_lower, " bound on variable ", model.core.θnames[_bound_ind], " is inside the confidence boundary")
+    end
+
+    return external, point_is_on_bounds, any(point_is_on_bounds)
 end
 
 """
@@ -124,7 +138,9 @@ end
         ellipse_sqrt_distortion::Float64,
         use_ellipse::Bool,
         save_internal_points::Bool,
-        find_zero_atol::Real,
+        find_zero_atol::Real, 
+        optimizationsettings::OptimizationSettings,
+        use_threads::Bool,
         channel::RemoteChannel)
 
 Finds the initial boundary of [`IterativeBoundaryMethod`](@ref), containing `initial_num_points`, returning it and initialised parameter values. 
@@ -134,7 +150,7 @@ If `initial_num_points` is equal to `num_points` then the desired number of boun
 function iterativeboundary_init(bivariate_optimiser::Function, 
                                 model::LikelihoodModel, 
                                 num_points::Int, 
-                                p::NamedTuple, 
+                                q::NamedTuple, 
                                 ind1::Int, 
                                 ind2::Int,
                                 initial_num_points::Int,
@@ -144,6 +160,8 @@ function iterativeboundary_init(bivariate_optimiser::Function,
                                 use_ellipse::Bool,
                                 save_internal_points::Bool,
                                 find_zero_atol::Real, 
+                                optimizationsettings::OptimizationSettings,
+                                use_threads::Bool,
                                 channel::RemoteChannel)
 
     boundary = zeros(2, num_points)
@@ -152,48 +170,57 @@ function iterativeboundary_init(bivariate_optimiser::Function,
     ll_values = zeros(save_internal_points ? num_points : 0)
     internal_count = 0
     point_is_on_bounds = falses(num_points)
-    # warn if bound prevents reaching boundary
-    bound_warning=true
 
     if use_ellipse
         _, _, _, external, point_is_on_bounds_external, bound_warning = 
-            findNpointpairs_radialMLE!(p, bivariate_optimiser, model, 
+            findNpointpairs_radialMLE!(q, bivariate_optimiser, model, 
                                         initial_num_points, ind1, ind2, 
                                         0.1, radial_start_point_shift, 
-                                        ellipse_sqrt_distortion)
+                                        ellipse_sqrt_distortion,
+                                        optimizationsettings, use_threads)
     else
         external, point_is_on_bounds_external, bound_warning = 
-            findNpointpairs_radialMLE!(p, bivariate_optimiser, model, 
+            findNpointpairs_radialMLE!(q, bivariate_optimiser, model, 
                                         initial_num_points, ind1, ind2, 
-                                        bound_warning, radial_start_point_shift)
+                                        radial_start_point_shift,
+                                        optimizationsettings, use_threads)
     end
 
     point_is_on_bounds[1:initial_num_points] .= point_is_on_bounds_external[:]
 
     mle_point = model.core.θmle[[ind1,ind2]]
-    for i in 1:initial_num_points
-        if point_is_on_bounds[i]
-            p.pointa .= external[:,i]
-            bivariate_optimiser(0.0, p)
-            boundary[:,i] .= external[:,i]
-            boundary_all[[ind1, ind2], i] .= external[:,i]
-        else
-            p.pointa .= mle_point .* 1.0
-            v_bar = external[:,i] .- mle_point
 
-            v_bar_norm = norm(v_bar, 2)
-            p.uhat .= v_bar ./ v_bar_norm
+    ex = use_threads ? ThreadedEx() : ThreadedEx(basesize=initial_num_points)
+    let external=external, point_is_on_bounds=point_is_on_bounds
+        @floop ex for i in 1:initial_num_points
+            FLoops.@init pointa = zeros(2)
+            FLoops.@init uhat = zeros(2)
+            FLoops.@init ω_opt = zeros(model.core.num_pars-2)
+            p = (ω_opt=ω_opt, pointa=pointa, uhat=uhat, q=q, options=optimizationsettings)
 
-            ψ = find_zero(bivariate_optimiser, (0.0, v_bar_norm), Roots.Brent(); atol=find_zero_atol, p=p)
-            
-            boundary[:,i] .= p.pointa + ψ*p.uhat
-            boundary_all[[ind1, ind2], i] .= boundary[:,i]
-            bivariate_optimiser(ψ, p)
+            if point_is_on_bounds[i]
+                p.pointa .= external[:,i]
+                bivariate_optimiser(0.0, p)
+                boundary[:,i] .= external[:,i]
+                boundary_all[[ind1, ind2], i] .= external[:,i]
+            else
+                p.pointa .= mle_point .* 1.0
+                v_bar = external[:,i] .- mle_point
+
+                v_bar_norm = norm(v_bar, 2)
+                p.uhat .= v_bar ./ v_bar_norm
+
+                ψ = find_zero(bivariate_optimiser, (0.0, v_bar_norm), Roots.Brent(); atol=find_zero_atol, p=p)
+                
+                boundary[:,i] .= p.pointa + ψ*p.uhat
+                boundary_all[[ind1, ind2], i] .= boundary[:,i]
+                bivariate_optimiser(ψ, p)
+            end
+            if !biv_opt_is_ellipse_analytical
+                variablemapping!(@view(boundary_all[:, i]), p.ω_opt, q.θranges, q.ωranges)
+            end
+            put!(channel, true)
         end
-        if !biv_opt_is_ellipse_analytical
-            variablemapping!(@view(boundary_all[:, i]), p.ω_opt, p.θranges, p.ωranges)
-        end
-        put!(channel, true)
     end
 
     if initial_num_points == num_points
@@ -321,7 +348,7 @@ function newboundarypoint!(p::NamedTuple,
                 ll_values[internal_count] = g * 1.0
                 internal_all[[ind1, ind2], internal_count] .= candidate_midpoint
                 if !biv_opt_is_ellipse_analytical
-                    variablemapping!(@view(internal_all[:, internal_count]), p.ω_opt, p.θranges, p.ωranges)
+                    variablemapping!(@view(internal_all[:, internal_count]), p.ω_opt, p.q.θranges, p.q.ωranges)
                 end
             end
 
@@ -352,6 +379,7 @@ function newboundarypoint!(p::NamedTuple,
                 boundary_all[[ind1, ind2], num_vertices] .= boundpoint
 
                 if bound_warning
+                    upper_or_lower = upper_or_lower == 'U' ? "upper" : "lower"
                     @warn string("The ", upper_or_lower, " bound on variable ", model.core.θnames[bound_ind], " is inside the confidence boundary")
                     bound_warning = false
                 end
@@ -396,7 +424,7 @@ function newboundarypoint!(p::NamedTuple,
             if isnan(ψ) || isinf(ψ) || isapprox(boundarypoint, p.pointa)
                 # failure=true
                 f(x) = bivariate_optimiser(x, p)
-                ψs = find_zeros(f, 0.0, v_bar_norm; atol=find_zero_atol, p=p)
+                ψs = find_zeros(f, 0.0, v_bar_norm; p=p) # note no tolerance here - it can error if atol is used
                 if length(ψs) == 0
                     failure=true
                 elseif length(ψs) == 1
@@ -422,7 +450,7 @@ function newboundarypoint!(p::NamedTuple,
         end
 
         if !biv_opt_is_ellipse_analytical
-            variablemapping!(@view(boundary_all[:, num_vertices]), p.ω_opt, p.θranges, p.ωranges)
+            variablemapping!(@view(boundary_all[:, num_vertices]), p.ω_opt, p.q.θranges, p.q.ωranges)
         end
     end
 
@@ -585,7 +613,11 @@ function heapupdates_failure!(edge_heap::TrackingHeap,
                                 model::LikelihoodModel,
                                 ind1::Int, 
                                 ind2::Int,
-                                relative_magnitude::Float64)
+                                relative_magnitude::Float64,
+                                internal_count::Int,
+                                boundary_all::Matrix{Float64},
+                                internal_all::Matrix{Float64},
+                                p::NamedTuple)
 
     opposite_edge_ve2 = edge_anti[opposite_edge_ve1] * 1
     polygon_break_and_rejoin!(edge_clock, edge_anti, ve1, ve2, opposite_edge_ve1, opposite_edge_ve2, model, ind1, ind2)
@@ -615,19 +647,30 @@ function heapupdates_failure!(edge_heap::TrackingHeap,
     if TrackingHeaps.top(edge_heap)[2] ≤ 0.0
         @warn(string("the number of vertices on the largest level set polygon is less than three at the current step. Algorithm aborting."))
 
+        boundary_all = boundary_all[:, 1:num_vertices]
+
+        if biv_opt_is_ellipse_analytical
+            get_ωs_bivariate_ellipse_analytical!(@view(boundary_all[[ind1, ind2], :]), num_points,
+                p.q.consistent, ind1, ind2,
+                model.core.num_pars, p.q.initGuess,
+                p.q.θranges, p.q.ωranges,
+                p.options, false, boundary_all)
+        end
+
         if save_internal_points
             ll_values = ll_values[1:internal_count] .+ mle_targetll
             if biv_opt_is_ellipse_analytical
-                internal_all = get_ωs_bivariate_ellipse_analytical!(internal_all[[ind1, ind2],1:internal_count], internal_count,
-                                        p.consistent, ind1, ind2, 
-                                        model.core.num_pars, p.initGuess,
-                                        p.θranges, p.ωranges)
+                internal_all = get_ωs_bivariate_ellipse_analytical!(internal_all[[ind1, ind2],1:internal_count],
+                                        internal_count,
+                                        p.q.consistent, ind1, ind2, 
+                                        model.core.num_pars, p.q.initGuess,
+                                        p.q.θranges, p.q.ωranges, p.options, false)
             else
                 internal_all = internal_all[:, 1:internal_count]
             end
         end
 
-        return true, (boundary_all[:, 1:num_vertices], PointsAndLogLikelihood(internal_all, ll_values))
+        return true, (boundary_all, PointsAndLogLikelihood(internal_all, ll_values))
     end
 
     return false, nothing
@@ -649,6 +692,8 @@ end
         mle_targetll::Float64,
         save_internal_points::Bool,
         find_zero_atol::Real, 
+        optimizationsettings::OptimizationSettings,
+        use_threads::Bool,
         channel::RemoteChannel)
 
 Implementation of [`IterativeBoundaryMethod`](@ref).
@@ -668,6 +713,8 @@ function bivariate_confidenceprofile_iterativeboundary(bivariate_optimiser::Func
                                                 mle_targetll::Float64,
                                                 save_internal_points::Bool,
                                                 find_zero_atol::Real, 
+                                                optimizationsettings::OptimizationSettings,
+                                                use_threads::Bool,
                                                 channel::RemoteChannel)
 
     num_points ≥ initial_num_points || throw(ArgumentError("num_points must be greater than or equal to initial_num_points"))
@@ -677,22 +724,21 @@ function bivariate_confidenceprofile_iterativeboundary(bivariate_optimiser::Func
 
     pointa = [0.0,0.0]
     uhat   = [0.0,0.0]
-    if biv_opt_is_ellipse_analytical
-        p=(ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, pointa=pointa, uhat=uhat,
-                    θranges=θranges, ωranges=ωranges, consistent=consistent)
-    else
-        p=(ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, pointa=pointa, uhat=uhat,
-                    θranges=θranges, ωranges=ωranges, consistent=consistent, ω_opt=zeros(model.core.num_pars-2))
-    end
+    ω_opt=zeros(model.core.num_pars-2)
+    q=(ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, 
+        θranges=θranges, ωranges=ωranges, consistent=consistent)
 
-    return_tuple = iterativeboundary_init(bivariate_optimiser, model, num_points, p, ind1, ind2,
+    return_tuple = iterativeboundary_init(bivariate_optimiser, model, num_points, q, ind1, ind2,
                                             initial_num_points, biv_opt_is_ellipse_analytical,
                                             radial_start_point_shift, ellipse_sqrt_distortion,
-                                            use_ellipse, save_internal_points, find_zero_atol, channel)
+                                            use_ellipse, save_internal_points, find_zero_atol, 
+                                            optimizationsettings, use_threads, channel)
 
     if return_tuple[1]
         return return_tuple[2], return_tuple[3]
     end
+
+    p = (ω_opt=ω_opt, pointa=pointa, uhat=uhat, q=q, options=optimizationsettings)
 
     _, boundary, boundary_all, internal_all, ll_values, internal_count, point_is_on_bounds, edge_anti_on_bounds, bound_warning, mle_point, num_vertices, edge_clock, edge_anti, edge_heap, angle_heap, relative_magnitude = return_tuple
 
@@ -727,9 +773,11 @@ function bivariate_confidenceprofile_iterativeboundary(bivariate_optimiser::Func
             if failure # appears we have found two distinct level sets - break the edges and join to form two separate polygons
                 num_vertices -= 1
                 
-                termination, return_args = heapupdates_failure!(edge_heap, angle_heap, edge_clock, edge_anti, point_is_on_bounds,
-                                                                boundary, num_vertices, ve1, ve2, opposite_edge_ve1, model, ind1, ind2,
-                                                                relative_magnitude)
+                termination, return_args = heapupdates_failure!(edge_heap, angle_heap, edge_clock, edge_anti,
+                                                                point_is_on_bounds, boundary, num_vertices, ve1, ve2,
+                                                                opposite_edge_ve1, model, ind1, ind2,
+                                                                relative_magnitude, internal_count, boundary_all, 
+                                                                internal_all, p)
                 if termination; return return_args end
                 continue
             end
@@ -753,7 +801,7 @@ function bivariate_confidenceprofile_iterativeboundary(bivariate_optimiser::Func
                                                                     boundary, boundary_all, 
                                                                     internal_all,
                                                                     ll_values,
-                                                                    internal_count,bivariate_optimiser, 
+                                                                    internal_count, bivariate_optimiser, 
                                                                     model, edge_anti, num_vertices, ind1, ind2, 
                                                                     biv_opt_is_ellipse_analytical, 
                                                                     vi, adj_vertex, relative_magnitude,
@@ -766,9 +814,11 @@ function bivariate_confidenceprofile_iterativeboundary(bivariate_optimiser::Func
                 ve2 = adj_vertex
                 num_vertices -= 1
                 
-                termination, return_args = heapupdates_failure!(edge_heap, angle_heap, edge_clock, edge_anti, point_is_on_bounds,
-                                                                boundary, num_vertices, ve1, ve2, opposite_edge_ve1, model, ind1, ind2,
-                                                                relative_magnitude)
+                termination, return_args = heapupdates_failure!(edge_heap, angle_heap, edge_clock, edge_anti,
+                                                                point_is_on_bounds, boundary, num_vertices, ve1, ve2,
+                                                                opposite_edge_ve1, model, ind1, ind2,
+                                                                relative_magnitude, internal_count, boundary_all, 
+                                                                internal_all, p)
                 if termination; return return_args end
                 continue
             end        
@@ -779,19 +829,20 @@ function bivariate_confidenceprofile_iterativeboundary(bivariate_optimiser::Func
     end
 
     if biv_opt_is_ellipse_analytical
-        return get_ωs_bivariate_ellipse_analytical!(@view(boundary[[ind1, ind2], :]), num_points,
-                                                    consistent, ind1, ind2, 
-                                                    model.core.num_pars, initGuess,
-                                                    θranges, ωranges, boundary), PointsAndLogLikelihood(internal_all, ll_values)
+        get_ωs_bivariate_ellipse_analytical!(@view(boundary_all[[ind1, ind2], :]), num_points,
+                                                consistent, ind1, ind2, 
+                                                model.core.num_pars, initGuess,
+                                                θranges, ωranges, 
+                                                optimizationsettings, false, boundary_all)
     end
 
     if save_internal_points
         ll_values = ll_values[1:internal_count] .+ mle_targetll
         if biv_opt_is_ellipse_analytical
-            internal_all = get_ωs_bivariate_ellipse_analytical!(internal_all[[ind1, ind2],1:internal_count], internal_count,
-                                    p.consistent, ind1, ind2, 
-                                    model.core.num_pars, p.initGuess,
-                                    p.θranges, p.ωranges)
+            internal_all = get_ωs_bivariate_ellipse_analytical!(internal_all[[ind1, ind2],1:internal_count],
+                                    internal_count, consistent, ind1, ind2, 
+                                    model.core.num_pars, initGuess,
+                                    θranges, ωranges, optimizationsettings, false)
         else
             internal_all = internal_all[:, 1:internal_count]
         end

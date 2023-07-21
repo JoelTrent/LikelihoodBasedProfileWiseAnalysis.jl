@@ -294,7 +294,12 @@ Finds `num_points` `profile_type` boundary points at a specified `confidence_lev
 - `optimizationsettings`: a [`OptimizationSettings`](@ref) containing the optimisation settings used to find optimal values of nuisance parameters for a given pair of interest parameter values. Default is `missing` (will use `model.core.optimizationsettings`).
 - `show_progress`: boolean variable specifying whether to display progress bars on the percentage of `θcombinations` completed and estimated time of completion. Default is `model.show_progress`.
 - `use_distributed`: boolean variable specifying whether to use a normal for loop or a `@distributed` for loop across combinations of interest parameters. Set this variable to `false` if [Distributed.jl](https://docs.julialang.org/en/v1/stdlib/Distributed/) is not being used. Default is `true`.
-- `use_threads`: boolean variable specifying, if `use_distributed` is false, whether to use parallelised for loops across `Threads.nthreads()` threads or a non-parallel for loops to find boundary points from `methods` where boundary points are found independently. [`IterativeBoundaryMethod`](@ref), is the main method that is not parallelised. Default is `true`.
+- `use_threads`: boolean variable specifying, if `use_distributed` is false, whether to use parallelised for loops across `Threads.nthreads()` threads or a non-parallel for loops to find boundary points from `methods` where boundary points are found independently. Default is `true`.
+    - [`Fix1AxisMethod`](@ref) and [`RadialMLEMethod`](@ref) parallelise the finding point pair step and the finding the boundary from point pairs step.
+    - [`SimultaneousMethod`](@ref) and [`RadialRandomMethod`](@ref) do not parallelise the finding point pair step but parallelise finding the boundary from point pairs.
+    - [`ContinuationMethod`](@ref) is not parallelised at all. 
+    - [`IterativeBoundaryMethod`](@ref) parallelises finding the initial boundary but not the following boundary improvement steps.
+    - [`AnalyticalEllipseMethod`](@ref) does not require parallelisation.
 
 !!! note "existing_profiles meanings"
     - :ignore means profiles that already exist will not be recomputed even if they contain fewer `num_points` boundary points. 
