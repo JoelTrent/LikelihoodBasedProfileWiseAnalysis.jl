@@ -83,7 +83,7 @@ function continuation_line_search!(p::NamedTuple,
     end
 
     if !level_set_not_smoothed
-        boundsmapping!(p.initGuess, model.core.θmle, ind1, ind2)
+        boundsmapping!(p.q.initGuess, model.core.θmle, ind1, ind2)
     end
 
     for i in 1:num_points
@@ -96,7 +96,7 @@ function continuation_line_search!(p::NamedTuple,
         # if know the optimised values of nuisance parameters at a given start point,
         # pass them to the optimiser
         if start_have_all_pars && level_set_not_smoothed
-            boundsmapping!(p.initGuess, @view(start_level_set_all[:,i]), ind1, ind2)
+            boundsmapping!(p.q.initGuess, @view(start_level_set_all[:,i]), ind1, ind2)
         end
         
         if is_a_zero[i]
@@ -106,7 +106,7 @@ function continuation_line_search!(p::NamedTuple,
             target_level_set_2D[:, i] .= boundarypoint
             target_level_set_all[[ind1, ind2], i] .= boundarypoint
             if !biv_opt_is_ellipse_analytical
-                variablemapping!(@view(target_level_set_all[:, i]), p.ω_opt, p.θranges, p.ωranges)
+                variablemapping!(@view(target_level_set_all[:, i]), p.ω_opt, p.q.θranges, p.q.ωranges)
             end
             continue
         end
@@ -161,7 +161,7 @@ function continuation_line_search!(p::NamedTuple,
             target_level_set_all[[ind1, ind2], i] .= boundpoint
         end
         if !biv_opt_is_ellipse_analytical
-            variablemapping!(@view(target_level_set_all[:, i]), p.ω_opt, p.θranges, p.ωranges)
+            variablemapping!(@view(target_level_set_all[:, i]), p.ω_opt, p.q.θranges, p.q.ωranges)
         end
         put!(channel, true)
     end
@@ -170,9 +170,10 @@ function continuation_line_search!(p::NamedTuple,
         local initGuess = zeros(model.core.num_pars-2)
         boundsmapping!(initGuess, model.core.θmle, ind1, ind2)
         target_level_set_all = get_ωs_bivariate_ellipse_analytical!(target_level_set_2D, num_points,
-                                                                    p.consistent, ind1, ind2, 
+                                                                    p.q.consistent, ind1, ind2, 
                                                                     model.core.num_pars, initGuess,
-                                                                    p.θranges, p.ωranges, target_level_set_all)
+                                                                    p.q.θranges, p.q.ωranges, 
+                                                                    p.options, false, target_level_set_all)
     end
 
 
@@ -256,7 +257,7 @@ function continuation_inwards_radial_search!(p::NamedTuple,
         target_level_set_all[[ind1, ind2], i] .= boundarypoint
         if !biv_opt_is_ellipse_analytical
             bivariate_optimiser(ψ, p)
-            variablemapping!(@view(target_level_set_all[:, i]), p.ω_opt, p.θranges, p.ωranges)
+            variablemapping!(@view(target_level_set_all[:, i]), p.ω_opt, p.q.θranges, p.q.ωranges)
         end
         put!(channel, true)
     end
@@ -265,9 +266,10 @@ function continuation_inwards_radial_search!(p::NamedTuple,
         local initGuess = zeros(model.core.num_pars-2)
         boundsmapping!(initGuess, model.core.θmle, ind1, ind2)
         target_level_set_all = get_ωs_bivariate_ellipse_analytical!(target_level_set_2D, num_points,
-                                                                    p.consistent, ind1, ind2, 
+                                                                    p.q.consistent, ind1, ind2, 
                                                                     model.core.num_pars, initGuess,
-                                                                    p.θranges, p.ωranges, target_level_set_all)
+                                                                    p.q.θranges, p.q.ωranges, 
+                                                                    p.options, false, target_level_set_all)
     end
 
     return target_level_set_2D, target_level_set_all
@@ -412,7 +414,8 @@ end
         level_set_spacing::Symbol,
         mle_targetll::Float64,
         save_internal_points::Bool,
-        find_zero_atol::Real, 
+        find_zero_atol::Real,
+        optimizationsettings::OptimizationSettings,
         channel::RemoteChannel)
 
 Implementation of [`ContinuationMethod`](@ref).
@@ -432,6 +435,7 @@ function bivariate_confidenceprofile_continuation(bivariate_optimiser::Function,
                                                     mle_targetll::Float64,
                                                     save_internal_points::Bool,
                                                     find_zero_atol::Real, 
+                                                    optimizationsettings::OptimizationSettings,
                                                     channel::RemoteChannel)
 
     newLb, newUb, initGuess, θranges, ωranges = init_nuisance_parameters(model, ind1, ind2)
@@ -442,14 +446,11 @@ function bivariate_confidenceprofile_continuation(bivariate_optimiser::Function,
     internal_all = zeros(model.core.num_pars, 0)
     ll_values = zeros(0)
 
-    if profile_type isa EllipseApproxAnalytical
-        p=(ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, pointa=pointa, uhat=uhat,
-                    θranges=θranges, ωranges=ωranges, consistent=consistent, targetll=0.0)
-    else
-        p=(ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, pointa=pointa, uhat=uhat,
-                    θranges=θranges, ωranges=ωranges, consistent=consistent, targetll=0.0, 
-                    ω_opt=zeros(model.core.num_pars-2))
-    end
+
+    q=(ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, 
+        θranges=θranges, ωranges=ωranges, consistent=consistent)
+    p=(ω_opt=zeros(model.core.num_pars-2), pointa=pointa, uhat=uhat, targetll=0.0,
+        q=q, options=optimizationsettings)
 
     initial_target_ll = get_target_loglikelihood(model, target_confidence_level,
                                                  EllipseApproxAnalytical(), 2)

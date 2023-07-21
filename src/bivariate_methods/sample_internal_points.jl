@@ -23,7 +23,8 @@ end
         conf_struct::BivariateConfidenceStruct, 
         confidence_level::Float64,
         boundary_not_ordered::Bool,
-        hullmethod::AbstractBivariateHullMethod)
+        hullmethod::AbstractBivariateHullMethod,
+        use_threads::Bool)
 
 Given a `hullmethod` of type [`AbstractBivariateHullMethod`](@ref) which creates a 2D polygon hull from a set of boundary and internal points (method dependent) in `conf_struct` as a representation of the true confidence boundary, sample points from the bounding box, with edges parallel to x and y axes, of a 2D polygon hull using a heuristically optimised Latin Hypercube sampling plan to find approximately `target_num_points` within the polygon, rejecting any that are not inside the log-likelihood threshold at that `confidence_level` and `profile_type`.   
 """
@@ -34,25 +35,20 @@ function sample_internal_points_LHC(model::LikelihoodModel,
                                     conf_struct::BivariateConfidenceStruct,
                                     confidence_level::Float64,
                                     boundary_not_ordered::Bool,
-                                    hullmethod::AbstractBivariateHullMethod)
+                                    hullmethod::AbstractBivariateHullMethod,
+                                    optimizationsettings::OptimizationSettings,
+                                    use_threads::Bool)
 
     bivariate_optimiser = get_bivariate_opt_func(profile_type, RadialMLEMethod())
     biv_opt_is_ellipse_analytical = bivariate_optimiser == bivariateψ_ellipse_analytical_vectorsearch
     consistent = get_consistent_tuple(model, confidence_level, profile_type, 2)
-    pointa = [0.0, 0.0]
-    uhat = [0.0, 0.0]
-
+    
     ind1, ind2 = θindices
     newLb, newUb, initGuess, θranges, ωranges = init_nuisance_parameters(model, ind1, ind2)
 
-    if biv_opt_is_ellipse_analytical
-        p = (ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, pointa=pointa, uhat=uhat,
-            θranges=θranges, ωranges=ωranges, consistent=consistent)
-    else
-        p = (ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, pointa=pointa, uhat=uhat,
-            θranges=θranges, ωranges=ωranges, consistent=consistent, ω_opt=zeros(model.core.num_pars - 2))
-    end
-
+    q=(ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, 
+        θranges=θranges, ωranges=ωranges, consistent=consistent)
+    
     # Use shoelace algorithm to determine polygon area (similar to LazySets.jl `_area_polygon` implementation)
     function polygon_area(polygon::AbstractMatrix)
         n = size(polygonhull, 2)
@@ -88,49 +84,56 @@ function sample_internal_points_LHC(model::LikelihoodModel,
     sample_points = permutedims(scaleLHC(LHCoptim(num_points, 2, 100)[1], scale_range))
     is_internal = falses(num_points)
 
-    for i in axes(sample_points, 2)
-        is_inside, is_boundary = inpoly2(sample_points[:, i], nodes, edges)
+    ex = use_threads ? ThreadedEx() : ThreadedEx(basesize=num_points)
+    let is_internal = falses(num_points)
+        let sample_points=sample_points
+            @floop ex for i in axes(sample_points, 2)
+                is_inside, is_boundary = inpoly2(sample_points[:, i], nodes, edges)
 
-        if is_inside || is_boundary
-            is_internal[i] = true
+                if is_inside || is_boundary
+                    is_internal[i] = true
+                end
+            end
         end
+        sample_points = sample_points[:, is_internal]
     end
-
-    sample_points = sample_points[:, is_internal]
-    is_internal = is_internal[is_internal]
-    is_internal .= false
 
     num_sample_points = size(sample_points,2)
-    internal_points = zeros(model.core.num_pars, num_sample_points)
-    ll = zeros(num_sample_points)
-    i = 1
-    num_rejected = 0
-    for j in axes(sample_points, 2)
-        p.pointa .= sample_points[:, j]
-        ll[i] = bivariate_optimiser(0.0, p)
+    _internal_points = zeros(model.core.num_pars, num_sample_points)
+    _ll = zeros(num_sample_points)
 
-        if ll[i] ≥ 0.0
-            internal_points[[ind1, ind2], i] .= p.pointa
-            if !biv_opt_is_ellipse_analytical
-                variablemapping!(@view(internal_points[:, i]), p.ω_opt, θranges, ωranges)
+    ex = use_threads ? ThreadedEx() : ThreadedEx(basesize=num_sample_points)
+    let sample_points=sample_points
+        @floop ex for i in axes(sample_points, 2)
+            FLoops.@init pointa = zeros(2)
+            FLoops.@init uhat = zeros(2)
+            FLoops.@init ω_opt = zeros(model.core.num_pars - 2)
+            p = (ω_opt=ω_opt, pointa=pointa, uhat=uhat, q=q, options=optimizationsettings)
+
+            p.pointa .= sample_points[:, i]
+            _ll[i] = bivariate_optimiser(0.0, p)
+
+            if _ll[i] ≥ 0.0
+                _internal_points[[ind1, ind2], i] .= p.pointa
+                if !biv_opt_is_ellipse_analytical
+                    variablemapping!(@view(_internal_points[:, i]), p.ω_opt, θranges, ωranges)
+                end
             end
-            is_internal[j] = true
-            i += 1
-        else
-            num_rejected += 1
         end
     end
-    internal_points = internal_points[:, is_internal]
-    ll = ll[is_internal]
+    is_internal = _ll .≥ 0.0
+    internal_points = _internal_points[:, is_internal]
+    ll = _ll[is_internal]
+    rejection_rate = (num_sample_points - sum(is_internal)) / num_sample_points
 
-    rejection_rate = num_rejected / num_sample_points
     ll .= ll .+ get_target_loglikelihood(model, confidence_level, EllipseApproxAnalytical(), 2)
 
     if biv_opt_is_ellipse_analytical
-        get_ωs_bivariate_ellipse_analytical!(@view(internal_points[[ind1, ind2], :]), num_points,
+        get_ωs_bivariate_ellipse_analytical!(@view(internal_points[[ind1, ind2], :]), size(internal_points, 2),
             consistent, ind1, ind2,
             model.core.num_pars, initGuess,
-            θranges, ωranges, internal_points)
+            θranges, ωranges, 
+            optimizationsettings, use_threads, internal_points)
     end
 
     return merge(conf_struct.internal_points, PointsAndLogLikelihood(internal_points, ll)), rejection_rate
@@ -144,7 +147,9 @@ end
         conf_struct::BivariateConfidenceStruct, 
         confidence_level::Float64,
         boundary_not_ordered::Bool,
-        hullmethod::AbstractBivariateHullMethod)
+        hullmethod::AbstractBivariateHullMethod,
+        optimizationsettings::OptimizationSettings,
+        use_threads::Bool)
 
 Given a `hullmethod` of type [`AbstractBivariateHullMethod`](@ref) which creates a 2D polygon hull from a set of boundary and internal points (method dependent) in `conf_struct` as a representation of the true confidence boundary, sample points from the polygon hull homogeneously until `num_points` are found, rejecting any that are not inside the log-likelihood threshold at that `confidence_level` and `profile_type`.   
 """
@@ -155,24 +160,19 @@ function sample_internal_points_uniform_random(model::LikelihoodModel,
                                                 conf_struct::BivariateConfidenceStruct, 
                                                 confidence_level::Float64,
                                                 boundary_not_ordered::Bool,
-                                                hullmethod::AbstractBivariateHullMethod)
+                                                hullmethod::AbstractBivariateHullMethod,
+                                                optimizationsettings::OptimizationSettings,
+                                                use_threads::Bool)
 
     bivariate_optimiser = get_bivariate_opt_func(profile_type, RadialMLEMethod())
     biv_opt_is_ellipse_analytical = bivariate_optimiser == bivariateψ_ellipse_analytical_vectorsearch
     consistent = get_consistent_tuple(model, confidence_level, profile_type, 2)
-    pointa = [0.0,0.0]
-    uhat   = [0.0,0.0]
 
     ind1, ind2 = θindices
     newLb, newUb, initGuess, θranges, ωranges = init_nuisance_parameters(model, ind1, ind2)
 
-    if biv_opt_is_ellipse_analytical
-        p = (ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, pointa=pointa, uhat=uhat,
-            θranges=θranges, ωranges=ωranges, consistent=consistent)
-    else
-        p = (ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, pointa=pointa, uhat=uhat,
-            θranges=θranges, ωranges=ωranges, consistent=consistent, ω_opt=zeros(model.core.num_pars - 2))
-    end
+    q=(ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, 
+        θranges=θranges, ωranges=ωranges, consistent=consistent)
 
     mesh = construct_polygon_hull(model, [ind1, ind2], conf_struct, confidence_level,
                                     boundary_not_ordered, hullmethod, false)
@@ -182,22 +182,37 @@ function sample_internal_points_uniform_random(model::LikelihoodModel,
     i=1
     num_rejected=0
     while i ≤ num_points
+        num_sample_points = num_points-(i-1)
+        sample_points = reduce(hcat, [point.coords for point in collect(sample(mesh, HomogeneousSampling(num_sample_points)))])
+        
+        let is_rejected = falses(num_sample_points), _ll = zeros(num_sample_points), _internal_points = zeros(model.core.num_pars, num_sample_points)
+            ex = use_threads ? ThreadedEx() : ThreadedEx(basesize=num_sample_points)
+            @floop ex for j in axes(sample_points, 2)
+                FLoops.@init pointa = zeros(2)
+                FLoops.@init uhat = zeros(2)
+                FLoops.@init ω_opt = zeros(model.core.num_pars - 2)
+                p = (ω_opt=ω_opt, pointa=pointa, uhat=uhat, q=q, options=optimizationsettings)
 
-        sample_points = reduce(hcat, [point.coords for point in collect(sample(mesh, HomogeneousSampling(num_points-(i-1))))])
+                p.pointa .= sample_points[:,j]
+                _ll[j] = bivariate_optimiser(0.0, p)
 
-        for j in axes(sample_points, 2)
-            p.pointa .= sample_points[:,j]
-            ll[i] = bivariate_optimiser(0.0, p)
-
-            if ll[i] ≥ 0.0
-                internal_points[[ind1, ind2], i] .= p.pointa
-                if !biv_opt_is_ellipse_analytical
-                    variablemapping!(@view(internal_points[:, i]), p.ω_opt, θranges, ωranges)
+                if _ll[j] ≥ 0.0
+                    _internal_points[[ind1, ind2], j] .= p.pointa
+                    if !biv_opt_is_ellipse_analytical
+                        variablemapping!(@view(_internal_points[:, j]), p.ω_opt, θranges, ωranges)
+                    end
+                else
+                    is_rejected[j] = true
                 end
-                i+=1
-            else
-                num_rejected+=1
             end
+            new_num_rejected = sum(is_rejected)
+            is_accepted = .!is_rejected
+            num_rejected += new_num_rejected
+            num_accepted = num_sample_points-new_num_rejected
+
+            ll[i:(i+num_accepted-1)] .= _ll[is_accepted]
+            internal_points[:, i:(i+num_accepted-1)] .= _internal_points[:, is_accepted]
+            i += num_accepted
         end
     end
 
@@ -208,7 +223,8 @@ function sample_internal_points_uniform_random(model::LikelihoodModel,
         get_ωs_bivariate_ellipse_analytical!(@view(internal_points[[ind1, ind2], :]), num_points,
             consistent, ind1, ind2,
             model.core.num_pars, initGuess,
-            θranges, ωranges, internal_points)
+            θranges, ωranges,
+            optimizationsettings, use_threads, internal_points)
     end
 
     return merge(conf_struct.internal_points, PointsAndLogLikelihood(internal_points, ll)), rejection_rate
@@ -225,6 +241,8 @@ end
         t::Union{AbstractVector,Missing},
         evaluate_predictions_for_samples::Bool,
         proportion_of_predictions_to_keep::Real,
+        optimizationsettings::OptimizationSettings,
+        use_threads::Bool,
         channel::RemoteChannel)
 
 Sample internal points from the bivariate profile given by a valid row number in `model.biv_profiles_df` using either homogeneous sampling (`UniformRandomSamples()`) to find exactly `num_points` or a Latin Hypercube sampling plan (`LatinHypercubeSamples()`) to find approximately `num_points`.
@@ -239,6 +257,8 @@ function sample_internal_points_single_row(model::LikelihoodModel,
     t::Union{AbstractVector,Missing},
     evaluate_predictions_for_samples::Bool,
     proportion_of_predictions_to_keep::Real,
+    optimizationsettings::OptimizationSettings,
+    use_threads::Bool,
     channel::RemoteChannel)
 
     try
@@ -251,10 +271,12 @@ function sample_internal_points_single_row(model::LikelihoodModel,
         @timeit_debug timer "Sample bivariate internal points" begin
             if sample_type isa LatinHypercubeSamples
                 internal_points, rejection_rate = sample_internal_points_LHC(model, num_points, θindices,
-                    profile_type, conf_struct, confidence_level, boundary_not_ordered, hullmethod)
+                    profile_type, conf_struct, confidence_level, boundary_not_ordered, hullmethod,
+                    optimizationsettings, use_threads)
             end
             internal_points, rejection_rate = sample_internal_points_uniform_random(model, num_points, θindices,
-                profile_type, conf_struct, confidence_level, boundary_not_ordered, hullmethod)
+                profile_type, conf_struct, confidence_level, boundary_not_ordered, hullmethod,
+                optimizationsettings, use_threads)
         end
 
         if evaluate_predictions_for_samples && !sub_df[i, :not_evaluated_predictions]
@@ -305,13 +327,19 @@ Samples `num_points` internal points in interest parameter space of existing biv
 - `t`: vector of timepoints to evaluate predictions at for each new sampled internal point from a bivariate boundary that has already had predictions evaluated. The vector must be the same vector used to produce these previous predictions, otherwise points will not be sampled from this boundary. Default is `missing`.
 - `evaluate_predictions_for_samples`: boolean variable specifying whether to evaluate predictions for sampled points given predictions have been evaluated for the boundary they were sampled from. If `false`, then existing predictions will be forgotten by the `model` and overwritten the next time predictions are evaluated for each profile internal points were sampled from. Default is `true`.
 - `proportion_of_predictions_to_keep`: The proportion of predictions from `num_points` internal points to save. Does not impact the extrema calculated from predictions. Default is `1.0`.
+- `optimizationsettings`: a [`OptimizationSettings`](@ref) struct containing the optimisation settings used to find optimal values of nuisance parameters for a given pair of interest parameter values. Default is `missing` (will use `model.core.optimizationsettings`).
 - `show_progress`: boolean variable specifying whether to display progress bars on the percentage of `θs_to_profile` completed and estimated time of completion. Default is `model.show_progress`.
+- `use_threads`: boolean variable specifying, if the number of workers for distributed computing is not greater than 1 (`!Distributed.nworkers()>1`), to use a parallelised for loop across `Threads.nthreads()` threads to evaluate the log-likelihood at each sampled point. Default is `false`.
 
 # Details
 
 For each bivariate profile that meets the requirements of [`PlaceholderLikelihood.desired_df_subset`](@ref) it creates a 2D polygon hull from it's set of boundary and internal points (method dependent) using `hullmethod` and samples points from the hull using `sample_type` until `num_points` are found, rejecting any that are not inside the log-likelihood threshold at that `confidence_level` and `profile_type`. For [`LatinHypercubeSamples`](@ref) this will be approximately `num_points`, whereas for [`UniformRandomSamples`](@ref) this will be exactly `num_points`. Nuisance parameters of each point in bivariate interest parameter space are found by maximising the log-likelihood function given by the `profile_type` of the profile.
 
 It is highly recommended to view the docstrings of each `hullmethod` as the rejection rate of sampled points and the representation accuracy / coverage of the true confidence boundary varies between them, which can impact both computational performance and sampling coverage. For example, given the same set of boundary and internal points, [`ConvexHullMethod`](@ref) will produce a polygon hull that contains at least as much of the true confidence boundary as the other methods, but may have a higher rejection rate than other methods leading to higher computational cost.
+
+## Parallel Computing Implementation
+
+If [Distributed.jl](https://docs.julialang.org/en/v1/stdlib/Distributed/) is being used then the internal samples of distinct interest parameter combinations will be computed in parallel across `Distributed.nworkers()` workers. If it is not being used (`Distributed.nworkers()` is equal to `1`) and `use_threads` is `true` then the internal samples of each distinct interest parameter combination will be computed in parallel across `Threads.nthreads()` threads. It is highly recommended to set `use_threads` to `true` in that situation.
 
 ## Iteration Speed Of the Progress Meter
 
@@ -327,11 +355,25 @@ function sample_bivariate_internal_points!(model::LikelihoodModel,
                                     t::Union{AbstractVector, Missing}=missing,
                                     evaluate_predictions_for_samples::Bool=true,
                                     proportion_of_predictions_to_keep::Real=1.0,
-                                    show_progress::Bool=model.show_progress)
+                                    optimizationsettings::Union{OptimizationSettings,Missing}=missing,
+                                    show_progress::Bool=model.show_progress,
+                                    use_threads::Bool=false)
 
-    0 < num_points || throw(DomainError("num_points must be a strictly positive integer"))
-    model.core isa CoreLikelihoodModel || throw(ArgumentError("model does not contain a log-likelihood function. Add it using add_loglikelihood_function!"))
-    sample_type isa UniformGridSamples && throw(ArgumentError("sample_bivariate_internal_points! is not defined for sample_type=UniformGridSamples()"))
+    function argument_handling()
+        0 < num_points || throw(DomainError("num_points must be a strictly positive integer"))
+        model.core isa CoreLikelihoodModel || throw(ArgumentError("model does not contain a log-likelihood function. Add it using add_loglikelihood_function!"))
+        sample_type isa UniformGridSamples && throw(ArgumentError("sample_bivariate_internal_points! is not defined for sample_type=UniformGridSamples()"))
+
+        (use_threads && timeit_debug_enabled()) &&
+            throw(ArgumentError("use_threads cannot be true when debug timings from TimerOutputs are enabled. Either set use_threads to false or disable debug timings using `PlaceholderLikelihood.TimerOutputs.disable_debug_timings(PlaceholderLikelihood)`"))
+
+        (use_threads && nworkers() > 1) &&
+            throw(ArgumentError("use_threads cannot be true when the number of workers for distributed computing is greater than 1 (`Distributed.nworkers()>1`). Either set use_threads to false or remove these workers using `Distributed.rmprocs(workers())`"))
+        return nothing
+    end
+
+    argument_handling()
+    optimizationsettings = ismissing(optimizationsettings) ? model.core.optimizationsettings : optimizationsettings
     
     sub_df = desired_df_subset(model.biv_profiles_df, model.num_biv_profiles, Tuple{Int,Int}[], 
                 confidence_levels, profile_types, methods)
@@ -381,7 +423,8 @@ function sample_bivariate_internal_points!(model::LikelihoodModel,
             internal_samples = @distributed (vcat) for i in 1:nrow(sub_df)
                 [(i, sub_df[i, :row_ind], 
                     sample_internal_points_single_row(model, sub_df, i, sub_df[i, :row_ind], num_points, sample_type, 
-                        hullmethod, t, evaluate_predictions_for_samples, proportion_of_predictions_to_keep, channel))]
+                        hullmethod, t, evaluate_predictions_for_samples, proportion_of_predictions_to_keep, 
+                        optimizationsettings, use_threads, channel))]
             end
             put!(channel, false)
             

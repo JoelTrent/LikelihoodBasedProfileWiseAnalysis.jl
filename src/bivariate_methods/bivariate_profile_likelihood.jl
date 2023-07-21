@@ -231,7 +231,7 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
                                         method.level_set_spacing,
                                         mle_targetll, save_internal_points,
                                         find_zero_atol, optimizationsettings,
-                                        use_threads, channel)
+                                        channel)
             
             elseif method isa IterativeBoundaryMethod
                 boundary, internal = bivariate_confidenceprofile_iterativeboundary(
@@ -291,7 +291,7 @@ Finds `num_points` `profile_type` boundary points at a specified `confidence_lev
 - `save_internal_points`: boolean variable specifying whether to save points found inside the boundary during boundary computation. Internal points can be plotted in bivariate profile plots and will be used to generate predictions from a given bivariate profile. Default is `true`.
 - `existing_profiles`: `Symbol ∈ [:ignore, :merge, :overwrite]` specifying what to do if profiles already exist for a given `θcombination`, `confidence_level`, `profile_type` and `method`. See below for each symbol's meanings. Default is `:merge`.
 - `find_zero_atol`: a `Real` number greater than zero for the absolute tolerance of the log-likelihood function value from the target value to be used when searching for confidence intervals. Default is `model.find_zero_atol`.
-- `optimizationsettings`: a [`OptimizationSettings`](@ref) containing the optimisation settings used to find optimal values of nuisance parameters for a given pair of interest parameter values. Default is `missing` (will use `model.core.optimizationsettings`).
+- `optimizationsettings`: a [`OptimizationSettings`](@ref) struct containing the optimisation settings used to find optimal values of nuisance parameters for a given pair of interest parameter values. Default is `missing` (will use `model.core.optimizationsettings`).
 - `show_progress`: boolean variable specifying whether to display progress bars on the percentage of `θcombinations` completed and estimated time of completion. Default is `model.show_progress`.
 - `use_distributed`: boolean variable specifying whether to use a normal for loop or a `@distributed` for loop across combinations of interest parameters. Set this variable to `false` if [Distributed.jl](https://docs.julialang.org/en/v1/stdlib/Distributed/) is not being used. Default is `true`.
 - `use_threads`: boolean variable specifying, if `use_distributed` is false, whether to use parallelised for loops across `Threads.nthreads()` threads or a non-parallel for loops to find boundary points from `methods` where boundary points are found independently. Default is `true`.
