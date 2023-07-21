@@ -32,7 +32,14 @@ function create_OptimizationSettings(model::LikelihoodModel;
     end
     adtype = ismissing(adtype) ? defaults.adtype : adtype
     solve_alg = ismissing(solve_alg) ? defaults.solve_alg : solve_alg
-    solve_kwargs = ismissing(solve_kwargs) ? defaults.solve_kwargs : solve_kwargs
+
+    if ismissing(solve_kwargs)
+        if solve_alg isa NLopt.Algorithm
+            solve_kwargs = defaults.solve_kwargs
+        else
+            solve_kwargs = (maxtime=15,)
+        end
+    end
 
     return OptimizationSettings(adtype, solve_alg, solve_kwargs)
 end
