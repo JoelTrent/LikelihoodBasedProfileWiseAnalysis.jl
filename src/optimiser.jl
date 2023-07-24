@@ -57,19 +57,10 @@ end
 
 Alternative version of [`optimise`](@ref) without nuisance parameter bounds. Used for computing the nuisance parameters of [`EllipseApproxAnalytical`](@ref) profiles.
 """
-function optimise_unbounded(fun, θ₀;
-    dv = false,
-    method = dv ? :LD_LBFGS : :LN_BOBYQA,
-    )
-
-    if dv || String(method)[2] == 'D'
-        tomax = fun
-    else
-        tomax = (θ,∂θ) -> fun(θ)
-    end
-
+function optimise_unbounded(fun, θ₀)
+    method = :LD_LBFGS
     opt = Opt(method,length(θ₀))
-    opt.max_objective = tomax
+    opt.max_objective = fun
     # opt.local_optimizer = Opt(:LN_NELDERMEAD, length(θ₀))
     res = NLopt.optimize(opt, θ₀)
     return res[[2,1]]
