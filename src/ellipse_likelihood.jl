@@ -49,7 +49,7 @@ function getMLE_hessian_and_covariance(f::Function, θmle::Vector{<:Float64})
     # improves precision of inverse when variables have significantly different magnitudes.
     # Γmle = convert.(Float64, inv(BigFloat.(Hmle, precision=64)))
 
-    # Hmle is hermitian / a normal matrix, so the pseudoinverse acts as a traditional inverse of Hmle (https://en.wikipedia.org/wiki/Moore%E2%80%93Penrose_inverse)
+    # Hmle is hermitian / a normal matrix, so the pseudoinverse acts as a traditional inverse of Hmle and will be the traditional inverse if it is invertible (https://en.wikipedia.org/wiki/Moore%E2%80%93Penrose_inverse)
     Γmle = pinv(Hmle)
     return Hmle, Γmle
 end
