@@ -57,7 +57,7 @@ function create_OptimizationSettings(;
     solve_alg=missing,
     solve_kwargs::Union{NamedTuple,Missing}=missing)
 
-    defaults = defaultOptimizationSettings()
+    defaults = default_OptimizationSettings()
     adtype = ismissing(adtype) ? defaults.adtype : adtype
     solve_alg = ismissing(solve_alg) ? defaults.solve_alg : solve_alg
     solve_kwargs = ismissing(solve_kwargs) ? defaults.solve_kwargs : solve_kwargs
