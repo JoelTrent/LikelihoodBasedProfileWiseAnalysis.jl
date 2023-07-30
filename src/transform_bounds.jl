@@ -144,7 +144,7 @@ end
 """
 function transformbounds_NLopt(transformfun::Function, lb::AbstractVector{<:Real}, ub::AbstractVector{<:Real})
 
-    function bounds_transform(x)
+    function bounds_transform(x,_)
         return minOrMax * transformfun( (((1.0 .- x) .* lb) .+ (x .* ub)) )[NLP_transformIndex]
     end
     
@@ -157,17 +157,18 @@ function transformbounds_NLopt(transformfun::Function, lb::AbstractVector{<:Real
     initialGuess = fill(0.5, num_vars)
     NLPlb = zeros(num_vars)
     NLPub = ones(num_vars)
+    optimizationsettings = default_OptimizationSettings()
 
     minOrMax = -1.0
     NLP_transformIndex=0
     for i in 1:num_vars
         NLP_transformIndex += 1
         
-        minOrMax = -1.0
-        newlb[i] = optimise(bounds_transform, initialGuess, NLPlb, NLPub)[2] * -1.0
-        
         minOrMax = 1.0
-        newub[i] = optimise(bounds_transform, initialGuess, NLPlb, NLPub)[2]
+        newlb[i] = optimise(bounds_transform, optimizationsettings, initialGuess, NLPlb, NLPub)[2] * -1.0
+        
+        minOrMax = -1.0
+        newub[i] = optimise(bounds_transform, optimizationsettings, initialGuess, NLPlb, NLPub)[2]
     end
 
     checkforInf.((newlb, newub))

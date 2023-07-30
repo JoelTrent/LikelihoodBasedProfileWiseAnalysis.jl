@@ -33,7 +33,7 @@ end
     add_loglikelihood_function!(model::LikelihoodModel, loglikefunction::Function; 
         optimizationsettings::OptimizationSettings=default_OptimizationSettings())
 
-Adds a log-likelihood function, `loglikefunction`, to `model` as well as optimization settings, `optimizationsettings`, using [`default_OptimizationSettings`](@ref). PlaceholderLikelihood needs to loaded for [`default_OptimizationSettings`](@ref) to work.
+Adds a log-likelihood function, `loglikefunction`, to `model` as well as optimization settings, `optimizationsettings`, using [`default_OptimizationSettings`](@ref).
     
 Requirements for `loglikefunction`: loglikelihood function which takes two arguments, `θ` and `data`, in that order, where θ is a vector containing the values of each parameter in `θnames` and `data` is a Tuple or NamedTuple containing any additional information required by the log-likelihood function, such as the time points to be evaluated at.
 """
