@@ -315,7 +315,7 @@ Samples `num_points_to_sample` points from full parameter space, evaluating the 
 - `num_points_to_sample`: integer number of points to sample (for [`UniformRandomSamples`](@ref) and [`LatinHypercubeSamples`](@ref) sample types). For the [`UniformGridSamples`](@ref) sample type, if integer it is the number of points to grid over in each parameter dimension. If it is a vector of integers each index of the vector is the number of points to grid over in the corresponding parameter dimension. For example, [1,2] would mean a single point in dimension 1 and two points in dimension 2. 
 
 # Keyword Arguments
-- `confidence_level`: a number ∈ (0.0, 1.0) for the confidence level which . Default is 0.95 (95%).
+- `confidence_level`: a number ∈ (0.0, 1.0) for the confidence level which . Default is `0.95` (95%).
 - `sample_type`: the sampling method used to sample parameter space. Available sample types are [`UniformGridSamples`](@ref), [`UniformRandomSamples`](@ref) and [`LatinHypercubeSamples`](@ref). Default is `LatinHypercubeSamples()` ([`LatinHypercubeSamples`](@ref)).
 - `lb`: optional vector of lower bounds on parameters. Use to specify parameter lower bounds to sample over that are different than those contained in `model.core`. Default is `Float64[]` (use lower bounds from `model.core`).
 - `ub`: optional vector of upper bounds on parameters. Use to specify parameter upper bounds to sample over that are different than those contained in `model.core`. Default is `Float64[]` (use upper bounds from `model.core`).

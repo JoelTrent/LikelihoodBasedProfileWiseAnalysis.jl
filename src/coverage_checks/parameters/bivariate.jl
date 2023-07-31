@@ -26,10 +26,10 @@ Performs a simulation to estimate the coverage of bivariate confidence boundarie
 - `θinitialguess`: a vector containing the initial guess for the values of each parameter. Used to find the MLE point in each iteration of the simulation. Default is `θtrue`.
 
 # Keyword Arguments
-- `confidence_level`: a number ∈ (0.0, 1.0) for the confidence level to evaluate the confidence interval coverage at. Default is 0.95 (95%).
+- `confidence_level`: a number ∈ (0.0, 1.0) for the confidence level to evaluate the confidence interval coverage at. Default is `0.95` (95%).
 - `profile_type`: whether to use the true log-likelihood function or an ellipse approximation of the log-likelihood function centred at the MLE (with optional use of parameter bounds). Available profile types are [`LogLikelihood`](@ref), [`EllipseApprox`](@ref) and [`EllipseApproxAnalytical`](@ref). Default is `LogLikelihood()` ([`LogLikelihood`](@ref)).
 - `method`: a method of type [`AbstractBivariateMethod`](@ref) or a vector of methods of type [`AbstractBivariateMethod`](@ref) (if so `num_points` needs to be a vector of the same length). For a list of available methods use `bivariate_methods()` ([`bivariate_methods`](@ref)). Default is `RadialRandomMethod(3)` ([`RadialRandomMethod`](@ref)).
-- `coverage_estimate_confidence_level`: a number ∈ (0.0, 1.0) for the level of a confidence interval of the estimated coverage. Default is 0.95 (95%).
+- `coverage_estimate_confidence_level`: a number ∈ (0.0, 1.0) for the level of a confidence interval of the estimated coverage. Default is `0.95` (95%).
 - `show_progress`: boolean variable specifying whether to display progress bars on the percentage of simulation iterations completed and estimated time of completion. Default is `model.show_progress`.
 - `distributed_over_parameters`: boolean variable specifying whether to distribute the workload of the simulation across simulation iterations (false) or across the individual bivariate boundary calculations within each iteration (true). Default is `false`.
 
@@ -119,7 +119,7 @@ function check_bivariate_parameter_coverage(data_generator::Function,
         for _ in 1:N
             new_data = data_generator(θtrue, generator_args)
 
-            m_new = initialiseLikelihoodModel(model.core.loglikefunction, new_data, model.core.θnames, θinitialguess, model.core.θlb, model.core.θub, model.core.θmagnitudes; biv_row_preallocation_size=len_θs, show_progress=false)
+            m_new = initialise_LikelihoodModel(model.core.loglikefunction, new_data, model.core.θnames, θinitialguess, model.core.θlb, model.core.θub, model.core.θmagnitudes; biv_row_preallocation_size=len_θs, show_progress=false)
 
             if combine_methods
                 for (j, methodj) in enumerate(method) 
@@ -190,7 +190,7 @@ function check_bivariate_parameter_coverage(data_generator::Function,
                 @distributed (+) for i in 1:N
                     new_data = data_generator(θtrue, generator_args)
 
-                    m_new = initialiseLikelihoodModel(model.core.loglikefunction, new_data,
+                    m_new = initialise_LikelihoodModel(model.core.loglikefunction, new_data,
                         model.core.θnames, θinitialguess, model.core.θlb, model.core.θub,
                         model.core.θmagnitudes; uni_row_prealloaction_size=len_θs, show_progress=false)
 

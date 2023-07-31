@@ -285,7 +285,7 @@ Finds `num_points` `profile_type` boundary points at a specified `confidence_lev
 - `num_points`: positive number of points to find on the boundary at the specified confidence level. Depending on the method, if a region of the user-provided bounds is inside the boundary some of these points will be on the bounds and inside the boundary. Set to at least 3 within the function as some methods need at least three points to work.
 
 # Keyword Arguments
-- `confidence_level`: a number ∈ (0.0, 1.0) for the confidence level on which to find the `profile_type` boundary. Default is 0.95 (95%).
+- `confidence_level`: a number ∈ (0.0, 1.0) for the confidence level on which to find the `profile_type` boundary. Default is `0.95` (95%).
 - `profile_type`: whether to use the true log-likelihood function or an ellipse approximation of the log-likelihood function centred at the MLE (with optional use of parameter bounds). Available profile types are [`LogLikelihood`](@ref), [`EllipseApprox`](@ref) and [`EllipseApproxAnalytical`](@ref). Default is `LogLikelihood()` ([`LogLikelihood`](@ref)).
 - `method`: a method of type [`AbstractBivariateMethod`](@ref). For a list of available methods use `bivariate_methods()` ([`bivariate_methods`](@ref)). Default is `RadialRandomMethod(3)` ([`RadialRandomMethod`](@ref)).
 - `save_internal_points`: boolean variable specifying whether to save points found inside the boundary during boundary computation. Internal points can be plotted in bivariate profile plots and will be used to generate predictions from a given bivariate profile. Default is `true`.

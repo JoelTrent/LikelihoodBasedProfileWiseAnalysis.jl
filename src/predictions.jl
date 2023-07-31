@@ -14,9 +14,12 @@ Adds a prediction function, `predictfunction`, to `model` and evaluates the pred
 function add_prediction_function!(model::LikelihoodModel,
                                     predictfunction::Function)
 
+    ymle = predictfunction(model.core.θmle, model.core.data)
+    ndims(ymle) ∈ SA[1, 2] || throw(DimensionMismatch(("predictfunction must return an array with 1D or 2D outputs")))
+
     corelikelihoodmodel = model.core
     model.core = @set corelikelihoodmodel.predictfunction = predictfunction
-    model.core = @set corelikelihoodmodel.ymle = predictfunction(model.core.θmle, model.core.data)
+    model.core = @set corelikelihoodmodel.ymle = ymle
 
     return nothing
 end

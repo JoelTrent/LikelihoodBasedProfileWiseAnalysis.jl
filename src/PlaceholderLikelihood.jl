@@ -67,6 +67,8 @@ export initialise_LikelihoodModel,
     generate_predictions_univariate!, generate_predictions_bivariate!,
     generate_predictions_dim_samples!,
 
+    check_univariate_prediction_coverage,
+
     trim_model_dfs!, remove_functions_from_core!, add_loglikelihood_function!
 
 # TYPES ###################################################################################
@@ -120,6 +122,8 @@ include("dimensional_methods/dimensional_likelihood_sampling.jl")
 include("coverage_checks/parameters/univariate.jl")
 include("coverage_checks/parameters/bivariate.jl")
 include("coverage_checks/parameters/bivariate_boundary.jl")
+include("coverage_checks/predictions/coverage_evaluation.jl")
+include("coverage_checks/predictions/univariate.jl")
 
 # PLOT FUNCTIONS ##########################################################################
 function plot_univariate_profiles end
