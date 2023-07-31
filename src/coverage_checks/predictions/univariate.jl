@@ -89,6 +89,7 @@ function check_univariate_prediction_coverage(data_generator::Function,
     θi_to_θs = Dict{Int,Int}(θi => θs for (θs, θi) in enumerate(θs))
 
     successes = zeros(Int, len_θs+1)
+    successes_pointwise = [zeros(size(y_true)) for _ in 1:(len_θs+1)]
 
     data = [data_generator(θtrue, generator_args) for _ in 1:N]
 
@@ -114,12 +115,16 @@ function check_univariate_prediction_coverage(data_generator::Function,
             successes[1:len_θs] .+= first.(indiv_cov)
             successes[end] += first(union_cov)
 
+            successes_pointwise[1:len_θs] .+= last.(indiv_cov)
+            successes_pointwise[end] += last(union_cov)
+
             next!(p)
         end
 
     else
         successes_bool = SharedArray{Bool}(len_θs+1, N)
         successes_bool .= false
+        # successes_pointwise_bool = SharedArray{Bool}(len_θs+1, N)
         @sync begin
             # this task prints the progress bar
             @async while take!(channel)
@@ -155,10 +160,13 @@ function check_univariate_prediction_coverage(data_generator::Function,
 
     coverage = successes ./ N
     conf_ints = zeros(len_θs+1, 2)
-    for i in 1:(len_θs+1); conf_ints[i, :] .= 
-        HypothesisTests.confint(HypothesisTests.BinomialTest(successes[i], N), 
-            level=coverage_estimate_confidence_level) end
-    
+    for i in 1:(len_θs+1)
+        conf_ints[i, :] .= HypothesisTests.confint(HypothesisTests.BinomialTest(successes[i], N), 
+            level=coverage_estimate_confidence_level) 
+        successes_pointwise[i] = successes_pointwise[i] ./ N
+    end
+
     return DataFrame(θname=[model.core.θnames[θs]..., :union], θindex=[θs..., θs], 
-        simultaneous_coverage=coverage, coverage_lb=conf_ints[:,1], coverage_ub=conf_ints[:,2])
+        simultaneous_coverage=coverage, coverage_lb=conf_ints[:,1], coverage_ub=conf_ints[:,2],
+        pointwise_coverage=successes_pointwise)
 end
