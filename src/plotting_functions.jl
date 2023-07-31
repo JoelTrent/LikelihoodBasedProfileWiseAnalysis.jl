@@ -66,7 +66,7 @@ end
 
 function addMLEandLLstar!(plt, llstar, parMLE, MLE_color, llstar_color; kwargs...)
     vline!(plt, [parMLE], lw=2, color=MLE_color, label="MLE point", linestyle=:dash)
-    hline!(plt, [llstar], lw=2, color=llstar_color, label="ll cutoff", linestyle=:dash; kwargs...)
+    hline!(plt, [llstar], lw=2, color=llstar_color, label=L"\hat{\ell}_{c}", linestyle=:dash; kwargs...)
     return plt
 end
 
@@ -184,7 +184,7 @@ function plot_univariate_profiles(model::LikelihoodModel,
         color=color_palette[profilecolor(row.profile_type)], kwargs...)
         
         addMLEandLLstar!(profile_plots[i], llstar, parMLE, color_palette[end-1], color_palette[end]; 
-                        xlabel=string(θname), ylabel="ll", 
+                        xlabel=string(θname), ylabel=L"\hat{\ell}_{p}", 
                         ylims=[llstar + llstar*ylim_scaler, 0.1],
                         title=string("Profile type: ", row.profile_type, 
                                         "\nConfidence level: ", row.conf_level),
@@ -268,7 +268,7 @@ function plot_univariate_profiles_comparison(model::LikelihoodModel,
                 end
 
                 addMLEandLLstar!(profile_plots[plot_i], llstar, parMLE, color_palette[end-1], color_palette[end], 
-                                xlabel=string(θname), ylabel="ll", 
+                                xlabel=string(θname), ylabel=L"\hat{\ell}_{p}", 
                                 xlims=xlims,
                                 ylims=[llstar + llstar*ylim_scaler, 0.1],
                                 title=string("Confidence level: ", confidence_level),

@@ -138,6 +138,7 @@ export plot_univariate_profiles, plot_univariate_profiles_comparison,
 function __init__()
     @require Plots="91a5bcdd-55d7-5caf-9e0b-520d859cae80" begin 
         using Plots
+        using LaTeXStrings
         include("plotting_functions.jl") 
     end
 end
