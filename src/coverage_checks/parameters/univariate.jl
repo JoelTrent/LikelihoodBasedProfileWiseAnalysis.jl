@@ -111,12 +111,10 @@ function check_univariate_parameter_coverage(data_generator::Function,
         successes_bool = SharedArray{Bool}(len_θs, N)
         successes_bool .= false
         @sync begin
-            # this task prints the progress bar
             @async while take!(channel)
                 next!(p)
             end
 
-            # this task does the computation
             @async begin
                 @distributed (+) for i in 1:N
                     new_data = data_generator(θtrue, generator_args)

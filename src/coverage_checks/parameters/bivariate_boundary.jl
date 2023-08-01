@@ -196,12 +196,10 @@ function check_bivariate_boundary_coverage(data_generator::Function,
     else
         coverage_shared = SharedArray(zeros(len_θs, N))
         @sync begin
-            # this task prints the progress bar
             @async while take!(channel)
                 next!(progress)
             end
 
-            # this task does the computation
             @async begin
                 @distributed (+) for i in 1:N
                     new_data = data_generator(θtrue, generator_args)

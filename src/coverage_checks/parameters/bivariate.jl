@@ -180,12 +180,10 @@ function check_bivariate_parameter_coverage(data_generator::Function,
     else
         successes_bool = SharedArray{Bool}(zeros(Bool, len_θs, N))
         @sync begin
-            # this task prints the progress bar
             @async while take!(channel)
                 next!(progress)
             end
 
-            # this task does the computation
             @async begin
                 @distributed (+) for i in 1:N
                     new_data = data_generator(θtrue, generator_args)
