@@ -330,7 +330,7 @@ Samples `num_points` internal points in interest parameter space of existing biv
 - `optimizationsettings`: a [`OptimizationSettings`](@ref) struct containing the optimisation settings used to find optimal values of nuisance parameters for a given pair of interest parameter values. Default is `missing` (will use `model.core.optimizationsettings`).
 - `show_progress`: boolean variable specifying whether to display progress bars on the percentage of `θs_to_profile` completed and estimated time of completion. Default is `model.show_progress`.
 - `use_distributed`: boolean variable specifying whether to use a normal for loop or a `@distributed` for loop across combinations of interest parameters. Set this variable to `false` if [Distributed.jl](https://docs.julialang.org/en/v1/stdlib/Distributed/) is not being used. Default is `true`.
-- `use_threads`: boolean variable specifying, if the number of workers for distributed computing is not greater than 1 (`!Distributed.nworkers()>1`), to use a parallelised for loop across `Threads.nthreads()` threads to evaluate the log-likelihood at each sampled point. Default is `false`.
+- `use_threads`: boolean variable specifying, if `use_distributed` is `false`, to use a parallelised for loop across `Threads.nthreads()` threads to evaluate the log-likelihood at each sampled point. Default is `true`.
 
 # Details
 
@@ -359,7 +359,7 @@ function sample_bivariate_internal_points!(model::LikelihoodModel,
                                     optimizationsettings::Union{OptimizationSettings,Missing}=missing,
                                     show_progress::Bool=model.show_progress,
                                     use_distributed::Bool=true,
-                                    use_threads::Bool=false)
+                                    use_threads::Bool=true)
 
     function argument_handling()
         0 < num_points || throw(DomainError("num_points must be a strictly positive integer"))
