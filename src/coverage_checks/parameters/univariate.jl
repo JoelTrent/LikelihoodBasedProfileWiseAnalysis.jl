@@ -75,7 +75,7 @@ function check_univariate_parameter_coverage(data_generator::Function,
     argument_handling!()
 
     len_θs = length(θs)
-    θi_to_θs = Dict{Int,Int}(θi => θs for (θs, θi) in enumerate(θs))
+    θs_to_θi = Dict{Int,Int}(θindex => θi for (θi, θindex) in enumerate(θs))
 
     successes = zeros(Int, len_θs)
 
@@ -93,15 +93,15 @@ function check_univariate_parameter_coverage(data_generator::Function,
                 confidence_level=confidence_level, profile_type=profile_type, show_progress=false, use_threads=false)
 
             for row_ind in 1:m_new.num_uni_profiles
-                θi = m_new.uni_profiles_df[row_ind, :θindex]
+                θindex = m_new.uni_profiles_df[row_ind, :θindex]
 
-                # check if interval contains θtrue[θi]
+                # check if interval contains θtrue[θindex]
                 interval_struct = get_uni_confidence_interval_points(m_new, row_ind)
-                interval = @inbounds interval_struct.points[θi, 1:2]
+                interval = @inbounds interval_struct.points[θindex, 1:2]
 
-                θtrue_i = θtrue[θi]
+                θtrue_i = θtrue[θindex]
                 if interval[1] ≤ θtrue_i && θtrue_i ≤ interval[2]
-                    successes[θi_to_θs[θi]] += 1
+                    successes[θs_to_θi[θindex]] += 1
                 end
             end
             next!(p)
@@ -127,15 +127,15 @@ function check_univariate_parameter_coverage(data_generator::Function,
                         confidence_level=confidence_level, profile_type=profile_type, show_progress=false, use_distributed=false, use_threads=false)
 
                     for row_ind in 1:m_new.num_uni_profiles
-                        θi = m_new.uni_profiles_df[row_ind, :θindex]
+                        θindex = m_new.uni_profiles_df[row_ind, :θindex]
                         
-                        # check if interval contains θtrue[θi]
+                        # check if interval contains θtrue[θindex]
                         interval_struct = get_uni_confidence_interval_points(m_new, row_ind)
-                        interval = @inbounds interval_struct.points[θi, 1:2]
+                        interval = @inbounds interval_struct.points[θindex, 1:2]
                         
-                        θtrue_i = θtrue[θi]
+                        θtrue_i = θtrue[θindex]
                         if interval[1] ≤ θtrue_i && θtrue_i ≤ interval[2]
-                            successes_bool[θi_to_θs[θi], i] = true
+                            successes_bool[θs_to_θi[θindex], i] = true
                         end
                     end
                     put!(channel, true); i^2
