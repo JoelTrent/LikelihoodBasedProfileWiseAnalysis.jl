@@ -404,7 +404,8 @@ Samples `num_points_to_sample` points from interest parameter space, for each in
 - `existing_profiles`: `Symbol ∈ [:ignore, :overwrite]` specifying what to do if samples already exist for a given `confidence_level` and `sample_type`.  Default is `:overwrite`.
 - `optimizationsettings`: a [`OptimizationSettings`](@ref) containing the optimisation settings used to find optimal values of nuisance parameters for a given interest parameter values. Default is `missing` (will use `model.core.optimizationsettings`).
 - `show_progress`: boolean variable specifying whether to display progress bars on the percentage of `θcombinations` completed and estimated time of completion. Default is `model.show_progress`.
-- `use_threads`: boolean variable specifying, if the number of workers for distributed computing is not greater than 1 (`!Distributed.nworkers()>1`), to use a parallelised for loop across `Threads.nthreads()` threads to evaluate the log-likelihood at each sampled point. Default is `false`.
+- `use_distributed`: boolean variable specifying whether to use a normal for loop or a `@distributed` for loop across combinations of interest parameters. Set this variable to `false` if [Distributed.jl](https://docs.julialang.org/en/v1/stdlib/Distributed/) is not being used. Default is `true`.
+- `use_threads`: boolean variable specifying, if `use_distributed` is false, to use a parallelised for loop across `Threads.nthreads()` threads to evaluate the log-likelihood at each sampled point. Default is `true`.
 
 # Details
 
@@ -412,7 +413,7 @@ Using [`dimensional_likelihood_sample`](@ref) this function calls the sample met
 
 ## Parallel Computing Implementation
 
-If [Distributed.jl](https://docs.julialang.org/en/v1/stdlib/Distributed/) is being used then the dimensional samples of distinct interest parameter combinations will be computed in parallel across `Distributed.nworkers()` workers. If it is not being used (`Distributed.nworkers()` is equal to `1`) and `use_threads` is `true` then the dimensional samples of each distinct interest parameter combination will be computed in parallel across `Threads.nthreads()` threads. It is highly recommended to set `use_threads` to `true` in that situation.
+If [Distributed.jl](https://docs.julialang.org/en/v1/stdlib/Distributed/) is being used `use_distributed` is `true`, then the dimensional samples of distinct interest parameter combinations will be computed in parallel across `Distributed.nworkers()` workers. If `use_distributed` is `false` and `use_threads` is `true` then the dimensional samples of each distinct interest parameter combination will be computed in parallel across `Threads.nthreads()` threads. It is highly recommended to set `use_threads` to `true` in that situation.
 
 ## Iteration Speed Of the Progress Meter
 
@@ -428,7 +429,8 @@ function dimensional_likelihood_samples!(model::LikelihoodModel,
                                         existing_profiles::Symbol=:overwrite,
                                         optimizationsettings::Union{OptimizationSettings,Missing}=missing,
                                         show_progress::Bool=model.show_progress,
-                                        use_threads::Bool=false)
+                                        use_distributed::Bool=true,
+                                        use_threads::Bool=true)
 
     function argument_handling()
         model.core isa CoreLikelihoodModel || throw(ArgumentError("model does not contain a log-likelihood function. Add it using add_loglikelihood_function!"))
@@ -446,25 +448,23 @@ function dimensional_likelihood_samples!(model::LikelihoodModel,
         end
         existing_profiles ∈ [:ignore, :overwrite] || throw(ArgumentError("existing_profiles can only take value :ignore or :overwrite"))
 
-        (use_threads && timeit_debug_enabled()) &&
-            throw(ArgumentError("use_threads cannot be true when debug timings from TimerOutputs are enabled. Either set use_threads to false or disable debug timings using `PlaceholderLikelihood.TimerOutputs.disable_debug_timings(PlaceholderLikelihood)`"))
+        (!use_distributed && use_threads && timeit_debug_enabled()) &&
+            throw(ArgumentError("use_threads cannot be true when debug timings from TimerOutputs are enabled and use_distributed is false. Either set use_threads to false or disable debug timings using `PlaceholderLikelihood.TimerOutputs.disable_debug_timings(PlaceholderLikelihood)`"))
 
-        (use_threads && nworkers()>1) &&
-            throw(ArgumentError("use_threads cannot be true when the number of workers for distributed computing is greater than 1 (`Distributed.nworkers()>1`). Either set use_threads to false or remove these workers using `Distributed.rmprocs(workers())`"))
+        # error handle confidence_level
+        get_target_loglikelihood(model, confidence_level, LogLikelihood(), 1)
+        
+        θindices = θindices[.!isempty.(θindices)]
+        sort!.(θindices); unique!.(θindices)
+        sort!(θindices); unique!(θindices)
+        1 ≤ first.(θindices)[1] && maximum(last.(θindices)) ≤ model.core.num_pars || throw(DomainError("θindices can only contain parameter indexes between 1 and the number of model parameters"))
+
         return nothing
     end
     
     argument_handling()
     optimizationsettings = ismissing(optimizationsettings) ? model.core.optimizationsettings : optimizationsettings
     lb, ub = check_if_bounds_supplied(model, lb, ub)
-
-    # error handle confidence_level
-    get_target_loglikelihood(model, confidence_level, LogLikelihood(), 1)
-    
-    θindices = θindices[.!isempty.(θindices)]
-    sort!.(θindices); unique!.(θindices)
-    sort!(θindices); unique!(θindices)
-    1 ≤ first.(θindices)[1] && maximum(last.(θindices)) ≤ model.core.num_pars || throw(DomainError("θindices can only contain parameter indexes between 1 and the number of model parameters"))
 
     # check if any of θindices is for the full likelihood - do this outside main for loop
     for (i, θs) in enumerate(θindices)
@@ -473,7 +473,7 @@ function dimensional_likelihood_samples!(model::LikelihoodModel,
                                     confidence_level=confidence_level,
                                     sample_type=sample_type,
                                     lb=lb, ub=ub, use_threads=use_threads,
-                                    use_distributed = !use_threads,
+                                    use_distributed=use_distributed,
                                     existing_profiles=existing_profiles)
             θindices = θindices[setdiff(1:length(θindices), i)]
             break
@@ -533,36 +533,66 @@ function dimensional_likelihood_samples!(model::LikelihoodModel,
         end
 
         @async begin
-            profiles_to_add = @distributed (vcat) for θs in θindices
-                [(θs, dimensional_likelihood_sample(model, θs, num_points_to_sample,
-                                                    confidence_level, sample_type,
-                                                    lb[θs], ub[θs], optimizationsettings, 
-                                                    use_threads, channel))]
+            if use_distributed
+                profiles_to_add = @distributed (vcat) for θs in θindices
+                    [(θs, dimensional_likelihood_sample(model, θs, num_points_to_sample,
+                                                        confidence_level, sample_type,
+                                                        lb[θs], ub[θs], optimizationsettings, 
+                                                        use_threads, channel))]
+                end
+                
+                for (i, (θs, sample_struct)) in enumerate(profiles_to_add)
+                    if isnothing(sample_struct); continue end
+                    
+                    num_points_kept = length(sample_struct.ll)
+                    if num_points_kept == 0
+                        @warn string("no sampled points for θindices, ", θs, ", were in the confidence region of the profile likelihood within the supplied bounds: try increasing num_points_to_sample or changing the bounds")
+                        continue
+                    end
+                    
+                    if θs_to_overwrite[i]
+                        row_ind = model.dim_samples_row_exists[(θs, sample_type)][confidence_level]
+                    else
+                        model.num_dim_samples += 1
+                        row_ind = model.num_dim_samples * 1
+                        model.dim_samples_row_exists[(θs, sample_type)][confidence_level] = row_ind
+                    end
+                    
+                    model.dim_samples_dict[row_ind] = sample_struct
+                    
+                    set_dim_samples_row!(model, row_ind, θs, true, confidence_level, sample_type,
+                    num_points_kept)
+                end
+            else
+                for (i, θs) in enumerate(θindices)
+                    sample_struct = dimensional_likelihood_sample(model, θs, num_points_to_sample,
+                                                        confidence_level, sample_type,
+                                                        lb[θs], ub[θs], optimizationsettings, 
+                                                        use_threads, channel)
+
+                    if isnothing(sample_struct); continue end
+                    
+                    num_points_kept = length(sample_struct.ll)
+                    if num_points_kept == 0
+                        @warn string("no sampled points for θindices, ", θs, ", were in the confidence region of the profile likelihood within the supplied bounds: try increasing num_points_to_sample or changing the bounds")
+                        continue
+                    end
+                    
+                    if θs_to_overwrite[i]
+                        row_ind = model.dim_samples_row_exists[(θs, sample_type)][confidence_level]
+                    else
+                        model.num_dim_samples += 1
+                        row_ind = model.num_dim_samples * 1
+                        model.dim_samples_row_exists[(θs, sample_type)][confidence_level] = row_ind
+                    end
+                    
+                    model.dim_samples_dict[row_ind] = sample_struct
+                    
+                    set_dim_samples_row!(model, row_ind, θs, true, confidence_level, sample_type,
+                    num_points_kept)
+                end
             end
             put!(channel, false)
-
-            for (i, (θs, sample_struct)) in enumerate(profiles_to_add)
-                if isnothing(sample_struct); continue end
-
-                num_points_kept = length(sample_struct.ll)
-                if num_points_kept == 0
-                    @warn string("no sampled points for θindices, ", θs, ", were in the confidence region of the profile likelihood within the supplied bounds: try increasing num_points_to_sample or changing the bounds")
-                    continue
-                end
-
-                if θs_to_overwrite[i]
-                    row_ind = model.dim_samples_row_exists[(θs, sample_type)][confidence_level]
-                else
-                    model.num_dim_samples += 1
-                    row_ind = model.num_dim_samples * 1
-                    model.dim_samples_row_exists[(θs, sample_type)][confidence_level] = row_ind
-                end
-
-                model.dim_samples_dict[row_ind] = sample_struct
-                
-                set_dim_samples_row!(model, row_ind, θs, true, confidence_level, sample_type,
-                                        num_points_kept)
-            end
         end
     end
 
@@ -587,6 +617,7 @@ function dimensional_likelihood_samples!(model::LikelihoodModel,
                                             existing_profiles::Symbol=:overwrite,
                                             optimizationsettings::Union{OptimizationSettings,Missing}=missing,
                                             show_progress::Bool=model.show_progress,
+                                            use_distributed::Bool=true,
                                             use_threads::Bool=true)
 
     θindices = convertθnames_toindices(model, θnames)
@@ -595,7 +626,8 @@ function dimensional_likelihood_samples!(model::LikelihoodModel,
                                     confidence_level=confidence_level, sample_type=sample_type,
                                     lb=lb, ub=ub,
                                     existing_profiles=existing_profiles,
-                                    optimizationsettings=optimizationsettings,                                    
+                                    optimizationsettings=optimizationsettings,
+                                    use_distributed=use_distributed,
                                     show_progress=show_progress,
                                     use_threads=use_threads)
     return nothing
@@ -621,6 +653,7 @@ function dimensional_likelihood_samples!(model::LikelihoodModel,
                                             existing_profiles::Symbol=:overwrite,
                                             optimizationsettings::Union{OptimizationSettings,Missing}=missing,
                                             show_progress::Bool=model.show_progress,
+                                            use_distributed::Bool=true,
                                             use_threads::Bool=true)
 
     sample_m_random_combinations = max(0, min(sample_m_random_combinations, binomial(model.core.num_pars, sample_dimension)))
@@ -634,7 +667,9 @@ function dimensional_likelihood_samples!(model::LikelihoodModel,
                                     lb=lb, ub=ub,
                                     existing_profiles=existing_profiles,
                                     optimizationsettings=optimizationsettings,
-                                    show_progress=show_progress,                                    use_threads=use_threads)
+                                    show_progress=show_progress,
+                                    use_distributed=use_distributed,
+                                    use_threads=use_threads)
     return nothing
 end
 
@@ -656,6 +691,7 @@ function dimensional_likelihood_samples!(model::LikelihoodModel,
                                             existing_profiles::Symbol=:overwrite,
                                             optimizationsettings::Union{OptimizationSettings,Missing}=missing,
                                             show_progress::Bool=model.show_progress,
+                                            use_distributed::Bool=true,
                                             use_threads::Bool=true)
 
     θcombinations = collect(combinations(1:model.core.num_pars, sample_dimension))
@@ -666,6 +702,7 @@ function dimensional_likelihood_samples!(model::LikelihoodModel,
                                     existing_profiles=existing_profiles,
                                     optimizationsettings=optimizationsettings,
                                     show_progress=show_progress,
+                                    use_distributed=use_distributed,
                                     use_threads=use_threads)
     return nothing
 end
