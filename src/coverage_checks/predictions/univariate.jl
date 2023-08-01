@@ -106,9 +106,9 @@ function check_univariate_prediction_coverage(data_generator::Function,
 
             univariate_confidenceintervals!(m_new, θs; 
                 num_points_in_interval=num_points_in_interval, confidence_level=confidence_level, 
-                profile_type=profile_type, show_progress=false, use_threads=false)
+                profile_type=profile_type, use_threads=false)
 
-            generate_predictions_univariate!(m_new, t, 0.0, show_progress=false)
+            generate_predictions_univariate!(m_new, t, 0.0)
 
             indiv_cov, union_cov = evaluate_coverage(m_new, y_true, :univariate, multiple_outputs)
             successes[1:len_θs] .+= first.(indiv_cov)
@@ -147,9 +147,9 @@ function check_univariate_prediction_coverage(data_generator::Function,
 
                     univariate_confidenceintervals!(m_new, θs; 
                         num_points_in_interval=num_points_in_interval, confidence_level=confidence_level, 
-                        profile_type=profile_type, show_progress=false, use_distributed=false, use_threads=false)
+                        profile_type=profile_type, use_distributed=false, use_threads=false)
 
-                    generate_predictions_univariate!(m_new, t, 0.0, show_progress=false, use_distributed=false)
+                    generate_predictions_univariate!(m_new, t, 0.0, use_distributed=false)
 
                     indiv_cov, union_cov = evaluate_coverage(m_new, y_true, :univariate, multiple_outputs)
                     successes_bool[1:len_θs, i] .= first.(indiv_cov)

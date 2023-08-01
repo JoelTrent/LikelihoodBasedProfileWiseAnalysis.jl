@@ -90,7 +90,7 @@ function check_univariate_parameter_coverage(data_generator::Function,
             m_new = initialise_LikelihoodModel(model.core.loglikefunction, new_data, model.core.θnames, θinitialguess, model.core.θlb, model.core.θub, model.core.θmagnitudes; uni_row_prealloaction_size=len_θs, show_progress=false)
 
             univariate_confidenceintervals!(m_new, θs; 
-                confidence_level=confidence_level, profile_type=profile_type, show_progress=false, use_threads=false)
+                confidence_level=confidence_level, profile_type=profile_type, use_threads=false)
 
             for row_ind in 1:m_new.num_uni_profiles
                 θindex = m_new.uni_profiles_df[row_ind, :θindex]
@@ -124,7 +124,7 @@ function check_univariate_parameter_coverage(data_generator::Function,
                         model.core.θmagnitudes; uni_row_prealloaction_size=len_θs, show_progress=false)
 
                     univariate_confidenceintervals!(m_new, θs; 
-                        confidence_level=confidence_level, profile_type=profile_type, show_progress=false, use_distributed=false, use_threads=false)
+                        confidence_level=confidence_level, profile_type=profile_type, use_distributed=false, use_threads=false)
 
                     for row_ind in 1:m_new.num_uni_profiles
                         θindex = m_new.uni_profiles_df[row_ind, :θindex]
