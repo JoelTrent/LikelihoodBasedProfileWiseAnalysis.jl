@@ -193,6 +193,7 @@ Evalute and save `proportion_to_keep` individual predictions and their extrema f
 - `profile_types`: a vector of `AbstractProfileType` structs. If empty, all profile types of univariate profiles are considered. Otherwise, only profiles with matching profile types will be considered. Default is `AbstractProfileType[]` (any profile type).
 - `overwrite_predictions`: boolean variable specifying whether to re-evaluate and overwrite predictions for univariate profiles that have already had predictions evaluated. Set to `true` if predictions need to be evaluated for a new vector of time points. Default is `false`.
 - `show_progress`: boolean variable specifying whether to display progress bars on the percentage of predictions evaluated and estimated time of completion. Default is `model.show_progress`.
+- `use_distributed`: boolean variable specifying whether to use a normal for loop or a `@distributed` for loop across univariate profiles. Default is `true`.
 
 # Details
 
@@ -200,7 +201,7 @@ For each univariate profile that meets the requirements of [`PlaceholderLikeliho
 
 ## Distributed Computing Implementation
 
-If [Distributed.jl](https://docs.julialang.org/en/v1/stdlib/Distributed/) is being used then the predictions from each univariate profile will be computed in parallel across `Distributed.nworkers()` workers.
+If [Distributed.jl](https://docs.julialang.org/en/v1/stdlib/Distributed/) is being used and `use_distributed` is `true` then the predictions from each univariate profile will be computed in parallel across `Distributed.nworkers()` workers.
 
 ## Iteration Speed Of the Progress Meter
 
@@ -212,7 +213,8 @@ function generate_predictions_univariate!(model::LikelihoodModel,
                                             confidence_levels::Vector{<:Float64}=Float64[],
                                             profile_types::Vector{<:AbstractProfileType}=AbstractProfileType[],
                                             overwrite_predictions::Bool=false,
-                                            show_progress::Bool=model.show_progress)
+                                            show_progress::Bool=model.show_progress,
+                                            use_distributed::Bool=true)
 
     check_prediction_function_exists(model) || return nothing
 
@@ -236,17 +238,27 @@ function generate_predictions_univariate!(model::LikelihoodModel,
         end
 
         @async begin
-            predictions = @distributed (vcat) for i in 1:nrow(sub_df)
-                [generate_prediction_univariate(model, sub_df, i, t, proportion_to_keep, channel)]
+            if use_distributed
+                predictions = @distributed (vcat) for i in 1:nrow(sub_df)
+                    [generate_prediction_univariate(model, sub_df, i, t, proportion_to_keep, channel)]
+                end
+
+                for (i, predict_struct) in enumerate(predictions)
+                    if isnothing(predict_struct); continue end
+
+                    model.uni_predictions_dict[sub_df[i, :row_ind]] = predict_struct
+                    sub_df[i, :not_evaluated_predictions] = false
+                end
+            else
+                for i in 1:nrow(sub_df)
+                    predict_struct = generate_prediction_univariate(model, sub_df, i, t, proportion_to_keep, channel)
+                    if isnothing(predict_struct); continue end
+
+                    model.uni_predictions_dict[sub_df[i, :row_ind]] = predict_struct
+                    sub_df[i, :not_evaluated_predictions] = false
+                end
             end
             put!(channel, false)
-            
-            for (i, predict_struct) in enumerate(predictions)
-                if isnothing(predict_struct); continue end
-
-                model.uni_predictions_dict[sub_df[i, :row_ind]] = predict_struct
-                sub_df[i, :not_evaluated_predictions] = false
-            end
         end
     end
 
@@ -272,6 +284,7 @@ Evalute and save `proportion_to_keep` individual predictions and their extrema f
 - `methods`: a vector of `AbstractBivariateMethod` structs. If empty all methods used to find bivariate profiles are considered. Otherwise, only profiles with matching method types will be considered (struct arguments do not need to be the same). Default is `AbstractBivariateMethod[]` (any bivariate method).
 - `overwrite_predictions`: boolean variable specifying whether to re-evaluate and overwrite predictions for bivariate profiles that have already had predictions evaluated. Set to `true` if predictions need to be evaluated for a new vector of time points. Default is `false`.
 - `show_progress`: boolean variable specifying whether to display progress bars on the percentage of predictions evaluated and estimated time of completion. Default is `model.show_progress`.
+- `use_distributed`: boolean variable specifying whether to use a normal for loop or a `@distributed` for loop across bivariate profiles. Default is `true`.
 
 # Details
 
@@ -279,7 +292,7 @@ For each bivariate profile that meets the requirements of [`PlaceholderLikelihoo
 
 ## Distributed Computing Implementation
 
-If [Distributed.jl](https://docs.julialang.org/en/v1/stdlib/Distributed/) is being used then the predictions from each bivariate profile will be computed in parallel across `Distributed.nworkers()` workers.
+If [Distributed.jl](https://docs.julialang.org/en/v1/stdlib/Distributed/) is being used and `use_distributed` is `true` then the predictions from each bivariate profile will be computed in parallel across `Distributed.nworkers()` workers.
 
 ## Iteration Speed Of the Progress Meter
 
@@ -292,7 +305,8 @@ function generate_predictions_bivariate!(model::LikelihoodModel,
                                             profile_types::Vector{<:AbstractProfileType}=AbstractProfileType[],
                                             methods::Vector{<:AbstractBivariateMethod}=AbstractBivariateMethod[],
                                             overwrite_predictions::Bool=false,
-                                            show_progress::Bool=model.show_progress)
+                                            show_progress::Bool=model.show_progress, 
+                                            use_distributed::Bool=true)
 
     check_prediction_function_exists(model) || return nothing
     
@@ -317,18 +331,28 @@ function generate_predictions_bivariate!(model::LikelihoodModel,
         end
 
         @async begin
-            predictions = @distributed (vcat) for i in 1:nrow(sub_df)
-                [generate_prediction_bivariate(model, sub_df, i,
-                                                t, proportion_to_keep, channel)]
+            if use_distributed
+                predictions = @distributed (vcat) for i in 1:nrow(sub_df)
+                    [generate_prediction_bivariate(model, sub_df, i,
+                                                    t, proportion_to_keep, channel)]
+                end
+
+                for (i, predict_struct) in enumerate(predictions)
+                    if isnothing(predict_struct); continue end
+                    
+                    model.biv_predictions_dict[sub_df[i, :row_ind]] = predict_struct
+                    sub_df[i, :not_evaluated_predictions] = false
+                end
+            else
+                for i in 1:nrow(sub_df)
+                    predict_struct = generate_prediction_bivariate(model, sub_df, i, t, proportion_to_keep, channel)
+                    if isnothing(predict_struct); continue end
+                    
+                    model.biv_predictions_dict[sub_df[i, :row_ind]] = predict_struct
+                    sub_df[i, :not_evaluated_predictions] = false
+                end
             end
             put!(channel, false)
-    
-            for (i, predict_struct) in enumerate(predictions)
-                if isnothing(predict_struct); continue end
-
-                model.biv_predictions_dict[sub_df[i, :row_ind]] = predict_struct
-                sub_df[i, :not_evaluated_predictions] = false
-            end
         end
     end
 
@@ -353,6 +377,7 @@ Evalute and save `proportion_to_keep` individual predictions and their extrema f
 - `sample_types`: a vector of [`AbstractSampleType`](@ref) structs. If empty, all sample types used to find dimensional samples are considered. Otherwise, only samples with matching sample types will be considered. Default is `AbstractSampleType[]` (any sample type).
 - `overwrite_predictions`: boolean variable specifying whether to re-evaluate and overwrite predictions for dimensional samples that have already had predictions evaluated. Set to `true` if predictions need to be evaluated for a new vector of time points. Default is `false`.
 - `show_progress`: boolean variable specifying whether to display progress bars on the percentage of predictions evaluated and estimated time of completion. Default is `model.show_progress`.
+- `use_distributed`: boolean variable specifying whether to use a normal for loop or a `@distributed` for loop across dimensional samples. Default is `true`.
 
 # Details
 
@@ -360,7 +385,7 @@ For each dimensional sample that meets the requirements of [`PlaceholderLikeliho
 
 ## Distributed Computing Implementation
 
-If [Distributed.jl](https://docs.julialang.org/en/v1/stdlib/Distributed/) is being used then the predictions from each dimensional sample will be computed in parallel across `Distributed.nworkers()` workers.
+If [Distributed.jl](https://docs.julialang.org/en/v1/stdlib/Distributed/) is being used and `use_distributed` is `true` then the predictions from each dimensional sample will be computed in parallel across `Distributed.nworkers()` workers.
 
 ## Iteration Speed Of the Progress Meter
 
@@ -372,7 +397,8 @@ function generate_predictions_dim_samples!(model::LikelihoodModel,
                                             confidence_levels::Vector{<:Float64}=Float64[],
                                             sample_types::Vector{<:AbstractSampleType}=AbstractSampleType[],
                                             overwrite_predictions::Bool=false,
-                                            show_progress::Bool=model.show_progress)
+                                            show_progress::Bool=model.show_progress, 
+                                            use_distributed::Bool=true)
 
     check_prediction_function_exists(model) || return nothing
     
@@ -396,19 +422,31 @@ function generate_predictions_dim_samples!(model::LikelihoodModel,
         end
 
         @async begin
-            predictions = @distributed (vcat) for i in 1:nrow(sub_df)
-                parameter_points = model.dim_samples_dict[sub_df[i, :row_ind]].points
-                [generate_prediction(model.core.predictfunction, model.core.data, t, 
-                                                    model.core.ymle, parameter_points, proportion_to_keep, channel)]
+            if use_distributed
+                predictions = @distributed (vcat) for i in 1:nrow(sub_df)
+                    parameter_points = model.dim_samples_dict[sub_df[i, :row_ind]].points
+                    [generate_prediction(model.core.predictfunction, model.core.data, t, 
+                                                        model.core.ymle, parameter_points, proportion_to_keep, channel)]
+                end
+
+                for (i, predict_struct) in enumerate(predictions)
+                    if isnothing(predict_struct); continue end
+                    
+                    model.dim_predictions_dict[sub_df[i, :row_ind]] = predict_struct
+                    sub_df[i, :not_evaluated_predictions] = false
+                end
+            else
+                for i in 1:nrow(sub_df)
+                    parameter_points = model.dim_samples_dict[sub_df[i, :row_ind]].points
+                    predict_struct = generate_prediction(model.core.predictfunction, model.core.data, t, 
+                                                        model.core.ymle, parameter_points, proportion_to_keep, channel)
+                    if isnothing(predict_struct); continue end
+
+                    model.dim_predictions_dict[sub_df[i, :row_ind]] = predict_struct
+                    sub_df[i, :not_evaluated_predictions] = false
+                end
             end
             put!(channel, false)
-            
-            for (i, predict_struct) in enumerate(predictions)
-                if isnothing(predict_struct); continue end
-                
-                model.dim_predictions_dict[sub_df[i, :row_ind]] = predict_struct
-                sub_df[i, :not_evaluated_predictions] = false
-            end
         end
     end
 
