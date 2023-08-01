@@ -416,8 +416,8 @@ using EllipseSampling
             @test_throws ArgumentError univariate_confidenceintervals!(m; use_distributed=false, use_threads=true)
             @test_throws ArgumentError get_points_in_intervals!(m, 1; use_threads=true)
             @test_throws ArgumentError bivariate_confidenceprofiles!(m, [[1, 2]], 10; use_distributed=false, use_threads=true)
-            @test_throws ArgumentError sample_bivariate_internal_points!(m, 10; use_threads=true)
-            @test_throws ArgumentError dimensional_likelihood_samples!(m, 1, 10; use_threads=true)
+            @test_throws ArgumentError sample_bivariate_internal_points!(m, 10; use_distributed=false, use_threads=true)
+            @test_throws ArgumentError dimensional_likelihood_samples!(m, 1, 10; use_distributed=false, use_threads=true)
             @test_throws ArgumentError full_likelihood_sample!(m, 10; use_distributed=false, use_threads=true)
             PlaceholderLikelihood.TimerOutputs.disable_debug_timings(PlaceholderLikelihood)
 
