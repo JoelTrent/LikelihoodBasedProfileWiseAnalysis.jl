@@ -175,7 +175,12 @@ function check_univariate_prediction_coverage(data_generator::Function,
         successes_pointwise[i] = successes_pointwise[i] ./ N
     end
 
+    points_in_interval = zeros(Int, len_θs+1)
+    points_in_interval[1:len_θs] .= num_points_in_interval
+    points_in_interval[end] = num_points_in_interval*len_θs
+
     return DataFrame(θname=[model.core.θnames[θs]..., :union], θindex=[θs..., θs], 
         simultaneous_coverage=coverage, coverage_lb=conf_ints[:,1], coverage_ub=conf_ints[:,2],
-        pointwise_coverage=successes_pointwise)
+        pointwise_coverage=successes_pointwise,
+        num_points_in_interval=points_in_interval)
 end
