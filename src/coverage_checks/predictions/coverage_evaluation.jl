@@ -6,7 +6,12 @@ Compute the extrema union of the extrema of the predictions of each profile in t
 function union_of_prediction_extrema(df::DataFrame, dict::Dict, multiple_outputs::Bool)
     extrema_union = zeros(size(dict[df.row_ind[1]].extrema))
 
-    for row_ind in df.row_ind
+    for (i, row_ind) in enumerate(df.row_ind)
+        if i == 1
+            extrema_union .= dict[row_ind].extrema
+            continue
+        end
+
         if multiple_outputs
             extrema_union[:,1,:] .= min.(extrema_union[:,1,:], dict[row_ind].extrema[:,1,:])
             extrema_union[:,2,:] .= max.(extrema_union[:,2,:], dict[row_ind].extrema[:,2,:])
