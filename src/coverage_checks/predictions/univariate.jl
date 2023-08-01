@@ -77,7 +77,6 @@ function check_univariate_prediction_coverage(data_generator::Function,
         
         (sort(θs); unique!(θs))
         1 ≤ θs[1] && θs[end] ≤ model.core.num_pars || throw(DomainError("θs can only contain parameter indexes between 1 and the number of model parameters"))
-        
         return nothing
     end
     
@@ -120,20 +119,16 @@ function check_univariate_prediction_coverage(data_generator::Function,
 
             next!(p)
         end
-
     else
         successes_bool = SharedArray{Bool}(len_θs+1, N)
         successes_bool .= false
-        # successes_pointwise_bool = SharedArray{Bool}(len_θs+1, N)
         @sync begin
-            # this task prints the progress bar
             @async while take!(channel)
                 next!(p)
             end
 
-            # this task does the computation
             @async begin
-                @distributed (+) for i in 1:N
+                successes_pointwise_bool = @distributed (vcat) for i in 1:N
                     new_data = data[i]
 
                     m_new = initialise_LikelihoodModel(model.core.loglikefunction, model.core.predictfunction, 
@@ -144,15 +139,19 @@ function check_univariate_prediction_coverage(data_generator::Function,
                         num_points_in_interval=num_points_in_interval, confidence_level=confidence_level, 
                         profile_type=profile_type, show_progress=false, use_distributed=false, use_threads=false)
 
-                    generate_predictions_univariate!(m_new, t, 0.0, show_progress=false)
+                    generate_predictions_univariate!(m_new, t, 0.0, show_progress=false, use_distributed=false)
 
                     indiv_cov, union_cov = evaluate_coverage(m_new, y_true, :univariate, multiple_outputs)
                     successes_bool[1:len_θs, i] .= first.(indiv_cov)
                     successes_bool[end, i] = first(union_cov)
 
-                    put!(channel, true); i^2
+                    put!(channel, true)
+                    (vcat(last.(indiv_cov), [last(union_cov)]),)
                 end
                 put!(channel, false)
+                for pointwise_bool in successes_pointwise_bool
+                    successes_pointwise .+= first(pointwise_bool)
+                end
             end
         end
         successes .= sum(successes_bool, dims=2)
