@@ -99,6 +99,11 @@ function check_dimensional_prediction_coverage(data_generator::Function,
         sort!(θindices); unique!(θindices)
         1 ≤ first.(θindices)[1] && maximum(last.(θindices)) ≤ model.core.num_pars || throw(DomainError("θindices can only contain parameter indexes between 1 and the number of model parameters"))
 
+        if any(length.(θindices) .== model.core.num_pars)
+            i = findfirst(length.(θindices) .== model.core.num_pars)
+            new_inds = vcat(i, setdiff(1:length(θindices), i))
+            θindices = θindices[new_inds]
+        end
         return nothing
     end
     argument_handling!()
