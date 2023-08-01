@@ -329,6 +329,7 @@ Samples `num_points` internal points in interest parameter space of existing biv
 - `proportion_of_predictions_to_keep`: The proportion of predictions from `num_points` internal points to save. Does not impact the extrema calculated from predictions. Default is `1.0`.
 - `optimizationsettings`: a [`OptimizationSettings`](@ref) struct containing the optimisation settings used to find optimal values of nuisance parameters for a given pair of interest parameter values. Default is `missing` (will use `model.core.optimizationsettings`).
 - `show_progress`: boolean variable specifying whether to display progress bars on the percentage of `θs_to_profile` completed and estimated time of completion. Default is `model.show_progress`.
+- `use_distributed`: boolean variable specifying whether to use a normal for loop or a `@distributed` for loop across combinations of interest parameters. Set this variable to `false` if [Distributed.jl](https://docs.julialang.org/en/v1/stdlib/Distributed/) is not being used. Default is `true`.
 - `use_threads`: boolean variable specifying, if the number of workers for distributed computing is not greater than 1 (`!Distributed.nworkers()>1`), to use a parallelised for loop across `Threads.nthreads()` threads to evaluate the log-likelihood at each sampled point. Default is `false`.
 
 # Details
@@ -339,7 +340,7 @@ It is highly recommended to view the docstrings of each `hullmethod` as the reje
 
 ## Parallel Computing Implementation
 
-If [Distributed.jl](https://docs.julialang.org/en/v1/stdlib/Distributed/) is being used then the internal samples of distinct interest parameter combinations will be computed in parallel across `Distributed.nworkers()` workers. If it is not being used (`Distributed.nworkers()` is equal to `1`) and `use_threads` is `true` then the internal samples of each distinct interest parameter combination will be computed in parallel across `Threads.nthreads()` threads. It is highly recommended to set `use_threads` to `true` in that situation.
+If [Distributed.jl](https://docs.julialang.org/en/v1/stdlib/Distributed/) is being used and `use_distributed` is `true` then the internal samples of distinct interest parameter combinations will be computed in parallel across `Distributed.nworkers()` workers. If `use_distributed` is `false` and `use_threads` is `true` then the internal samples of each distinct interest parameter combination will be computed in parallel across `Threads.nthreads()` threads. It is highly recommended to set `use_threads` to `true` in that situation.
 
 ## Iteration Speed Of the Progress Meter
 
@@ -357,6 +358,7 @@ function sample_bivariate_internal_points!(model::LikelihoodModel,
                                     proportion_of_predictions_to_keep::Real=1.0,
                                     optimizationsettings::Union{OptimizationSettings,Missing}=missing,
                                     show_progress::Bool=model.show_progress,
+                                    use_distributed::Bool=true,
                                     use_threads::Bool=false)
 
     function argument_handling()
@@ -364,11 +366,8 @@ function sample_bivariate_internal_points!(model::LikelihoodModel,
         model.core isa CoreLikelihoodModel || throw(ArgumentError("model does not contain a log-likelihood function. Add it using add_loglikelihood_function!"))
         sample_type isa UniformGridSamples && throw(ArgumentError("sample_bivariate_internal_points! is not defined for sample_type=UniformGridSamples()"))
 
-        (use_threads && timeit_debug_enabled()) &&
-            throw(ArgumentError("use_threads cannot be true when debug timings from TimerOutputs are enabled. Either set use_threads to false or disable debug timings using `PlaceholderLikelihood.TimerOutputs.disable_debug_timings(PlaceholderLikelihood)`"))
-
-        (use_threads && nworkers() > 1) &&
-            throw(ArgumentError("use_threads cannot be true when the number of workers for distributed computing is greater than 1 (`Distributed.nworkers()>1`). Either set use_threads to false or remove these workers using `Distributed.rmprocs(workers())`"))
+        (!use_distributed && use_threads && timeit_debug_enabled()) &&
+            throw(ArgumentError("use_threads cannot be true when debug timings from TimerOutputs are enabled and use_distributed is false. Either set use_threads to false or disable debug timings using `PlaceholderLikelihood.TimerOutputs.disable_debug_timings(PlaceholderLikelihood)`"))
         return nothing
     end
 
@@ -420,30 +419,54 @@ function sample_bivariate_internal_points!(model::LikelihoodModel,
             next!(p)
         end
         @async begin
-            internal_samples = @distributed (vcat) for i in 1:nrow(sub_df)
-                [(i, sub_df[i, :row_ind], 
-                    sample_internal_points_single_row(model, sub_df, i, sub_df[i, :row_ind], num_points, sample_type, 
-                        hullmethod, t, evaluate_predictions_for_samples, proportion_of_predictions_to_keep, 
-                        optimizationsettings, use_threads, channel))]
+            if use_distributed
+                internal_samples = @distributed (vcat) for i in 1:nrow(sub_df)
+                    [(i, sub_df[i, :row_ind], 
+                        sample_internal_points_single_row(model, sub_df, i, sub_df[i, :row_ind], num_points, sample_type, 
+                            hullmethod, t, evaluate_predictions_for_samples, proportion_of_predictions_to_keep, 
+                            optimizationsettings, use_threads, channel))]
+                end
+                
+                for (i, row_ind, samples) in internal_samples
+                    if isnothing(samples); continue end
+                    
+                    internal_points, rejection_rate, merged_predict_struct = samples
+                    if ismissing(internal_points); continue end
+                    
+                    update_biv_dict_internal!(model, row_ind, internal_points)
+                    rejection_df[i, :] .= rejection_rate, row_ind
+                    sub_df[i, :not_evaluated_internal_points] = false
+                    
+                    if ismissing(merged_predict_struct)
+                        sub_df[i, :not_evaluated_predictions] = true
+                        continue
+                    end
+                    model.biv_predictions_dict[row_ind] = merged_predict_struct
+                end
+            else
+                for i in 1:nrow(sub_df)
+                    row_ind = sub_df[i, :row_ind]
+                    samples = sample_internal_points_single_row(model, sub_df, i, sub_df[i, :row_ind], num_points, sample_type, 
+                            hullmethod, t, evaluate_predictions_for_samples, proportion_of_predictions_to_keep, 
+                            optimizationsettings, use_threads, channel)
+                
+                    if isnothing(samples); continue end
+                    
+                    internal_points, rejection_rate, merged_predict_struct = samples
+                    if ismissing(internal_points); continue end
+                    
+                    update_biv_dict_internal!(model, row_ind, internal_points)
+                    rejection_df[i, :] .= rejection_rate, row_ind
+                    sub_df[i, :not_evaluated_internal_points] = false
+                    
+                    if ismissing(merged_predict_struct)
+                        sub_df[i, :not_evaluated_predictions] = true
+                        continue
+                    end
+                    model.biv_predictions_dict[row_ind] = merged_predict_struct
+                end
             end
             put!(channel, false)
-            
-            for (i, row_ind, samples) in internal_samples
-                if isnothing(samples); continue end
-
-                internal_points, rejection_rate, merged_predict_struct = samples
-                if ismissing(internal_points); continue end
-
-                update_biv_dict_internal!(model, row_ind, internal_points)
-                rejection_df[i, :] .= rejection_rate, row_ind
-                sub_df[i, :not_evaluated_internal_points] = false
-
-                if ismissing(merged_predict_struct)
-                    sub_df[i, :not_evaluated_predictions] = true
-                    continue
-                end
-                model.biv_predictions_dict[row_ind] = merged_predict_struct
-            end
         end
     end
 
