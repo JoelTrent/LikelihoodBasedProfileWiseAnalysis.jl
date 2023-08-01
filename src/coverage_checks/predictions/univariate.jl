@@ -85,7 +85,7 @@ function check_univariate_prediction_coverage(data_generator::Function,
     multiple_outputs = ndims(y_true) == 2
 
     len_θs = length(θs)
-    θi_to_θs = Dict{Int,Int}(θi => θs for (θs, θi) in enumerate(θs))
+    # θs_to_θi = Dict{Int,Int}(θindex => θi for (θi, θindex) in enumerate(θs))
 
     successes = zeros(Int, len_θs+1)
     successes_pointwise = [zeros(size(y_true)) for _ in 1:(len_θs+1)]
@@ -110,12 +110,22 @@ function check_univariate_prediction_coverage(data_generator::Function,
 
             generate_predictions_univariate!(m_new, t, 0.0, show_progress=false)
 
-            indiv_cov, union_cov = evaluate_coverage(m_new, y_true, :univariate, multiple_outputs)            
+            indiv_cov, union_cov = evaluate_coverage(m_new, y_true, :univariate, multiple_outputs)
             successes[1:len_θs] .+= first.(indiv_cov)
             successes[end] += first(union_cov)
 
             successes_pointwise[1:len_θs] .+= last.(indiv_cov)
             successes_pointwise[end] += last(union_cov)
+
+            # for row_ind in 1:m_new.num_uni_profiles
+            #     θindex = m_new.uni_profiles_df[row_ind, :θindex]
+
+            #     successes[θs_to_θi[θindex]] .+= first(indiv_cov[row_ind])
+            #     successes[end] += first(union_cov)
+
+            #     successes_pointwise[θs_to_θi[θindex]] .+= last(indiv_cov[row_ind])
+            #     successes_pointwise[end] += last(union_cov)
+            # end
 
             next!(p)
         end
