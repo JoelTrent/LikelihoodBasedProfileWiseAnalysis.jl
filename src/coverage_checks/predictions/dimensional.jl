@@ -115,6 +115,7 @@ function check_dimensional_prediction_coverage(data_generator::Function,
 
     successes = zeros(Int, len_θs+1)
     successes_pointwise = [zeros(size(y_true)) for _ in 1:(len_θs+1)]
+    iteration_is_included = falses(N)
 
     data = [data_generator(θtrue, generator_args) for _ in 1:N]
 
@@ -130,13 +131,13 @@ function check_dimensional_prediction_coverage(data_generator::Function,
                 new_data, model.core.θnames, θinitialguess, model.core.θlb, model.core.θub, 
                 model.core.θmagnitudes; biv_row_preallocation_size=len_θs, show_progress=false)
 
-            dimensional_likelihood_samples!(m_new, θindices, num_points_to_sample,
+            dimensional_likelihood_samples!(m_new, deepcopy(θindices), num_points_to_sample,
                 confidence_level=confidence_level, sample_type=sample_type,
                 use_threads=false)
 
             generate_predictions_dim_samples!(m_new, t, 0.0)
 
-            indiv_cov, union_cov = evaluate_coverage(m_new, y_true, :dimensional, multiple_outputs)            
+            indiv_cov, union_cov, iteration_is_included[i] = evaluate_coverage(m_new, y_true, :dimensional, multiple_outputs, len_θs)            
             successes[1:len_θs] .+= first.(indiv_cov)
             successes[end] += first(union_cov)
 
@@ -148,6 +149,8 @@ function check_dimensional_prediction_coverage(data_generator::Function,
     else
         successes_bool = SharedArray{Bool}(len_θs+1, N)
         successes_bool .= false
+        iteration_is_included_shared = SharedArray{Bool}(N)
+        iteration_is_included_shared .= false
         @sync begin
             @async while take!(channel)
                 next!(p)
@@ -161,13 +164,13 @@ function check_dimensional_prediction_coverage(data_generator::Function,
                         new_data, model.core.θnames, θinitialguess, model.core.θlb, model.core.θub, 
                         model.core.θmagnitudes; uni_row_prealloaction_size=len_θs, show_progress=false)
 
-                    dimensional_likelihood_samples!(m_new, θindices, num_points_to_sample,
+                    dimensional_likelihood_samples!(m_new, deepcopy(θindices), num_points_to_sample,
                         confidence_level=confidence_level, sample_type=sample_type,
                         use_distributed=false, use_threads=false)
         
                     generate_predictions_dim_samples!(m_new, t, 0.0, use_distributed=false)
 
-                    indiv_cov, union_cov = evaluate_coverage(m_new, y_true, :dimensional, multiple_outputs)
+                    indiv_cov, union_cov, iteration_is_included_shared[i] = evaluate_coverage(m_new, y_true, :dimensional, multiple_outputs, len_θs)
                     successes_bool[1:len_θs, i] .= first.(indiv_cov)
                     successes_bool[end, i] = first(union_cov)
 
@@ -175,7 +178,9 @@ function check_dimensional_prediction_coverage(data_generator::Function,
                     (vcat(last.(indiv_cov), [last(union_cov)]),)
                 end
                 put!(channel, false)
+                iteration_is_included .= iteration_is_included_shared
                 for pointwise_bool in successes_pointwise_bool
+                    if !iteration_is_included[i]; continue end
                     successes_pointwise .+= first(pointwise_bool)
                 end
             end
@@ -183,12 +188,13 @@ function check_dimensional_prediction_coverage(data_generator::Function,
         successes .= sum(successes_bool, dims=2)
     end
 
-    coverage = successes ./ N
+    N_counted = sum(iteration_is_included)
+    coverage = successes ./ N_counted
     conf_ints = zeros(len_θs+1, 2)
     for i in 1:(len_θs+1)
-        conf_ints[i, :] .= HypothesisTests.confint(HypothesisTests.BinomialTest(successes[i], N), 
+        conf_ints[i, :] .= HypothesisTests.confint(HypothesisTests.BinomialTest(successes[i], N_counted), 
             level=coverage_estimate_confidence_level) 
-        successes_pointwise[i] = successes_pointwise[i] ./ N
+        successes_pointwise[i] = successes_pointwise[i] ./ N_counted
     end
 
     return DataFrame(θname=[[model.core.θnames[[combo...]] for combo in θindices]..., :union], θindices=[θindices..., θindices], 

@@ -114,6 +114,7 @@ function check_bivariate_prediction_coverage(data_generator::Function,
 
     successes = zeros(Int, len_θs+1)
     successes_pointwise = [zeros(size(y_true)) for _ in 1:(len_θs+1)]
+    iteration_is_included = falses(N)
 
     data = [data_generator(θtrue, generator_args) for _ in 1:N]
 
@@ -131,14 +132,14 @@ function check_bivariate_prediction_coverage(data_generator::Function,
 
             if combine_methods
                 for (j, methodj) in enumerate(method) 
-                    bivariate_confidenceprofiles!(m_new, θcombinations, num_points[j];
+                    bivariate_confidenceprofiles!(m_new, deepcopy(θcombinations), num_points[j];
                         confidence_level=confidence_level, profile_type=profile_type, method=methodj,
                         use_threads=false)
                 end
                 combine_bivariate_boundaries!(m_new, confidence_level=confidence_level, 
                     not_evaluated_predictions=true)
             else
-                bivariate_confidenceprofiles!(m_new, θcombinations, num_points;
+                bivariate_confidenceprofiles!(m_new, deepcopy(θcombinations), num_points;
                     confidence_level=confidence_level, profile_type=profile_type, method=method, 
                     use_threads=false)
             end
@@ -149,7 +150,7 @@ function check_bivariate_prediction_coverage(data_generator::Function,
 
             generate_predictions_bivariate!(m_new, t, 0.0)
 
-            indiv_cov, union_cov = evaluate_coverage(m_new, y_true, :bivariate, multiple_outputs)            
+            indiv_cov, union_cov, iteration_is_included[i] = evaluate_coverage(m_new, y_true, :bivariate, multiple_outputs, len_θs)            
             successes[1:len_θs] .+= first.(indiv_cov)
             successes[end] += first(union_cov)
 
@@ -161,6 +162,8 @@ function check_bivariate_prediction_coverage(data_generator::Function,
     else
         successes_bool = SharedArray{Bool}(len_θs+1, N)
         successes_bool .= false
+        iteration_is_included_shared = SharedArray{Bool}(N)
+        iteration_is_included_shared .= false
         @sync begin
             @async while take!(channel)
                 next!(p)
@@ -176,14 +179,14 @@ function check_bivariate_prediction_coverage(data_generator::Function,
 
                     if combine_methods
                         for (j, methodj) in enumerate(method) 
-                            bivariate_confidenceprofiles!(m_new, θcombinations, num_points[j];
+                            bivariate_confidenceprofiles!(m_new, deepcopy(θcombinations), num_points[j];
                                 confidence_level=confidence_level, profile_type=profile_type, method=methodj,
                                 use_distributed=false, use_threads=false)
                         end
                         combine_bivariate_boundaries!(m_new, confidence_level=confidence_level, 
                             not_evaluated_predictions=true)
                     else
-                        bivariate_confidenceprofiles!(m_new, θcombinations, num_points;
+                        bivariate_confidenceprofiles!(m_new, deepcopy(θcombinations), num_points;
                             confidence_level=confidence_level, profile_type=profile_type, method=method, 
                             use_distributed=false, use_threads=false)
                     end
@@ -194,7 +197,7 @@ function check_bivariate_prediction_coverage(data_generator::Function,
         
                     generate_predictions_bivariate!(m_new, t, 0.0, use_distributed=false)
 
-                    indiv_cov, union_cov = evaluate_coverage(m_new, y_true, :bivariate, multiple_outputs)
+                    indiv_cov, union_cov, iteration_is_included_shared[i] = evaluate_coverage(m_new, y_true, :bivariate, multiple_outputs, len_θs)
                     successes_bool[1:len_θs, i] .= first.(indiv_cov)
                     successes_bool[end, i] = first(union_cov)
 
@@ -202,7 +205,9 @@ function check_bivariate_prediction_coverage(data_generator::Function,
                     (vcat(last.(indiv_cov), [last(union_cov)]),)
                 end
                 put!(channel, false)
+                iteration_is_included .= iteration_is_included_shared
                 for pointwise_bool in successes_pointwise_bool
+                    if !iteration_is_included[i]; continue end
                     successes_pointwise .+= first(pointwise_bool)
                 end
             end
@@ -210,12 +215,13 @@ function check_bivariate_prediction_coverage(data_generator::Function,
         successes .= sum(successes_bool, dims=2)
     end
 
-    coverage = successes ./ N
+    N_counted = sum(iteration_is_included)
+    coverage = successes ./ N_counted
     conf_ints = zeros(len_θs+1, 2)
     for i in 1:(len_θs+1)
-        conf_ints[i, :] .= HypothesisTests.confint(HypothesisTests.BinomialTest(successes[i], N), 
+        conf_ints[i, :] .= HypothesisTests.confint(HypothesisTests.BinomialTest(successes[i], N_counted), 
             level=coverage_estimate_confidence_level) 
-        successes_pointwise[i] = successes_pointwise[i] ./ N
+        successes_pointwise[i] = successes_pointwise[i] ./ N_counted
     end
 
     num_boundary_points = zeros(Int, len_θs+1)
