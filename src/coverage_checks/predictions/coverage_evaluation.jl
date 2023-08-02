@@ -67,7 +67,7 @@ function evaluate_coverage(model::LikelihoodModel, y_true::Array, profile_kind::
 
     if missing_profiles
         @error string(num_missing, " out of ", len_θs, " profiles failed to run. This iteration will not count towards the coverage statistic")
-        individual_coverage = [evaluate_coverage(y_true, missing, multiple_outputs)]
+        individual_coverage = [evaluate_coverage(y_true, missing, multiple_outputs) for row_ind in df.row_ind]
         union_coverage = evaluate_coverage(y_true, missing, multiple_outputs)
         return individual_coverage, union_coverage, false
     end

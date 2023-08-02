@@ -207,7 +207,6 @@ function check_bivariate_prediction_coverage(data_generator::Function,
                 put!(channel, false)
                 iteration_is_included .= iteration_is_included_shared
                 for pointwise_bool in successes_pointwise_bool
-                    if !iteration_is_included[i]; continue end
                     successes_pointwise .+= first(pointwise_bool)
                 end
             end

@@ -164,7 +164,6 @@ function check_univariate_prediction_coverage(data_generator::Function,
                 put!(channel, false)
                 iteration_is_included .= iteration_is_included_shared
                 for (i, pointwise_bool) in enumerate(successes_pointwise_bool)
-                    if !iteration_is_included[i]; continue end
                     successes_pointwise .+= first(pointwise_bool)
                 end
             end
