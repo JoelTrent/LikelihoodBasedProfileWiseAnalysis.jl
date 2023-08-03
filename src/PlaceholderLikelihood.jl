@@ -41,7 +41,7 @@ export EllipseMLEApprox, OptimizationSettings, CoreLikelihoodModel, BaseLikeliho
     
     AbstractSampleType, UniformGridSamples, UniformRandomSamples, LatinHypercubeSamples,
 
-    AbstractPredictionStruct, PredictionStruct
+    AbstractPredictionStruct, PredictionStruct, PredictionRealisationsStruct
 
 # FUNCTIONS ###############################################################################
 export initialise_LikelihoodModel, 
@@ -64,8 +64,13 @@ export initialise_LikelihoodModel,
     dimensional_likelihood_samples!, full_likelihood_sample!,
 
     add_prediction_function!, check_prediction_function_exists,
+    add_error_function!,
     generate_predictions_univariate!, generate_predictions_bivariate!,
     generate_predictions_dim_samples!,
+
+    normal_error_σ_known, normal_error_σ_estimated,
+    lognormal_error_σ_known, lognormal_error_σ_estimated,
+    poisson_error,
 
     check_univariate_prediction_coverage, check_bivariate_prediction_coverage,
     check_dimensional_prediction_coverage,
@@ -92,6 +97,7 @@ include("transform_bounds.jl")
 include("common_profile_likelihood.jl")
 include("ellipse_likelihood.jl")
 include("predictions.jl")
+include("predictions_for_realisations.jl")
 include("nuisance_parameters_and_array_mapping.jl")
 include("loading.jl")
 

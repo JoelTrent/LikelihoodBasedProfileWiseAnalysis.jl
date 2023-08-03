@@ -19,6 +19,7 @@ end
 """
     CoreLikelihoodModel(loglikefunction::Function, 
         predictfunction::Union{Function, Missing}, 
+        errorfunction::Union{Function, Missing}
         data::Union{Tuple, NamedTuple}, 
         θnames::AbstractVector
         θname_to_index::Dict{Symbol, Int}, 
@@ -35,6 +36,7 @@ Struct containing the core information required to define a [`LikelihoodModel`](
 # Fields
 - `loglikefunction`: a log-likelihood function which takes two arguments, `θ` and `data`, in that order. Set up to be used in a maximisation objective.
 - `predictfunction`: a prediction function to generate model predictions from that is paired with the `loglikefunction`. 
+- `errorfunction`: an error function used to predict realisations from predictions generated with `predictfunction`. 
 - `optimizationsettings`: a [`OptimizationSettings`](@ref) struct of settings to use for optimisation unless others are specified.
 - `data`: a Tuple or a NamedTuple containing any additional information required by the log-likelihood function, such as the time points to be evaluated at.
 - `θnames`: a vector of symbols containing the names of each parameter, e.g. `[:λ, :K, :C0]`.
@@ -54,6 +56,7 @@ Struct containing the core information required to define a [`LikelihoodModel`](
 struct CoreLikelihoodModel
     loglikefunction::Function
     predictfunction::Union{Function, Missing}
+    errorfunction::Union{Function, Missing}
     optimizationsettings::OptimizationSettings
     data::Union{Tuple, NamedTuple}
     θnames::AbstractVector

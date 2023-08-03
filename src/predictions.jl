@@ -44,25 +44,125 @@ end
 
 """
     generate_prediction(predictfunction::Function,
+        errorfunction::Function,
         data,
-        t::Vector,
+        t::AbstractVector,
         data_ymle::AbstractArray{<:Real},
         parameter_points::Matrix{Float64},
         proportion_to_keep::Real,
+        confidence_level::Real,
         channel::Union{RemoteChannel,Missing}=missing)
 
-Generates the predictions for response variables from a `predictfunction` which meets the requirements specified in [`add_prediction_function!`](@ref), given `data`, at time points `t` for each parameter combination in the columns of `parameter_points`. The extrema of all predictions is computed and `proportion_to_keep` of the individual predictions are kept. 
+Generates the predictions for response variables from a `predictfunction` which meets the requirements specified in [`add_prediction_function!`](@ref), given `data`, at time points `t` for each parameter combination in the columns of `parameter_points`. The extrema of all predictions is computed and `proportion_to_keep` of the individual predictions are kept. `errorfunction` is used to predicts the lower and upper quartiles of realisations at each prediction point.
+    
+Returns a [`PredictionStruct`] containing the kept predictions, prediction extrema, lower and upper quartiles of realisations from the error model at `confidence_level` at each predicted point and the realisation extrema. 
+
+The prediction at each timepoint is stored in the corresponding row (1st dimension). The prediction for each parameter combination is stored in the corresponding column (2nd dimension). The prediction for multiple response variables is stored in the 3rd dimension.
+"""
+function generate_prediction(predictfunction::Function,
+                                errorfunction::Function,
+                                data,
+                                t::AbstractVector,
+                                data_ymle::AbstractArray{<:Real},
+                                parameter_points::Matrix{Float64},
+                                proportion_to_keep::Real,
+                                confidence_level::Real,
+                                channel::RemoteChannel=RemoteChannel(() -> Channel{Bool}(Inf)))
+    try
+        num_points = size(parameter_points, 2)
+        
+        if ndims(data_ymle) > 2
+            error("this function has not been written to handle predictions that are stored in higher than 2 dimensions")
+        end
+
+        if ndims(data_ymle) == 2
+            predictions = zeros(length(t), num_points, size(data_ymle, 2))
+
+            for i in 1:num_points
+                predictions[:,i,:] .= predictfunction(parameter_points[:,i], data, t)
+                put!(channel, true)
+            end
+
+            lq, uq = zeros(length(t), num_points, size(data_ymle, 2)), zeros(length(t), num_points, size(data_ymle, 2))
+            for i in 1:num_points
+                lq[:,i,:], uq[:,i,:] = predict_realisations(errorfunction, predictions[:,i,:], parameter_points[:,i], confidence_level)
+            end
+
+        else
+            predictions = zeros(length(t), num_points)
+
+            for i in 1:num_points
+                predictions[:,i] .= predictfunction(parameter_points[:,i], data, t)
+                put!(channel, true)
+            end
+
+            lq, uq = zeros(length(t), num_points), zeros(length(t), num_points)
+            for i in 1:num_points
+                lq[:,i], uq[:,i] = predict_realisations(errorfunction, predictions[:,i], parameter_points[:,i], confidence_level)
+            end
+        end
+        
+        extrema = hcat(minimum(predictions, dims=2), maximum(predictions, dims=2))
+        extrema_realisations = hcat(min.(minimum(lq, dims=2), minimum(uq, dims=2)), 
+                                    max.(maximum(lq, dims=2), maximum(uq, dims=2)))
+    
+
+        num_to_keep = convert(Int, round(num_points*proportion_to_keep, RoundUp))
+        if num_points < 2
+            predict_struct = PredictionStruct(predictions, extrema, 
+                PredictionRealisationsStruct(lq, uq, extrema_realisations))
+            return predict_struct
+        elseif num_to_keep < 2
+            num_to_keep = 2
+        end
+
+        keep_i = sample(1:num_points, num_to_keep, replace=false, ordered=true)
+        if ndims(data_ymle) == 2
+            predict_struct = PredictionStruct(predictions[:,keep_i,:], extrema, 
+                PredictionRealisationsStruct(lq[:,keep_i,:], uq[:,keep_i,:], extrema_realisations))
+        else
+            predict_struct = PredictionStruct(predictions[:,keep_i], extrema, 
+                PredictionRealisationsStruct(lq[:,keep_i], uq[:,keep_i], extrema_realisations))
+        end
+
+        return predict_struct
+
+    catch
+        @error "an error occurred when generating a prediction"
+        for (exc, bt) in current_exceptions()
+            showerror(stdout, exc, bt)
+            println(stdout)
+            println(stdout)
+        end
+    end
+    return nothing
+end
+
+"""
+    generate_prediction(predictfunction::Function,
+        errorfunction::Missing,
+        data,
+        t::AbstractVector,
+        data_ymle::AbstractArray{<:Real},
+        parameter_points::Matrix{Float64},
+        proportion_to_keep::Real,
+        confidence_level::Real,
+        channel::Union{RemoteChannel,Missing}=missing)
+
+Generates the predictions for response variables from a `predictfunction` which meets the requirements specified in [`add_prediction_function!`](@ref), given `data`, at time points `t` for each parameter combination in the columns of `parameter_points`. The extrema of all predictions is computed and `proportion_to_keep` of the individual predictions are kept.
     
 Returns a [`PredictionStruct`] containing the kept predictions and prediction extrema. 
 
 The prediction at each timepoint is stored in the corresponding row (1st dimension). The prediction for each parameter combination is stored in the corresponding column (2nd dimension). The prediction for multiple response variables is stored in the 3rd dimension.
 """
 function generate_prediction(predictfunction::Function,
+                                errorfunction::Missing,
                                 data,
-                                t::Vector,
+                                t::AbstractVector,
                                 data_ymle::AbstractArray{<:Real},
                                 parameter_points::Matrix{Float64},
                                 proportion_to_keep::Real,
+                                confidence_level::Real,
                                 channel::RemoteChannel=RemoteChannel(() -> Channel{Bool}(Inf)))
     try
         num_points = size(parameter_points, 2)
@@ -100,7 +200,7 @@ function generate_prediction(predictfunction::Function,
 
         keep_i = sample(1:num_points, num_to_keep, replace=false, ordered=true)
         if ndims(data_ymle) == 2
-            predict_struct = PredictionStruct(predictions[:, keep_i,:], extrema)
+            predict_struct = PredictionStruct(predictions[:, keep_i, :], extrema)
         else
             predict_struct = PredictionStruct(predictions[:, keep_i], extrema)
         end
@@ -120,10 +220,11 @@ end
 
 """
     generate_prediction_univariate(model::LikelihoodModel,
+        errorfunction::Union{Function, Missing},
         sub_df,
         row_i::Int,
-        t::Vector,
-        proportion_to_keep::Real, 
+        t::AbstractVector,
+        proportion_to_keep::Real,  
         channel::RemoteChannel)
 
 Generates predictions for the univariate profile in `sub_df` that corresponds to `row_i` at timepoints `t`.
@@ -131,7 +232,7 @@ Generates predictions for the univariate profile in `sub_df` that corresponds to
 function generate_prediction_univariate(model::LikelihoodModel,
                                         sub_df,
                                         row_i::Int,
-                                        t::Vector,
+                                        t::AbstractVector,
                                         proportion_to_keep::Real, 
                                         channel::RemoteChannel)
 
@@ -140,16 +241,18 @@ function generate_prediction_univariate(model::LikelihoodModel,
     boundary_range = boundary_col_indices[1]:boundary_col_indices[2]
     
     return generate_prediction(model.core.predictfunction, 
+                model.core.errorfunction,
                 model.core.data, t, model.core.ymle,
-                interval_points.points[:, boundary_range], proportion_to_keep, channel)
+                interval_points.points[:, boundary_range], proportion_to_keep, 
+                sub_df[row_i, :conf_level], channel)
 end
 
 """
     generate_prediction_bivariate(model::LikelihoodModel,
         sub_df,
         row_i::Int,
-        t::Vector,
-        proportion_to_keep::Real,
+        t::AbstractVector,
+        proportion_to_keep::Real, 
         channel::RemoteChannel)
 
 Generates predictions for the bivariate profile in `sub_df` that corresponds to `row_i` at timepoints `t`.
@@ -157,22 +260,26 @@ Generates predictions for the bivariate profile in `sub_df` that corresponds to 
 function generate_prediction_bivariate(model::LikelihoodModel,
                                         sub_df,
                                         row_i::Int,
-                                        t::Vector,
-                                        proportion_to_keep::Real,
+                                        t::AbstractVector,
+                                        proportion_to_keep::Real, 
                                         channel::RemoteChannel)
 
     conf_struct = model.biv_profiles_dict[sub_df[row_i, :row_ind]]
 
     if !isempty(conf_struct.internal_points.points)
-        return generate_prediction(model.core.predictfunction, 
+        return generate_prediction(model.core.predictfunction,
+                                    model.core.errorfunction,
                                     model.core.data, t, model.core.ymle,
                                     hcat(conf_struct.confidence_boundary, conf_struct.internal_points.points), 
-                                    proportion_to_keep, channel)
+                                    proportion_to_keep, 
+                                    sub_df[row_i, :conf_level], channel)
     end
     return generate_prediction(model.core.predictfunction,
+                                model.core.errorfunction,
                                 model.core.data, t, model.core.ymle,
                                 conf_struct.confidence_boundary, 
-                                proportion_to_keep, channel)
+                                proportion_to_keep, 
+                                sub_df[row_i, :conf_level], channel)
 end
 
 """
@@ -334,7 +441,7 @@ function generate_predictions_bivariate!(model::LikelihoodModel,
             if use_distributed
                 predictions = @distributed (vcat) for i in 1:nrow(sub_df)
                     [generate_prediction_bivariate(model, sub_df, i,
-                                                    t, proportion_to_keep, channel)]
+                                                    t, proportion_to_keep, sub_df[i,:conf_level], channel)]
                 end
 
                 for (i, predict_struct) in enumerate(predictions)
@@ -345,7 +452,7 @@ function generate_predictions_bivariate!(model::LikelihoodModel,
                 end
             else
                 for i in 1:nrow(sub_df)
-                    predict_struct = generate_prediction_bivariate(model, sub_df, i, t, proportion_to_keep, channel)
+                    predict_struct = generate_prediction_bivariate(model, sub_df, i, t, proportion_to_keep, sub_df[i,:conf_level], channel)
                     if isnothing(predict_struct); continue end
                     
                     model.biv_predictions_dict[sub_df[i, :row_ind]] = predict_struct
@@ -425,8 +532,8 @@ function generate_predictions_dim_samples!(model::LikelihoodModel,
             if use_distributed
                 predictions = @distributed (vcat) for i in 1:nrow(sub_df)
                     parameter_points = model.dim_samples_dict[sub_df[i, :row_ind]].points
-                    [generate_prediction(model.core.predictfunction, model.core.data, t, 
-                                                        model.core.ymle, parameter_points, proportion_to_keep, channel)]
+                    [generate_prediction(model.core.predictfunction, model.core.errorfunction, model.core.data, t,
+                                                        model.core.ymle, parameter_points, proportion_to_keep, sub_df[i,:conf_level], channel)]
                 end
 
                 for (i, predict_struct) in enumerate(predictions)
@@ -438,8 +545,8 @@ function generate_predictions_dim_samples!(model::LikelihoodModel,
             else
                 for i in 1:nrow(sub_df)
                     parameter_points = model.dim_samples_dict[sub_df[i, :row_ind]].points
-                    predict_struct = generate_prediction(model.core.predictfunction, model.core.data, t, 
-                                                        model.core.ymle, parameter_points, proportion_to_keep, channel)
+                    predict_struct = generate_prediction(model.core.predictfunction, model.core.errorfunction, model.core.data, t,
+                                                        model.core.ymle, parameter_points, proportion_to_keep, sub_df[i,:conf_level], channel)
                     if isnothing(predict_struct); continue end
 
                     model.dim_predictions_dict[sub_df[i, :row_ind]] = predict_struct

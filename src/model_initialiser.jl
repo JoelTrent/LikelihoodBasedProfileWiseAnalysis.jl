@@ -152,6 +152,7 @@ end
 """
     initialise_LikelihoodModel(loglikefunction::Function,
         predictfunction::Union{Function, Missing},
+        errorfunction::Union{Function, Missing}
         data::Union{Tuple, NamedTuple},
         θnams::Vector{<:Symbol},
         θinitialguess::AbstractVector{<:Real},
@@ -165,6 +166,7 @@ Initialises a [`LikelihoodModel`](@ref) struct, which contains all model informa
 # Arguments
 - `loglikefunction`: a log-likelihood function to maximise which takes two arguments, `θ` and `data`, in that order, where θ is a vector containing the values of each parameter in `θnames` and `data` is a Tuple or NamedTuple - see `data` below. Set up to be used in a maximisation objective.
 - `predictfunction`: a prediction function to generate model predictions from that is paired with the `loglikefunction`. Requirements for the prediction function can be seen in [`add_prediction_function!`](@ref). It can also be `missing` if no function is provided to [`initialise_LikelihoodModel`](@ref), because predictions are not required when evaluating parameter profiles. The function can be added at a later point using [`add_prediction_function!`](@ref).
+- `errorfunction`: an error function used to predict realisations from predictions generated with `predictfunction`. Requirements for the error function can be seen in [`add_error_function!`](@ref). It can also be `missing` if no function is provided to [`initialise_LikelihoodModel`](@ref), because predictions are not required when evaluating parameter profiles. The function can be added at a later point using [`add_error_function!`](@ref).
 - `data`: a Tuple or a NamedTuple containing any additional information required by the log-likelihood function, such as the time points to be evaluated at.
 - `θnames`: a vector of symbols containing the names of each parameter, e.g. `[:λ, :K, :C0]`.
 - `θinitialguess`: a vector containing the initial guess for the values of each parameter. Used to find the MLE point.
@@ -182,6 +184,7 @@ Initialises a [`LikelihoodModel`](@ref) struct, which contains all model informa
 """
 function initialise_LikelihoodModel(loglikefunction::Function,
     predictfunction::Union{Function, Missing},
+    errorfunction::Union{Function, Missing},
     data::Union{Tuple, NamedTuple},
     θnames::Vector{<:Symbol},
     θinitialguess::AbstractVector{<:Real},
@@ -205,13 +208,17 @@ function initialise_LikelihoodModel(loglikefunction::Function,
     ymle=zeros(0,0)
     if !ismissing(predictfunction)
         ymle = predictfunction(θmle, data)
+
+        if !ismissing(errorfunction)
+            errorfunction(ymle, θmle, 0.95) # test to see if it works
+        end
     end
 
     if isempty(θmagnitudes)
         θmagnitudes = calculate_θmagnitudes(θlb, θub)
     end
 
-    corelikelihoodmodel = CoreLikelihoodModel(loglikefunction, predictfunction, optimizationsettings, data, θnames,
+    corelikelihoodmodel = CoreLikelihoodModel(loglikefunction, predictfunction, errorfunction, optimizationsettings, data, θnames,
                             θnameToIndex, θlb.*1.0, θub.*1.0, θmagnitudes.*1.0, θmle, ymle, maximisedmle, num_pars)
 
     # conf_levels_evaluated = DefaultDict{Float64, Bool}(false)
@@ -259,6 +266,7 @@ end
 
 """
     initialise_LikelihoodModel(loglikefunction::Function,
+        predictfunction::Function,
         data::Union{Tuple, NamedTuple},
         θnames::Vector{<:Symbol},
         θinitialGuess::Vector{<:Float64},
@@ -267,7 +275,44 @@ end
         θmagnitudes::Vector{<:Real}=zeros(0);
         <keyword arguments>)
 
-Alternate version of [`initialise_LikelihoodModel`](@ref) that can be called without a prediction function. The function can be added at a later point using [`add_prediction_function!`](@ref).
+Alternate version of [`initialise_LikelihoodModel`](@ref) that can be called without a error function. The function can be added at a later point using [`add_error_function!`](@ref).
+"""
+function initialise_LikelihoodModel(loglikefunction::Function,
+    predictfunction::Function,
+    data::Union{Tuple,NamedTuple},
+    θnames::Vector{<:Symbol},
+    θinitialGuess::Vector{<:Float64},
+    θlb::Vector{<:Float64},
+    θub::Vector{<:Float64},
+    θmagnitudes::Vector{<:Real}=zeros(0);
+    optimizationsettings::OptimizationSettings=default_OptimizationSettings(),
+    uni_row_prealloaction_size::Real=NaN,
+    biv_row_preallocation_size::Real=NaN,
+    dim_row_preallocation_size::Real=NaN,
+    find_zero_atol::Real=0.001,
+    show_progress::Bool=true)
+
+    return initialise_LikelihoodModel(loglikefunction, predictfunction, missing, data, θnames,
+        θinitialGuess, θlb, θub, θmagnitudes,
+        optimizationsettings=optimizationsettings,
+        uni_row_prealloaction_size=uni_row_prealloaction_size,
+        biv_row_preallocation_size=biv_row_preallocation_size,
+        dim_row_preallocation_size=dim_row_preallocation_size,
+        find_zero_atol=find_zero_atol,
+        show_progress=show_progress)
+end
+
+"""
+    initialise_LikelihoodModel(loglikefunction::Function,
+        data::Union{Tuple, NamedTuple},
+        θnames::Vector{<:Symbol},
+        θinitialGuess::Vector{<:Float64},
+        θlb::Vector{<:Float64},
+        θub::Vector{<:Float64},
+        θmagnitudes::Vector{<:Real}=zeros(0);
+        <keyword arguments>)
+
+Alternate version of [`initialise_LikelihoodModel`](@ref) that can be called without a prediction and error function. The functions can be added at a later point using [`add_prediction_function!`](@ref) and [`add_error_function!`](@ref).
 """
 function initialise_LikelihoodModel(loglikefunction::Function,
     data::Union{Tuple, NamedTuple},
@@ -283,7 +328,7 @@ function initialise_LikelihoodModel(loglikefunction::Function,
     find_zero_atol::Real=0.001,
     show_progress::Bool=true)
 
-    return initialise_LikelihoodModel(loglikefunction, missing, data, θnames,
+    return initialise_LikelihoodModel(loglikefunction, missing, missing, data, θnames,
                                         θinitialGuess, θlb, θub, θmagnitudes,
                                         optimizationsettings=optimizationsettings,
                                         uni_row_prealloaction_size=uni_row_prealloaction_size,
