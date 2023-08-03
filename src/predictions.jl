@@ -441,7 +441,7 @@ function generate_predictions_bivariate!(model::LikelihoodModel,
             if use_distributed
                 predictions = @distributed (vcat) for i in 1:nrow(sub_df)
                     [generate_prediction_bivariate(model, sub_df, i,
-                                                    t, proportion_to_keep, sub_df[i,:conf_level], channel)]
+                                                    t, proportion_to_keep, channel)]
                 end
 
                 for (i, predict_struct) in enumerate(predictions)
@@ -452,7 +452,7 @@ function generate_predictions_bivariate!(model::LikelihoodModel,
                 end
             else
                 for i in 1:nrow(sub_df)
-                    predict_struct = generate_prediction_bivariate(model, sub_df, i, t, proportion_to_keep, sub_df[i,:conf_level], channel)
+                    predict_struct = generate_prediction_bivariate(model, sub_df, i, t, proportion_to_keep, channel)
                     if isnothing(predict_struct); continue end
                     
                     model.biv_predictions_dict[sub_df[i, :row_ind]] = predict_struct
