@@ -65,8 +65,8 @@ function plot1Dprofile!(plt, parRange, parProfile, label="profile"; kwargs...)
 end
 
 function addMLEandLLstar!(plt, llstar, parMLE, MLE_color, llstar_color; kwargs...)
-    vline!(plt, [parMLE], lw=2, color=MLE_color, label="MLE point", linestyle=:dash)
-    hline!(plt, [llstar], lw=2, color=llstar_color, label=L"\hat{\ell}_{c}", linestyle=:dash; kwargs...)
+    vline!(plt, [parMLE], lw=3, color=MLE_color, label="MLE point", linestyle=:dot)
+    hline!(plt, [llstar], lw=3, color=llstar_color, label=L"\hat{\ell}_{c}", linestyle=:dot; kwargs...)
     return plt
 end
 
