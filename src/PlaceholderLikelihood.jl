@@ -74,7 +74,10 @@ export initialise_LikelihoodModel,
 
     check_univariate_prediction_coverage, check_bivariate_prediction_coverage,
     check_dimensional_prediction_coverage,
-
+    check_univariate_prediction_realisations_coverage,
+    check_bivariate_prediction_realisations_coverage,
+    check_dimensional_prediction_realisations_coverage,
+    
     trim_model_dfs!, remove_functions_from_core!, add_loglikelihood_function!
 
 # TYPES ###################################################################################
