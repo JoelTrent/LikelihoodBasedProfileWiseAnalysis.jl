@@ -351,6 +351,8 @@ function check_bivariate_prediction_realisations_coverage(data_generator::Functi
     end
     local combine_methods::Bool
     argument_handling!()
+    
+    bonferroni_confidence_level = 1.0 - ((1.0-confidence_level)/2.0)
 
     y_true = model.core.predictfunction(θtrue, model.core.data, t)
     multiple_outputs = ndims(y_true) == 2
@@ -380,14 +382,14 @@ function check_bivariate_prediction_realisations_coverage(data_generator::Functi
             if combine_methods
                 for (j, methodj) in enumerate(method)
                     bivariate_confidenceprofiles!(m_new, deepcopy(θcombinations), num_points[j];
-                        confidence_level=confidence_level, profile_type=profile_type, method=methodj,
+                        confidence_level=bonferroni_confidence_level, profile_type=profile_type, method=methodj,
                         use_threads=false)
                 end
-                combine_bivariate_boundaries!(m_new, confidence_level=confidence_level,
+                combine_bivariate_boundaries!(m_new, confidence_level=bonferroni_confidence_level,
                     not_evaluated_predictions=true)
             else
                 bivariate_confidenceprofiles!(m_new, deepcopy(θcombinations), num_points;
-                    confidence_level=confidence_level, profile_type=profile_type, method=method,
+                    confidence_level=bonferroni_confidence_level, profile_type=profile_type, method=method,
                     use_threads=false)
             end
 
@@ -428,14 +430,14 @@ function check_bivariate_prediction_realisations_coverage(data_generator::Functi
                     if combine_methods
                         for (j, methodj) in enumerate(method)
                             bivariate_confidenceprofiles!(m_new, deepcopy(θcombinations), num_points[j];
-                                confidence_level=confidence_level, profile_type=profile_type, method=methodj,
+                                confidence_level=bonferroni_confidence_level, profile_type=profile_type, method=methodj,
                                 use_distributed=false, use_threads=false)
                         end
-                        combine_bivariate_boundaries!(m_new, confidence_level=confidence_level,
+                        combine_bivariate_boundaries!(m_new, confidence_level=bonferroni_confidence_level,
                             not_evaluated_predictions=true)
                     else
                         bivariate_confidenceprofiles!(m_new, deepcopy(θcombinations), num_points;
-                            confidence_level=confidence_level, profile_type=profile_type, method=method,
+                            confidence_level=bonferroni_confidence_level, profile_type=profile_type, method=method,
                             use_distributed=false, use_threads=false)
                     end
 

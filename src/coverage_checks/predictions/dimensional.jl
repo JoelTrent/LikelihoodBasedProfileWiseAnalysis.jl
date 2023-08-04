@@ -307,6 +307,8 @@ function check_dimensional_prediction_realisations_coverage(data_generator::Func
     end
     argument_handling!()
 
+    bonferroni_confidence_level = 1.0 - ((1.0-confidence_level)/2.0)
+
     y_true = model.core.predictfunction(θtrue, model.core.data, t)
     multiple_outputs = ndims(y_true) == 2
 
@@ -333,7 +335,7 @@ function check_dimensional_prediction_realisations_coverage(data_generator::Func
                 model.core.θmagnitudes; biv_row_preallocation_size=len_θs, show_progress=false)
 
             dimensional_likelihood_samples!(m_new, deepcopy(θindices), num_points_to_sample,
-                confidence_level=confidence_level, sample_type=sample_type,
+                confidence_level=bonferroni_confidence_level, sample_type=sample_type,
                 use_threads=false)
 
             generate_predictions_dim_samples!(m_new, t, 0.0)
@@ -367,7 +369,7 @@ function check_dimensional_prediction_realisations_coverage(data_generator::Func
                         model.core.θmagnitudes; uni_row_prealloaction_size=len_θs, show_progress=false)
 
                     dimensional_likelihood_samples!(m_new, deepcopy(θindices), num_points_to_sample,
-                        confidence_level=confidence_level, sample_type=sample_type,
+                        confidence_level=bonferroni_confidence_level, sample_type=sample_type,
                         use_distributed=false, use_threads=false)
 
                     generate_predictions_dim_samples!(m_new, t, 0.0, use_distributed=false)
