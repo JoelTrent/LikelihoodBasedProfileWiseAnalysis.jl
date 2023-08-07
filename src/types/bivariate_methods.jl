@@ -160,7 +160,7 @@ end
     RadialMLEMethod(ellipse_start_point_shift::Float64=rand(), 
         ellipse_sqrt_distortion::Float64=0.01)
 
-Method for finding the bivariate boundary of a confidence profile by bracketing between the MLE point and points on the provided bounds in directions given by points found on the boundary of a ellipse approximation of the log-likelihood function around the MLE, `e`, using [EllipseSampling.jl](https://joeltrent.github.io/EllipseSampling.jl/stable) (see [`PlaceholderLikelihood.findNpointpairs_radialMLE!`](@ref) and [`PlaceholderLikelihood.bivariate_confidenceprofile_vectorsearch`](@ref))..
+Method for finding the bivariate boundary of a confidence profile by bracketing between the MLE point and points on the provided bounds in directions given by points found on the boundary of a ellipse approximation of the log-likelihood function around the MLE, `e`, using [EllipseSampling.jl](https://joeltrent.github.io/EllipseSampling.jl/stable) (see [`PlaceholderLikelihood.findNpointpairs_radialMLE!`](@ref) and [`PlaceholderLikelihood.bivariate_confidenceprofile_vectorsearch`](@ref)).
 
 # Arguments
 - `ellipse_start_point_shift`: a number ∈ [0.0,1.0]. Default is `rand()` (defined on [0.0,1.0]), meaning that by default a different set of points will be found each time.
