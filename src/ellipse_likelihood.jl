@@ -7,14 +7,22 @@ function analytic_ellipse_loglike(θ::Vector, θIndexes::Vector{Int}, mleTuple::
 end
 
 """
+    analytic_ellipse_loglike_1D_soln(θIndex::Int, mleTuple::@NamedTuple{θmle::Vector{T}, Γmle::Matrix{T}}, targetll::T)
+
+See [Structural and practical identifiability analysis of partially observed dynamical models by exploiting the profile likelihood](https://doi.org/10.1093/bioinformatics/btp358), equation 7.
+
 ```math
-L^* = -\\frac{1}{2}(w_i - w_i^*)^2 * Γ_i(θ^*)^{-1}
-w_1 =  w_1^* + \\sqrt{\\frac{-2 L^*}{Γ_i(θ^*)^{-1}}}
+L^* = -\\frac{1}{2}(θ_i - θ_i^*)^2 \\times Γ_{ii}(θ^*)^{-1}
 ```
+```math
+θ_i =  θ_i^* + \\sqrt{\\frac{-2 L^*}{Γ_{ii}(θ^*)^{-1}}} \\equiv θ_i^* + \\sqrt{-2 L^* \\times Γ_{ii}(θ^*)}
+```
+
+Note: ``C(θ^*) = 2 \\times H(θ^*)^{-1}`` and ``Γ(θ^*) = H(θ^*)^{-1}``, and ``L^* = -χ^2(α, df)``, so the equation is equivalent to equation 7 in the above reference.
 """
 function analytic_ellipse_loglike_1D_soln(θIndex::Int, mleTuple::@NamedTuple{θmle::Vector{T}, Γmle::Matrix{T}}, targetll::T) where T<:Float64
 
-    sqrt_inner = (-2 * targetll) /inv(mleTuple.Γmle[θIndex, θIndex])
+    sqrt_inner = (-2 * targetll * mleTuple.Γmle[θIndex, θIndex])
     if sqrt_inner < 0.0; return nothing end
 
     sqrt_part = sqrt(sqrt_inner)
