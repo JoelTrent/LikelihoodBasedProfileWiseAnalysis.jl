@@ -143,7 +143,7 @@ function calculate_θmagnitudes(θlb::Vector{<:Float64}, θub::Vector{<:Float64}
     NaN_θmagnitudes = isnan.(θmagnitudes)
 
     if sum(NaN_θmagnitudes) < length(NaN_θmagnitudes)
-        θmagnitudes .= θmagnitudes ./ min(θmagnitudes[.!NaN_θmagnitudes])
+        θmagnitudes .= θmagnitudes ./ minimum(θmagnitudes[.!NaN_θmagnitudes])
     end
 
     return θmagnitudes
