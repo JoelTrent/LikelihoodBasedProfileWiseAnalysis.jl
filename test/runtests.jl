@@ -1,4 +1,3 @@
-using Revise
 using PlaceholderLikelihood
 using Test
 using Distributions, Random
