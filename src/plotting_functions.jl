@@ -731,7 +731,7 @@ end
 
 function plot_predictions_individual(model::LikelihoodModel,
                             # prediction_type::Symbol=:union,
-                            t::Vector,
+                            t::AbstractVector,
                             profile_dimension::Int=1;
                             xlabel::String="t",
                             ylabel::Union{Nothing,String,Vector{String}}=nothing,
@@ -854,7 +854,7 @@ end
 include_lower_confidence_levels is only used for 2d bivariate boundaries
 """
 function plot_predictions_union(model::LikelihoodModel,
-                            t::Vector,
+                            t::AbstractVector,
                             profile_dimension::Int=1,
                             confidence_level::Float64=0.95;
                             xlabel::String="t",
