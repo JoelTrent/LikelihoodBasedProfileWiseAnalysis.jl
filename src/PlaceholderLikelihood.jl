@@ -145,11 +145,14 @@ function plot_bivariate_profiles_comparison end
 function plot_bivariate_profiles_iterativeboundary_gif end
 function plot_predictions_individual end
 function plot_predictions_union end
+function plot_realisations_individual end
+function plot_realisations_union end
 
 export plot_univariate_profiles, plot_univariate_profiles_comparison,
     plot_bivariate_profiles, plot_bivariate_profiles_comparison,
     plot_bivariate_profiles_iterativeboundary_gif,
-    plot_predictions_individual, plot_predictions_union
+    plot_predictions_individual, plot_predictions_union,
+    plot_realisations_individual, plot_realisations_union
 
 function __init__()
     @require Plots="91a5bcdd-55d7-5caf-9e0b-520d859cae80" begin 

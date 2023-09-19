@@ -105,6 +105,18 @@ function plotprediction!(plt, t, predictions, extrema, linealpha, layout; extrem
     return plt
 end
 
+function plotrealisation!(plt, t, extrema, linealpha, layout; extremacolor=:red, kwargs...)
+    if layout > 1
+        for i in 1:(layout-1)
+            plot!(plt[i], t, extrema[:,:,i], lw=3, color=extremacolor, label=["PCBs (≈)" ""], legend=false)
+        end
+        plot!(plt[layout], t, extrema[:,:,layout], lw=3, color=extremacolor, label=["PCBs (≈)" ""])
+        return plt
+    end    
+    plot!(plt, t, extrema, lw=3, color=extremacolor, label=["PCBs (≈)" ""])
+    return plt
+end
+
 function add_yMLE!(plt, t, yMLE, layout; kwargs...)
     if layout > 1
         for i in 1:layout
@@ -994,4 +1006,287 @@ function plot_predictions_union(model::LikelihoodModel,
     end
 
     return prediction_plot
+end
+
+function plot_realisations_individual(model::LikelihoodModel,
+                            # prediction_type::Symbol=:union,
+                            t::AbstractVector,
+                            profile_dimension::Int=1;
+                            xlabel::String="t",
+                            ylabel::Union{Nothing,String,Vector{String}}=nothing,
+                            for_dim_samples::Bool=false,
+                            # ylim_scaler::Real=0.2;
+                            include_MLE::Bool=true,
+                            θs_to_plot::Vector=Int[],
+                            θcombinations_to_plot::Vector=Tuple{Int,Int}[],
+                            θindices_to_plot::Vector=Vector{Int}[],
+                            confidence_levels::Vector{<:Float64}=Float64[],
+                            profile_types::Vector{<:AbstractProfileType}=[LogLikelihood()],
+                            methods::Vector{<:AbstractBivariateMethod}=AbstractBivariateMethod[],
+                            sample_types::Vector{<:AbstractSampleType}=AbstractSampleType[],
+                            # palette_to_use::Symbol=:Paired_6, 
+                            linealpha=0.4, 
+                            kwargs...)
+                            
+    if for_dim_samples
+        if !(1 ≤ profile_dimension && profile_dimension ≤ model.core.num_pars)
+            throw(DomainError(string("profile_dimension must be between 1 and ", 
+                    model.core.num_pars, " (the number of model parameters)")))
+        end
+
+        θindices_to_plot = θindices_to_plot isa Vector{Vector{Symbol}} ? 
+                            convertθnames_toindices(model, θindices_to_plot) :
+                            θindices_to_plot
+        sub_df = desired_df_subset(model.dim_samples_df, model.num_dim_samples, confidence_levels, sample_types;
+                                    sample_dimension=profile_dimension, for_prediction_plots=true)
+        predictions_dict = model.dim_predictions_dict
+    else
+        profile_dimension in [1,2] || throw(DomainError("profile_dimension must be 1 or 2"))
+
+        if profile_dimension == 1
+            θs_to_plot = θs_to_plot_typeconversion(model, θs_to_plot)
+            sub_df = desired_df_subset(model.uni_profiles_df, model.num_uni_profiles, θs_to_plot, confidence_levels,
+                                        profile_types; for_prediction_plots=true)
+            predictions_dict = model.uni_predictions_dict
+        elseif profile_dimension == 2
+            θcombinations_to_plot = θcombinations_to_plot_typeconversion(model, θcombinations_to_plot)
+            sub_df = desired_df_subset(model.biv_profiles_df, model.num_biv_profiles, θcombinations_to_plot, confidence_levels,
+                                        profile_types, methods; for_prediction_plots=true)
+            predictions_dict = model.biv_predictions_dict
+        end
+    end
+
+    if nrow(sub_df) < 1
+        return nothing
+    end
+    
+    # color_palette = palette(palette_to_use)
+    layout = ndims(model.core.ymle) > 1 ? size(model.core.ymle,2) : 1
+    realisation_plots = [plot(layout=layout) for _ in 1:nrow(sub_df)]
+
+    for i in 1:nrow(sub_df)
+
+        row = @view(sub_df[i,:])
+
+        realisations = predictions_dict[row.row_ind].realisations
+        if isempty(realisations.lq)
+            continue
+        end
+        extrema = realisations.extrema
+
+        if for_dim_samples
+            title=string("Sample type: ", row.sample_type, 
+                        "\nConfidence level: ", row.conf_level,
+                        "\nTarget parameter(s): ", model.core.θnames[row.θindices])
+            title_vspan = 0.15
+        else
+            if profile_dimension == 1
+                title=string("Profile type: ", row.profile_type, 
+                            "\nConfidence level: ", row.conf_level,
+                            "\nTarget parameter: ", model.core.θnames[row.θindex])
+                title_vspan = 0.15
+            else
+                θindices = zeros(Int,2); 
+                for j in 1:2; θindices[j] = row.θindices[j] end
+
+                title=string("Profile type: ", row.profile_type, 
+                            "\nMethod: ", row.method, 
+                            "\nConfidence level: ", row.conf_level,
+                            "\nTarget parameters: ", model.core.θnames[θindices])
+                title_vspan = 0.2
+            end
+        end
+        
+        # y_extrema = [minimum(extrema[:,1]), maximum(extrema[:,2])]
+        # range = diff(y_extrema)[1]
+
+        # ylims=[y_extrema[1]-range*ylim_scaler, y_extrema[2]+range*ylim_scaler]
+        title_args = layout==1 ? (title=title, titlefontsize=10, top_margin=(5,:mm)) : (plot_title=title, plot_titlefontsize=10, plot_titlevspan=0.2)
+
+        plotrealisation!(realisation_plots[i], t, extrema, linealpha, layout; 
+                        xlabel=xlabel,
+                        # ylims=ylims,
+                        title_args...,
+                        kwargs...)
+
+        if layout > 1
+            if isnothing(ylabel); ylabel =[string("f", j, "(", xlabel, ")") for j in 1:layout] end
+
+            if ylabel isa String
+                ylabel!(realisation_plots[i], ylabel)
+            else
+                for j in 1:layout; ylabel!(realisation_plots[i][j], ylabel[j]) end
+            end
+        else
+            if isnothing(ylabel); ylabel = string("f(", xlabel, ")") end
+            ylabel!(realisation_plots[i], ylabel)
+        end
+    end
+
+    if include_MLE 
+        ymle = model.core.predictfunction(model.core.θmle, model.core.data, t)
+        for plt in realisation_plots
+            add_yMLE!(plt, t, ymle, layout)
+        end
+    end
+
+    return realisation_plots
+end
+
+"""
+include_lower_confidence_levels is only used for 2d bivariate boundaries
+"""
+function plot_realisations_union(model::LikelihoodModel,
+                            t::AbstractVector,
+                            profile_dimension::Int=1,
+                            confidence_level::Float64=0.95;
+                            xlabel::String="t",
+                            ylabel::Union{Nothing,String,Vector{String}}=nothing,
+                            for_dim_samples::Bool=false,
+                            include_MLE::Bool=true,
+                            θs_to_plot::Vector = Int[],
+                            θcombinations_to_plot::Vector=Tuple{Int,Int}[],
+                            θindices_to_plot::Vector=Vector{Int}[],
+                            profile_types::Vector{<:AbstractProfileType}=[LogLikelihood()],
+                            methods::Vector{<:AbstractBivariateMethod}=AbstractBivariateMethod[],
+                            sample_types::Vector{<:AbstractSampleType}=AbstractSampleType[],
+                            # palette_to_use::Symbol=:Paired_6, 
+                            # union_within_methods::Bool=false,
+                            compare_to_full_sample_type::Union{Missing, AbstractSampleType}=missing,
+                            include_lower_confidence_levels::Bool=false,
+                            linealpha=0.4,
+                            kwargs...)
+
+    if for_dim_samples
+        if !(1 ≤ profile_dimension && profile_dimension ≤ model.core.num_pars)
+                throw(DomainError(string("profile_dimension must be between 1 and ", 
+                      model.core.num_pars, " (the number of model parameters)")))
+        end
+
+        θindices_to_plot = θindices_to_plot isa Vector{Vector{Symbol}} ? 
+                            convertθnames_toindices(model, θindices_to_plot) :
+                            θindices_to_plot
+        sub_df = desired_df_subset(model.dim_samples_df, model.num_dim_samples, confidence_level, sample_types; 
+                                    sample_dimension=profile_dimension, for_prediction_plots=true)
+        predictions_dict = model.dim_predictions_dict
+        title = string("Parameter dimension: " , profile_dimension,
+                        "\nMethod: sampled",
+                        "\nConfidence level: ", confidence_level)
+    else
+        profile_dimension in [1,2] || throw(DomainError("profile_dimension must be 1 or 2"))
+        if profile_dimension == 1
+            θs_to_plot = θs_to_plot_typeconversion(model, θs_to_plot)
+            sub_df = desired_df_subset(model.uni_profiles_df, model.num_uni_profiles, θs_to_plot, confidence_level, profile_types; for_prediction_plots=true)
+            predictions_dict = model.uni_predictions_dict
+        elseif profile_dimension == 2
+            θcombinations_to_plot = θcombinations_to_plot_typeconversion(model, θcombinations_to_plot)
+            sub_df = desired_df_subset(model.biv_profiles_df, model.num_biv_profiles, θcombinations_to_plot, confidence_level, profile_types, methods; for_prediction_plots=true, include_lower_confidence_levels)
+            predictions_dict = model.biv_predictions_dict
+        end
+
+        title = string("Parameter dimension: " , profile_dimension,
+                        "\nMethod: boundary",
+                        "\nConfidence level: ", confidence_level)
+    end
+
+    if nrow(sub_df) < 1
+        return nothing
+    end
+
+    layout = ndims(model.core.ymle) > 1 ? size(model.core.ymle,2) : 1
+    realisation_plot = plot(layout=layout)
+
+    extrema_union = []
+
+    j=0
+    for i in 1:nrow(sub_df)
+        row = @view(sub_df[i,:])
+
+        realisations = predictions_dict[row.row_ind].realisations
+        if isempty(realisations.lq)
+            continue
+        end
+        extrema = realisations.extrema
+        j+=1
+        
+        if j == 1
+            predictions_union = predictions .* 1.0
+            extrema_union = extrema .* 1.0
+        else
+            predictions_union = reduce(hcat, (predictions_union, predictions))
+            if layout > 1
+                extrema_union[:,1,:] .= min.(extrema_union[:,1,:], extrema[:,1,:])
+                extrema_union[:,2,:] .= max.(extrema_union[:,2,:], extrema[:,2,:])
+            else
+                extrema_union[:,1] .= min.(extrema_union[:,1], extrema[:,1])
+                extrema_union[:,2] .= max.(extrema_union[:,2], extrema[:,2])
+            end
+        end
+    end
+
+    title_args = layout==1 ? (title=title, titlefontsize=10, top_margin=(5,:mm)) : (plot_title=title, plot_titlefontsize=10, plot_titlevspan=0.15)
+
+    plotrealisation!(realisation_plot, t, extrema_union, linealpha, layout; 
+                    xlabel=xlabel,
+                    title_args...,
+                    kwargs...)
+
+    if layout > 1
+        if isnothing(ylabel); ylabel =[string("f", j, "(", xlabel, ")") for j in 1:layout] end
+
+        if ylabel isa String
+            ylabel!(realisation_plots[i], ylabel)
+        else
+            for j in 1:layout; ylabel!(realisation_plot[j], ylabel[j]) end
+        end
+    else
+        if isnothing(ylabel); ylabel = string("f(", xlabel, ")") end
+        ylabel!(realisation_plot, ylabel)
+    end
+
+    if !ismissing(compare_to_full_sample_type)
+        row_subset = desired_df_subset(model.dim_samples_df, model.num_dim_samples, confidence_level,
+                                        [compare_to_full_sample_type], sample_dimension=model.core.num_pars, 
+                                        for_realisation_plots=true,
+                                        include_higher_confidence_levels=true)
+        
+        if nrow(row_subset) > 0
+            if nrow(row_subset) > 1
+                subset_to_use = @view(row_subset[argmin(row_subset.conf_level), :])
+            elseif nrow(row_subset) == 1
+                subset_to_use = @view(row_subset[1,:])
+            end
+
+            for i in 1:nrow(subset_to_use)
+                row = @view(subset_to_use[i, :])
+                if isempty(model.dim_predictions_dict[row.row_ind].realisations.extrema)
+                    continue
+                end
+
+                if row.conf_level == confidence_level
+                    sampled_extrema = model.dim_predictions_dict[row.row_ind].realisations.extrema
+                else
+                    ll_level = get_target_loglikelihood(model, confidence_level, 
+                                                        EllipseApproxAnalytical(), model.core.num_pars)
+
+                    valid_point = model.dim_samples_dict[row.row_ind].ll .> ll_level 
+
+                    if layout > 1
+                        sampled_extrema = model.dim_predictions_dict[row.row_ind].realisations.extrema[valid_point,:,:]
+                    else
+                        sampled_extrema = model.dim_predictions_dict[row.row_ind].realisations.extrema[valid_point,:]
+                    end
+                end
+
+                add_extrema!(realisation_plot, t, sampled_extrema, layout; label=["Sampled PCBs (≈)" ""])
+            end
+        end
+    end
+
+    if include_MLE 
+        ymle = model.core.predictfunction(model.core.θmle, model.core.data, t)
+        add_yMLE!(realisation_plot, t, ymle, layout)
+    end
+
+    return realisation_plot
 end
