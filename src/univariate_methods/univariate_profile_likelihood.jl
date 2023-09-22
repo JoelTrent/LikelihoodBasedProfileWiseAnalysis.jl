@@ -216,7 +216,11 @@ function univariate_confidenceinterval(univariate_optimiser::Function,
             if use_find_zero
                 # by definition, g(θmle[i],p) == abs(llstar) > 0, so only have to check one side of interval to make sure it brackets a zero
                 g = univariate_optimiser(bracket_l[1], p)
-                if g < 0.0
+                if isapprox(g, 0.0, atol=find_zero_atol)
+                    interval_points[θi,1] = bracket_l[1]
+                    variablemapping!(@view(interval_points[:,1]), p.ω_opt, θranges, ωranges)
+                    ll[1] = mle_targetll
+                elseif g < 0.0
                     # make bracket a tiny bit smaller
                     if isinf(g); bracket_l[1] = bracket_l[1] + 1e-8 * diff(bracket_l)[1] end
 
@@ -231,7 +235,11 @@ function univariate_confidenceinterval(univariate_optimiser::Function,
                 put!(channel, true)
 
                 g = univariate_optimiser(bracket_r[2], p)
-                if g < 0.0
+                if isapprox(g, 0.0, atol=find_zero_atol)
+                    interval_points[θi,2] = bracket_r[r]
+                    variablemapping!(@view(interval_points[:,2]), p.ω_opt, θranges, ωranges)
+                    ll[2] = mle_targetll
+                elseif g < 0.0
                     # make bracket a tiny bit smaller
                     if isinf(g); bracket_r[2] = bracket_r[2] - 1e-8 * diff(bracket_r)[1] end
 
