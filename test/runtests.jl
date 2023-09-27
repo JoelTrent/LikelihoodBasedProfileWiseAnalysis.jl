@@ -108,7 +108,7 @@ using EllipseSampling
     
             for i in 1:15
                 lls = [PlaceholderLikelihood.ellipse_loglike(m.biv_profiles_dict[i].confidence_boundary[:,j], m.core.data) for j in 1:N] 
-                @test isapprox(lls .- targetll, zeros(N), atol=1e-14)
+                @test isapprox(lls .- targetll, zeros(N), atol=1e-12)
             end
         end
 

@@ -66,7 +66,7 @@ end
 
 function addMLEandLLstar!(plt, llstar, parMLE, MLE_color, llstar_color; kwargs...)
     vline!(plt, [parMLE], lw=3, color=MLE_color, label="MLE point", linestyle=:dot)
-    hline!(plt, [llstar], lw=3, color=llstar_color, label=L"\hat{\ell}_{c}", linestyle=:dot; kwargs...)
+    hline!(plt, [llstar], lw=3, color=llstar_color, label=L"\ell_{c}", linestyle=:dot; kwargs...)
     return plt
 end
 
@@ -193,14 +193,14 @@ function plot_univariate_profiles(model::LikelihoodModel,
         plot1Dprofile!(profile_plots[i], interval.points[row.θindex, :], interval.ll; 
         xlims=[interval.points[row.θindex,  boundary_col_indices[1]]-x_range*xlim_scaler, 
         interval.points[row.θindex,  boundary_col_indices[2]]+x_range*xlim_scaler],
-        color=color_palette[profilecolor(row.profile_type)], kwargs...)
+        color=color_palette[profilecolor(row.profile_type)])
         
         addMLEandLLstar!(profile_plots[i], llstar, parMLE, color_palette[end-1], color_palette[end]; 
                         xlabel=string(θname), ylabel=L"\hat{\ell}_{p}", 
                         ylims=[llstar + llstar*ylim_scaler, 0.1],
                         title=string("Profile type: ", row.profile_type, 
                                         "\nConfidence level: ", row.conf_level),
-                        titlefontsize=10)
+                        titlefontsize=10, kwargs...)
         
     end
 
