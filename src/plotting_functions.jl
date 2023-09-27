@@ -305,9 +305,11 @@ function plot_bivariate_profiles(model::LikelihoodModel,
                                     sample_types::Vector{<:AbstractSampleType}=AbstractSampleType[],
                                     palette_to_use::Symbol=:Paired_6,
                                     include_internal_points::Bool=true,
+                                    max_internal_points::Int=1000,
                                     markeralpha=1.0,
                                     kwargs...)
 
+    max_internal_points = max(1, max_internal_points)
     if for_dim_samples
         sub_df = desired_df_subset(model.dim_samples_df, model.num_dim_samples, confidence_levels, sample_types, 
                                     sample_dimension=2)
@@ -367,7 +369,7 @@ function plot_bivariate_profiles(model::LikelihoodModel,
             
             num_internal_points = size(internal_points, 2)
 
-            internal_points = @view(internal_points[:, sample(1:num_internal_points, min(1000, num_internal_points), replace=false, ordered=true)])
+            internal_points = @view(internal_points[:, sample(1:num_internal_points, min(max_internal_points, num_internal_points), replace=false, ordered=true)])
             plot2Dboundary!(profile_plots[i], 
                             internal_points,
                             "internal points", 
