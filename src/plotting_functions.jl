@@ -191,9 +191,9 @@ function plot_univariate_profiles(model::LikelihoodModel,
         x_range = interval.points[row.θindex, boundary_col_indices[2]] - interval.points[row.θindex, boundary_col_indices[1]]
         
         plot1Dprofile!(profile_plots[i], interval.points[row.θindex, :], interval.ll; 
-        xlims=[interval.points[row.θindex,  boundary_col_indices[1]]-x_range*xlim_scaler, 
-        interval.points[row.θindex,  boundary_col_indices[2]]+x_range*xlim_scaler],
-        color=color_palette[profilecolor(row.profile_type)])
+            xlims=[interval.points[row.θindex,  boundary_col_indices[1]]-x_range*xlim_scaler, 
+            interval.points[row.θindex,  boundary_col_indices[2]]+x_range*xlim_scaler],
+            color=color_palette[profilecolor(row.profile_type)])
         
         addMLEandLLstar!(profile_plots[i], llstar, parMLE, color_palette[end-1], color_palette[end]; 
                         xlabel=string(θname), ylabel=L"\hat{\ell}_{p}", 
@@ -279,12 +279,12 @@ function plot_univariate_profiles_comparison(model::LikelihoodModel,
                                     color=color_palette[profilecolor(row.profile_type)], kwargs...)
                 end
 
-                addMLEandLLstar!(profile_plots[plot_i], llstar, parMLE, color_palette[end-1], color_palette[end], 
+                addMLEandLLstar!(profile_plots[plot_i], llstar, parMLE, color_palette[end-1], color_palette[end]; 
                                 xlabel=string(θname), ylabel=L"\hat{\ell}_{p}", 
                                 xlims=xlims,
                                 ylims=[llstar + llstar*ylim_scaler, 0.1],
                                 title=string("Confidence level: ", confidence_level),
-                                titlefontsize=10)
+                                titlefontsize=10, kwargs...)
 
                 plot_i+=1
             end
