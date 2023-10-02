@@ -214,7 +214,8 @@ function plot_univariate_profiles_comparison(model::LikelihoodModel,
                                     confidence_levels::Vector{<:Float64}=Float64[],
                                     profile_types::Vector{<:AbstractProfileType}=AbstractProfileType[], 
                                     num_points_in_interval::Int=0,
-                                    palette_to_use::Symbol=:Paired_6, 
+                                    palette_to_use::Symbol=:Paired_6,
+                                    label_only_lines::Bool=false,
                                     kwargs...)
 
     if num_points_in_interval > 0
@@ -274,9 +275,9 @@ function plot_univariate_profiles_comparison(model::LikelihoodModel,
                     end
                     
                     plot1Dprofile!(profile_plots[plot_i], interval.points[row.θindex, :], interval.ll; 
-                                    label=string(row.profile_type),
+                                    label = label_only_lines ? "" : string(row.profile_type),
                                     linestyle=profile1Dlinestyle(row.profile_type),
-                                    color=color_palette[profilecolor(row.profile_type)], kwargs...)
+                                    color=color_palette[profilecolor(row.profile_type)])
                 end
 
                 addMLEandLLstar!(profile_plots[plot_i], llstar, parMLE, color_palette[end-1], color_palette[end]; 
