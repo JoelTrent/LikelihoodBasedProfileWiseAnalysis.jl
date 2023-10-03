@@ -55,7 +55,7 @@ struct CombinedBivariateMethod <: AbstractBivariateMethod end
         ellipse_sqrt_distortion::Float64=1.0;
         use_ellipse::Bool=false)
 
-Method for iteratively improving an initial boundary of `initial_num_points`, found by pushing out from the MLE point in directions defined by either [`RadialMLEMethod`](@ref), when `use_ellipse=true`, or [`RadialRandomMethod`], when `use_ellipse=false` (see [`PlaceholderLikelihood.findNpointpairs_radialMLE!`](@ref), [`PlaceholderLikelihood.iterativeboundary_init`](@ref) and [`PlaceholderLikelihood.bivariate_confidenceprofile_iterativeboundary`](@ref)).
+Method for iteratively improving an initial boundary of `initial_num_points`, found by pushing out from the MLE point in directions defined by either [`RadialMLEMethod`](@ref), when `use_ellipse=true`, or [`RadialRandomMethod`](@ref), when `use_ellipse=false` (see [`PlaceholderLikelihood.findNpointpairs_radialMLE!`](@ref), [`PlaceholderLikelihood.iterativeboundary_init`](@ref) and [`PlaceholderLikelihood.bivariate_confidenceprofile_iterativeboundary`](@ref)).
 
 # Arguments
 - `initial_num_points`: a positive integer number of initial boundary points to find. 
@@ -206,7 +206,7 @@ struct RadialMLEMethod <: AbstractBivariateVectorMethod
 end
 
 """
-    RadialRandomMethod(num_radial_directions::Int)
+    RadialRandomMethod(num_radial_directions::Int, use_MLE_point::Bool=true)
 
 Method for finding the bivariate boundary of a confidence profile by finding internal boundary points using a uniform random distribution on provided bounds and choosing `num_radial_directions` to explore from these points (see [`PlaceholderLikelihood.findNpointpairs_radialrandom!`](@ref) and [`PlaceholderLikelihood.bivariate_confidenceprofile_vectorsearch`](@ref)).
 
@@ -321,7 +321,7 @@ Method for finding the bivariate boundary of a confidence profile by using unifo
 
 Recommended for use with the [`LogLikelihood`](@ref) profile type. 
 
-The method finds the desired number of boundary points by fixing the first and second interest parameters for half of these points each. It first draws a value for the fixed parameter using a uniform random distribution on provided bounds (e.g. ψ_x). Then it draws two values for the unfixed parameter in the same fashion (e.g. ψ_y1 and ψ_y2]). If one of these points ([ψ_x, ψ_y1] and [ψ_x, ψ_y2]) is an internal point and the other an external point, the point pair is accepted as they are a valid bracket. A bracketing method is then used to find a boundary point between the point pair (the internal and external point). The method continues searching for valid point pairs until the desired number of boundary points is found.
+The method finds the desired number of boundary points by fixing the first and second interest parameters for half of these points each. It first draws a value for the fixed parameter using a uniform random distribution on provided bounds (e.g. `ψ_x`). Then it draws two values for the unfixed parameter in the same fashion (e.g. `ψ_y1` and `ψ_y2`]). If one of these points (`[ψ_x, ψ_y1]` and `[ψ_x, ψ_y2]`) is an internal point and the other an external point, the point pair is accepted as they are a valid bracket. A bracketing method is then used to find a boundary point between the point pair (the internal and external point). The method continues searching for valid point pairs until the desired number of boundary points is found.
 
 [`RadialRandomMethod`](@ref) and [`IterativeBoundaryMethod`](@ref) are preferred over this method from a computational performance standpoint as they require fewer log-likelihood evalutions (when [`RadialRandomMethod`](@ref) has parameter `num_radial_directions` > 1). [`SimultaneousMethod`](@ref) will also likely be more efficient, even though it uses four random numbers vs three, as it doesn't unneccesarily throw away points.  
 
