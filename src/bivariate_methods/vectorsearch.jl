@@ -432,7 +432,7 @@ function bivariate_confidenceprofile_vectorsearch(bivariate_optimiser::Function,
                                                 num_radial_directions, ind1, ind2,
                                                 mle_targetll, save_internal_points,
                                                 biv_opt_is_ellipse_analytical, use_MLE_point,
-                                                optimizationsettings,)
+                                                optimizationsettings)
         end
         point_is_on_bounds = falses(num_points)
     end
