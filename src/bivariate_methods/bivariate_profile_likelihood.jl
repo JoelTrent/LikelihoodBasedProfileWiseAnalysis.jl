@@ -303,12 +303,14 @@ Finds `num_points` `profile_type` boundary points at a specified `confidence_lev
 
 !!! note "existing_profiles meanings"
     - :ignore means profiles that already exist will not be recomputed even if they contain fewer `num_points` boundary points. 
-    - :merge means profiles that already exist will be merged with profiles from the current algorithm run to reach `num_points`. If the existing profile already has at least `num_points` boundary points then that profile will not be recomputed. Otherwise, the specified method will be run starting from the difference between `num_points` and the number of points in the existing profile. The result of that method run will be merged with the existing profile. Predictions evaluated from the existing profile will be forgotten. To keep these predictions see below.
-    - :overwrite means profiles that already exist will be overwritten, regardless of how many points they contain. Predictions evaluated from the existing profile will be forgotten. To keep these predictions see below.
+    - :merge means profiles that already exist will be merged with profiles from the current algorithm run to reach `num_points`. If the existing profile already has at least `num_points` boundary points then that profile will not be recomputed. Otherwise, the specified method will be run starting from the difference between `num_points` and the number of points in the existing profile. The result of that method run will be merged with the existing profile. Predictions evaluated from the existing profile will be forgotten. To keep these predictions see extended help below.
+    - :overwrite means profiles that already exist will be overwritten, regardless of how many points they contain. Predictions evaluated from the existing profile will be forgotten. To keep these predictions see extended help below.
 
 # Details
 
 Using [`PlaceholderLikelihood.bivariate_confidenceprofile`](@ref) this function calls the algorithm/method specified by `method` for each interest parameter combination in `θcombinations` (depending on the setting for `existing_profiles` and `num_points` if these profiles already exist). Nuisance parameters of each point in bivariate interest parameter space are found by maximising the log-likelihood function given by `profile_type`. Updates `model.biv_profiles_df` for each successful profile and saves their results as a [`BivariateConfidenceStruct`](@ref) in `model.biv_profiles_dict`, where the keys for the dictionary is the row number in `model.biv_profiles_df` of the corresponding profile. `model.biv_profiles_df.num_points` is the number of points found on the bivariate boundary (it does not include the number of saved internal points).
+
+# Extended help
 
 ## Valid bounds
 

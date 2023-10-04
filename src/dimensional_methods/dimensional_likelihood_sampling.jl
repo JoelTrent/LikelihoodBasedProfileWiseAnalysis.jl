@@ -411,6 +411,8 @@ Samples `num_points_to_sample` points from interest parameter space, for each in
 
 Using [`dimensional_likelihood_sample`](@ref) this function calls the sample method specified by `sample_type` for each set of interest parameters in `[θindices]` (depending on the setting for `existing_profiles` and `confidence_level` if these samples already exist). Updates `model.dim_samples_df` for each successful sample and saves their results as a [`SampledConfidenceStruct`](@ref) in `model.dim_samples_dict`, where the keys for the dictionary is the row number in `model.dim_samples_df` of the corresponding sample. `model.dim_samples_df.num_points` is the number of points within the confidence boundary from those sampled.
 
+# Extended help
+
 ## Parallel Computing Implementation
 
 If [Distributed.jl](https://docs.julialang.org/en/v1/stdlib/Distributed/) is being used `use_distributed` is `true`, then the dimensional samples of distinct interest parameter combinations will be computed in parallel across `Distributed.nworkers()` workers. If `use_distributed` is `false` and `use_threads` is `true` then the dimensional samples of each distinct interest parameter combination will be computed in parallel across `Threads.nthreads()` threads. It is highly recommended to set `use_threads` to `true` in that situation.

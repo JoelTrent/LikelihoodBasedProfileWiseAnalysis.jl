@@ -75,6 +75,8 @@ Recommended for use with the [`LogLikelihood`](@ref) profile type. Radial direct
 
 Once an initial boundary is found by pushing out from the MLE point in directions defined by either [`RadialMLEMethod`](@ref) or [`RadialRandomMethod`](@ref), the method seeks to improve this boundary by minimising an internal angle and an edge length objective, each considered sequentially, until the desired number of boundary points are found. As such, the method can be thought of as a mesh smoothing or improvement algorithm; we can consider the boundary found at a given moment in time to be a N-sided polygon with edges between adjacent boundary points (vertices). 
 
+# Extended help
+
 Regions we define as needing improvement are those with:
 
 1. Internal angles between adjacent edges that are far from being straight (180 degrees or π radians). The region defined by these edges is not well explored as the real boundary edge in this region likely has some degree of smooth curvature. It may also indicate that one of these edges cuts our boundary into a enclosed region and an unexplored region on the other side of the edge. In the event that a vertex is on a user-provided bound for a parameter, this objective is set to zero, as this angle region is a byproduct of user input and not the actual log-likelihood region. This objective is defined in [`PlaceholderLikelihood.internal_angle_from_pi!`](@ref).
@@ -172,6 +174,8 @@ For additional information on arguments see the keyword arguments for [`generate
 
 Recommended for use with the [`EllipseApprox`](@ref) profile type. Will produce reasonable results for the [`LogLikelihood`](@ref) profile type when bivariate profile boundaries are convex. Otherwise, [`IterativeBoundaryMethod`](@ref), which has an option to use a starting solution from [`RadialMLEMethod`](@ref), is preferred as it iteratively improves the quality of the boundary and can discover regions not explored by this method. 
     
+# Extended help
+
 # Boundary finding method
 
 Uses a 1D bracketing algorithm between the MLE point and the point on the user-provided bounds in the search directions to find the boundary at the desired confidence level.  
@@ -223,6 +227,8 @@ The method first uniformly samples the region specified by the bounds for the tw
 Given a fixed number of desired boundary points, we can decrease the cost of finding internal points by increasing the number of radial directions to explore, `num_radial_directions`, at each internal point. However, it is important to balance `num_radial_directions` with the desired number of boundary points. If `num_radial_directions` is large relative to the number of boundary points, then the boundary the method finds may constitute a local search around the found internal points. Resultantly, there may be regions were the boundary is not well explored. This will be less of an issue for more 'circular' boundary regions.   
 
 [`IterativeBoundaryMethod`](@ref) may be preferred over this method if evaluating the log-likelihood function is expensive or the bounds provided for the interest parameters are much larger than the boundary, as the uniform random sampling for internal points will become very expensive. 
+
+# Extended help
 
 # Boundary finding method
 
@@ -277,6 +283,8 @@ A bracketing method is then used to find a boundary point between each point pai
 
 [`RadialRandomMethod`](@ref) and [`IterativeBoundaryMethod`](@ref) are preferred over this method from a computational performance standpoint as they require fewer log-likelihood evalutions (when [`RadialRandomMethod`](@ref) has parameter `num_radial_directions` > 1). 
 
+# Extended help
+
 # Boundary finding method
 
 Uses a 1D bracketing algorithm between a valid point pair to find the boundary at the desired confidence level.  
@@ -325,6 +333,8 @@ The method finds the desired number of boundary points by fixing the first and s
 
 [`RadialRandomMethod`](@ref) and [`IterativeBoundaryMethod`](@ref) are preferred over this method from a computational performance standpoint as they require fewer log-likelihood evalutions (when [`RadialRandomMethod`](@ref) has parameter `num_radial_directions` > 1). [`SimultaneousMethod`](@ref) will also likely be more efficient, even though it uses four random numbers vs three, as it doesn't unneccesarily throw away points.  
 
+# Extended help
+
 # Boundary finding method
 
 Uses a 1D bracketing algorithm between a valid point pair, which are parallel to the x or y axis, to find the boundary at the desired confidence level.  
@@ -364,6 +374,8 @@ Method for sampling the desired number of boundary points on a ellipse approxima
 Used for the [`EllipseApproxAnalytical`](@ref) profile type only: if this method is specified, then any user provided profile type will be overriden and replaced with [`EllipseApproxAnalytical`](@ref). This ellipse approximation ignores user provided bounds.
 
 For additional information on arguments see the keyword arguments for [`generate_N_clustered_points`](https://joeltrent.github.io/EllipseSampling.jl/stable/user_interface/#EllipseSampling.generate_N_clustered_points) in [EllipseSampling.jl](https://joeltrent.github.io/EllipseSampling.jl/stable).
+    
+# Extended help
 
 # Boundary finding method
 
@@ -405,6 +417,8 @@ Kept available for completeness but not recommended for use. A previous implemen
 # Details
 
 The method finds an initial boundary at a low confidence level close to the `ellipse_confidence_level` (see [`initial_continuation_solution!`](@ref)). Then it 'continues' this initial boundary sequentially to `num_level_sets` higher confidence level boundaries until the desired confidence level is reached. If a user defined bound is in the way of a level set point reaching the next level set, that point is frozen on the bounds for all subsequent level sets. 
+
+# Extended help
 
 Presently this continuation is done by finding a point inside the boundary that is as close as possible to being a point that makes the boundary a [star domain](https://en.wikipedia.org/wiki/Star_domain) and is close to the centre of the area of the boundary in the x and y axes. We refer to this point as a 'star point', or a point that can see all the points on the boundary, without being blocked by an edge. We use a heuristic to estimate this, sampling points within the boundary and using these to produce kmeans, of which one is hopefully a star point and at the centre of the boundary. 
 

@@ -324,6 +324,8 @@ Computes likelihood-based confidence interval profiles for the provided `θs_to_
 
 By calling [`PlaceholderLikelihood.univariate_confidenceinterval`](@ref) this function finds each side of the confidence interval using a bracketing method for interest parameters in `θs_to_profile` (depending on the setting for `existing_profiles` if these profiles already exist). Nuisance parameters of each point in univariate interest parameter space are found by maximising the log-likelihood function given by `profile_type`. Updates `model.uni_profiles_df` for each successful profile and saves their results as a [`UnivariateConfidenceStruct`](@ref) in `model.uni_profiles_dict`, where the keys for the dictionary is the row number in `model.uni_profiles_df` of the corresponding profile. `model.uni_profiles_df.num_points` is the number of points currently saved within the confidence interval inclusive.
 
+# Extended help
+
 ## Valid bounds
 
 The bracketing method utilised via Roots.jl's [`find_zero`](https://juliamath.github.io/Roots.jl/stable/reference/#Roots.find_zero) will be unlikely to converge to the true confidence interval for a given parameter if the bounds on that parameter are +/- Inf or the log-likelihood function evaluates to +/- Inf. Bounds should be set to prevent this from occurring.
