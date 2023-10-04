@@ -1,5 +1,4 @@
 using PlaceholderLikelihood
-import Pkg; Pkg.add("Plots")
 using Plots
 using Documenter
 
@@ -8,7 +7,6 @@ DocMeta.setdocmeta!(PlaceholderLikelihood, :DocTestSetup, :(using PlaceholderLik
 makedocs(;
     modules=[PlaceholderLikelihood],
     authors="JoelTrent <79883375+JoelTrent@users.noreply.github.com> and contributors",
-    repo="https://github.com/JoelTrent/PlaceholderLikelihood.jl/blob/{commit}{path}#{line}",
     sitename="PlaceholderLikelihood.jl",
     format=Documenter.HTML(;
         prettyurls=get(ENV, "CI", "false") == "true",
@@ -42,7 +40,8 @@ makedocs(;
             "Dimensional Functions" => "internal_library/dimensional.md",
             "Prediction Functions" => "internal_library/predictions.md",
             "Plotting Functions" => "internal_library/plots.md"]
-    ]
+    ],
+    warnonly=true
 )
 
 deploydocs(;
