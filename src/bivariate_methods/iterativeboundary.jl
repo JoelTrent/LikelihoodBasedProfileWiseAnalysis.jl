@@ -5,6 +5,7 @@
         num_points::Int, 
         ind1::Int, 
         ind2::Int,
+        biv_opt_is_ellipse_analytical::Bool, 
         radial_start_point_shift::Float64,
         optimizationsettings::OptimizationSettings,
         use_threads::Bool)
@@ -19,12 +20,14 @@ function findNpointpairs_radialMLE!(q::NamedTuple,
                                     num_points::Int, 
                                     ind1::Int, 
                                     ind2::Int,
+                                    biv_opt_is_ellipse_analytical::Bool, 
                                     radial_start_point_shift::Float64,
                                     optimizationsettings::OptimizationSettings,
                                     use_threads::Bool)
 
     mle_point = model.core.θmle[[ind1, ind2]]
     external = zeros(2,num_points)
+    external_all = zeros(model.core.num_pars, biv_opt_is_ellipse_analytical ? 0 : num_points)
     point_is_on_bounds = falses(num_points)
     # warn if bound prevents reaching boundary
     bound_inds = [(0, 'a') for _ in 1:num_points]
@@ -54,6 +57,10 @@ function findNpointpairs_radialMLE!(q::NamedTuple,
             if g ≥ 0
                 point_is_on_bounds[i] = true
                 bound_inds[i] = (bound_ind, upper_or_lower)
+                if !biv_opt_is_ellipse_analytical
+                    external_all[[ind1, ind2], i] .= external[:, i]
+                    variablemapping!(@view(external_all[:, i]), p.ω_opt .* 1.0, q.θranges, q.ωranges)
+                end
             else
                 # make bracket a tiny bit smaller
                 if isinf(g)
@@ -70,7 +77,7 @@ function findNpointpairs_radialMLE!(q::NamedTuple,
         @warn string("The ", _upper_or_lower, " bound on variable ", model.core.θnames[_bound_ind], " is inside the confidence boundary")
     end
 
-    return external, point_is_on_bounds, any(point_is_on_bounds)
+    return external, external_all, point_is_on_bounds, any(point_is_on_bounds)
 end
 
 """
@@ -172,16 +179,18 @@ function iterativeboundary_init(bivariate_optimiser::Function,
     point_is_on_bounds = falses(num_points)
 
     if use_ellipse
-        _, _, _, external, point_is_on_bounds_external, bound_warning = 
+        _, _, _, external, external_all, point_is_on_bounds_external, bound_warning = 
             findNpointpairs_radialMLE!(q, bivariate_optimiser, model, 
                                         initial_num_points, ind1, ind2, 
+                                        biv_opt_is_ellipse_analytical,
                                         0.1, radial_start_point_shift, 
                                         ellipse_sqrt_distortion,
                                         optimizationsettings, use_threads)
     else
-        external, point_is_on_bounds_external, bound_warning = 
+        external, external_all, point_is_on_bounds_external, bound_warning = 
             findNpointpairs_radialMLE!(q, bivariate_optimiser, model, 
                                         initial_num_points, ind1, ind2, 
+                                        biv_opt_is_ellipse_analytical,
                                         radial_start_point_shift,
                                         optimizationsettings, use_threads)
     end
@@ -191,7 +200,7 @@ function iterativeboundary_init(bivariate_optimiser::Function,
     mle_point = model.core.θmle[[ind1,ind2]]
 
     ex = use_threads ? ThreadedEx() : ThreadedEx(basesize=initial_num_points)
-    let external=external, point_is_on_bounds=point_is_on_bounds
+    let external=external, external_all=external_all, point_is_on_bounds=point_is_on_bounds
         @floop ex for i in 1:initial_num_points
             FLoops.@init pointa = zeros(2)
             FLoops.@init uhat = zeros(2)
@@ -199,10 +208,12 @@ function iterativeboundary_init(bivariate_optimiser::Function,
             p = (ω_opt=ω_opt, pointa=pointa, uhat=uhat, q=q, options=optimizationsettings)
 
             if point_is_on_bounds[i]
-                p.pointa .= external[:,i]
-                bivariate_optimiser(0.0, p)
                 boundary[:,i] .= external[:,i]
-                boundary_all[[ind1, ind2], i] .= external[:,i]
+                if biv_opt_is_ellipse_analytical
+                    boundary_all[[ind1, ind2], i] .= external[:,i]
+                else
+                    boundary_all[:,i] .= external_all[:,i]
+                end
             else
                 p.pointa .= mle_point .* 1.0
                 v_bar = external[:,i] .- mle_point
@@ -214,10 +225,10 @@ function iterativeboundary_init(bivariate_optimiser::Function,
                 
                 boundary[:,i] .= p.pointa + ψ*p.uhat
                 boundary_all[[ind1, ind2], i] .= boundary[:,i]
-                bivariate_optimiser(ψ, p)
-            end
-            if !biv_opt_is_ellipse_analytical
-                variablemapping!(@view(boundary_all[:, i]), p.ω_opt, q.θranges, q.ωranges)
+                if !biv_opt_is_ellipse_analytical
+                    bivariate_optimiser(ψ, p)
+                    variablemapping!(@view(boundary_all[:, i]), p.ω_opt, q.θranges, q.ωranges)
+                end
             end
             put!(channel, true)
         end
