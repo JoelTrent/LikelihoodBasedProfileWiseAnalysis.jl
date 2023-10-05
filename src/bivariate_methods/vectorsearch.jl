@@ -216,20 +216,20 @@ function findNpointpairs_radialrandom!(q::NamedTuple,
         x, y = 0.0, 0.0
         point_is_MLE=false
         # find an internal point
-        while true
-            if count == 0 && use_MLE_point
-                x, y = model.core.θmle[[ind1, ind2]]
-                point_is_MLE=true
-                break
-            end
-            
-            x, y = generatepoint(model, ind1, ind2)
-            p.pointa .= [x,y]
-            g_gen = bivariate_optimiser(0.0, p)
-            if g_gen > 0 
-                if save_internal_points; g_ll = g_gen end
-                if save_ωs; ω_opt .= p.ω_opt .* 1.0 end
-                break
+        if count == 0 && use_MLE_point
+            x, y = model.core.θmle[[ind1, ind2]]
+            point_is_MLE=true
+        else
+            while true
+                
+                x, y = generatepoint(model, ind1, ind2)
+                p.pointa .= [x,y]
+                g_gen = bivariate_optimiser(0.0, p)
+                if g_gen > 0 
+                    if save_internal_points; g_ll = g_gen end
+                    if save_ωs; ω_opt .= p.ω_opt .* 1.0 end
+                    break
+                end
             end
         end
 
