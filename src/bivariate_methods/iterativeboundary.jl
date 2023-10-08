@@ -352,7 +352,12 @@ function newboundarypoint!(p::NamedTuple,
         p.pointa .= candidate_midpoint
         dir_vector = SA[(boundary[2,ve2] - boundary[2,ve1]), -(boundary[1,ve2] - boundary[1,ve1])] .* SA[relative_magnitude, 1.0]
         g = bivariate_optimiser(0.0, p)
-        if g > 0.0 # internal - push out normal to edge
+        
+        if isapprox(0.0, g, atol=find_zero_atol) # candidate on boundary
+            boundary[:, num_vertices] .= candidate_midpoint
+            boundary_all[[ind1, ind2], num_vertices] .= candidate_midpoint
+            
+        elseif g > 0.0 # internal - push out normal to edge
 
             if save_internal_points
                 internal_count += 1
@@ -432,7 +437,7 @@ function newboundarypoint!(p::NamedTuple,
 
             boundarypoint = p.pointa + ψ*p.uhat
 
-            if isnan(ψ) || isinf(ψ) || isapprox(boundarypoint, p.pointa)
+            if isnan(ψ) || isinf(ψ) || ψ < 0. || ψ > v_bar_norm || isapprox(boundarypoint, p.pointa)
                 # failure=true
                 f(x) = bivariate_optimiser(x, p)
                 ψs = find_zeros(f, 0.0, v_bar_norm; p=p) # note no tolerance here - it can error if atol is used
@@ -581,7 +586,6 @@ function polygon_break_and_rejoin!(edge_clock::Vector{Int},
 
     # In the case we have a polygon with only one vertex
     if opposite_edge_ve2 == ve1 || ve2 == opposite_edge_ve1
-        # 1==1
         @info string("there is likely to be multiple distinct level sets at this confidence level for parameters ", model.core.θnames[ind1]," and ", model.core.θnames[ind2], ". No additional points can be found on one of these level sets within this algorithm run.")
     end
     return nothing
@@ -603,13 +607,13 @@ end
         ind2::Int,
         relative_magnitude::Float64)
 
-If finding a new boundary point for [`IterativeBoundaryMethod`](@ref) was not successful, update the datastructures that represent the boundary as required. Failure means it is likely that multiple level sets exist. If so, break the edges of the candidate point and `e_intersect` and reconnect the vertexes such that there are now have multiple boundary polygons.
+If finding a new boundary point for [`IterativeBoundaryMethod`](@ref) was not successful, update the datastructures that represent the boundary as required. Failure means it is likely that multiple level sets exist. If so, break the edges of the candidate point and `opposite_edge_ve1` and reconnect the vertexes such that there are now multiple boundary polygons.
 		
 If there are only one or two points on one of these boundary polygons, display an info message as no additional points can be found from the method directly.
 		
 If there are three or more points on these boundary polygons, then there should be no problems finding other parts of these polygons.
 
-If the largest polygon has less than two points the method will display a warning message and terminate, returning the boundary found up until then. 
+If the largest polygon has less than three points the method will display a warning message and terminate, returning the boundary found up until then. 
 """
 function heapupdates_failure!(edge_heap::TrackingHeap,
                                 angle_heap::TrackingHeap, 

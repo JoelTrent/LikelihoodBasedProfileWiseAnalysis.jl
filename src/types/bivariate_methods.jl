@@ -108,7 +108,7 @@ The method is implemented as follows:
 
     If a candidate point is inside the boundary, then we search in the normal direction to the edge until we find a boundary point or hit the parameter bound, accepting either.
 	
-    If a candidate point is outside the boundary we find the edge, `e_intersect` of our boundary polygon that is intersected by the line in the normal direction of the candidate edge, which passes through the candidate point. Once this edge is found, we find the vertex on `e_intersect` that is closest to our candidate point. We setup a 1D line search/bracketing method between these two points. In the event that no boundary points are found between these two points it is likely that multiple boundaries exist. If so, we break the candidate point's edge and `e_intersect` and reconnect the vertexes such that we now have multiple boundary polygons.
+    If a candidate point is outside the boundary we find the edge, `e_intersect` of our boundary polygon that is intersected by the line in the normal direction of the candidate edge, which passes through the candidate point. Once this edge is found, we find the vertex on `e_intersect` that is closest to our candidate point, subject to that vertex not also being on the candidate point edge. We setup a 1D line search/bracketing method between these two points. In the event that no boundary points are found between these two points it is likely that multiple boundaries exist. If so, we break the candidate point's edge and `e_intersect` and reconnect the vertexes such that we now have multiple boundary polygons.
 
 !!! warning "Largest boundary polygon at any iteration must have at least three points"
 
