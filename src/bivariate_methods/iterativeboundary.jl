@@ -351,6 +351,7 @@ function newboundarypoint!(p::NamedTuple,
 
         p.pointa .= candidate_midpoint
         dir_vector = SA[(boundary[2,ve2] - boundary[2,ve1]), -(boundary[1,ve2] - boundary[1,ve1])] .* SA[relative_magnitude, 1.0]
+        dir_vector = SA[(boundary[2,ve2] - boundary[2,ve1]), -(boundary[1,ve2] - boundary[1,ve1])] .* SA[relative_magnitude^2, 1.0]
         g = bivariate_optimiser(0.0, p)
         
         if isapprox(0.0, g, atol=find_zero_atol) # candidate on boundary
