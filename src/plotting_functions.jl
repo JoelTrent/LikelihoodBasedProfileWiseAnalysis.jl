@@ -403,6 +403,7 @@ function plot_bivariate_profiles_iterativeboundary_gif(model::LikelihoodModel,
                                     confidence_levels::Vector{<:Float64}=Float64[],
                                     profile_types::Vector{<:AbstractProfileType}=AbstractProfileType[],
                                     palette_to_use::Symbol=:Paired_6,
+                                    save_as_separate_plots::Bool=false,
                                     # include_internal_points::Bool=true,
                                     markeralpha=1.0,
                                     save_folder=nothing,
@@ -473,11 +474,15 @@ function plot_bivariate_profiles_iterativeboundary_gif(model::LikelihoodModel,
                             markeralpha=markeralpha
                             # linealpha=markeralpha
                             )
-            
+            if save_as_separate_plots
+                name=string(k)*".png"
+                savefig(plt, isnothing(save_folder) ? name : joinpath(save_folder, name))
+            end
         end
 
         filename = string("iterative_boundary_", θnames[1],"_",θnames[2], ".gif")
         save_location = isnothing(save_folder) ? filename : joinpath(save_folder, filename) 
+
         gif(anim, save_location, fps=15)
 
         # if include_internal_points && !row.not_evaluated_internal_point
@@ -514,7 +519,8 @@ function plot_bivariate_profiles_comparison(model::LikelihoodModel,
                                     compare_within_methods::Bool=false,
                                     include_dim_samples::Bool=false,
                                     palette_to_use::Symbol=:Paired_7, 
-                                    markeralpha=0.7,
+                                    markeralpha::Number=0.7,
+                                    label_only_MLE::Bool=false,
                                     kwargs...)
 
     θcombinations_to_plot = θcombinations_to_plot_typeconversion(model, θcombinations_to_plot)
@@ -603,7 +609,7 @@ function plot_bivariate_profiles_comparison(model::LikelihoodModel,
                         end
 
                         plot2Dboundary!(profile_plots[plot_i], boundary, 
-                            label=string(row.profile_type),
+                            label=label_only_MLE ? "" : string(row.profile_type),
                             markershape=profile2Dmarkershape(row.profile_type, true), 
                             markercolor=color_palette[profilecolor(row.profile_type)],
                             linecolor=color_palette[profilecolor(row.profile_type)],
@@ -681,8 +687,8 @@ function plot_bivariate_profiles_comparison(model::LikelihoodModel,
                         max_vals .= max.(max_vals, maximum(boundary, dims=2))
                     end
 
-                    plot2Dboundary!(profile_plots[plot_i], boundary, 
-                        label=string(profile_type),
+                    plot2Dboundary!(profile_plots[plot_i], boundary,
+                        label=label_only_MLE ? "" : string(profile_type),
                         markershape=profile2Dmarkershape(profile_type, true), 
                         markercolor=color_palette[profilecolor(profile_type)],
                         linecolor=color_palette[profilecolor(profile_type)],
