@@ -33,7 +33,7 @@ Performs a simulation to estimate the coverage of approximate bivariate confiden
 - `profile_type`: whether to use the true log-likelihood function or an ellipse approximation of the log-likelihood function centred at the MLE (with optional use of parameter bounds). Available profile types are [`LogLikelihood`](@ref), [`EllipseApprox`](@ref) and [`EllipseApproxAnalytical`](@ref). Default is `LogLikelihood()` ([`LogLikelihood`](@ref)).
 - `method`: a method of type [`AbstractBivariateMethod`](@ref) or a vector of methods of type [`AbstractBivariateMethod`](@ref) (if so `num_points` needs to be a vector of the same length). For a list of available methods use `bivariate_methods()` ([`bivariate_methods`](@ref)). Default is `RadialRandomMethod(3)` ([`RadialRandomMethod`](@ref)).
 - `sample_type`: the sampling method used to sample parameter space of type [`AbstractSampleType`]. Default is `LatinHypercubeSamples()` ([`LatinHypercubeSamples`](@ref)).
-- `hullmethod`: method of type [`AbstractBivariateHullMethod`](@ref) used to create a 2D polygon hull that approximates the bivariate boundary from a set of boundary points and internal points (method dependent). For available methods see [`bivariate_hull_methods()`](@ref). Default is `MPPHullMethod()` ([`MPPHullMethod`](@ref)).
+- `hullmethod`: method of type [`AbstractBivariateHullMethod`](@ref) used to create a 2D polygon hull that approximates the bivariate boundary from a set of boundary points and internal points (method dependent) (or vector of type [`AbstractBivariateHullMethod`](@ref) if comparison between hull methods is1 desired). For available methods see [`bivariate_hull_methods()`](@ref). Default is `MPPHullMethod()` ([`MPPHullMethod`](@ref)).
 - `coverage_estimate_confidence_level`: a number ∈ (0.0, 1.0) for the level of a confidence interval of the estimated coverage. Default is `0.95` (95%).
 - `show_progress`: boolean variable specifying whether to display progress bars on the percentage of simulation iterations completed and estimated time of completion. Default is `model.show_progress`.
 - `distributed_over_parameters`: boolean variable specifying whether to distribute the workload of the simulation across simulation iterations (false) or across the individual bivariate boundary calculations within each iteration (true). Default is `false`.
@@ -68,7 +68,7 @@ function check_bivariate_boundary_coverage(data_generator::Function,
     profile_type::AbstractProfileType=LogLikelihood(),
     method::Union{AbstractBivariateMethod, Vector{<:AbstractBivariateMethod}}=RadialRandomMethod(3),
     sample_type::AbstractSampleType=LatinHypercubeSamples(),
-    hullmethod::AbstractBivariateHullMethod=MPPHullMethod(),
+    hullmethod::Union{AbstractBivariateHullMethod, Vector{<:AbstractBivariateHullMethod}}=MPPHullMethod(),
     coverage_estimate_quantile_level::Float64=0.95,
     show_progress::Bool=model.show_progress,
     distributed_over_parameters::Bool=false)
@@ -100,6 +100,10 @@ function check_bivariate_boundary_coverage(data_generator::Function,
 
         N > 0 || throw(DomainError("N must be greater than 0"))
 
+        if hullmethod isa Vector
+            unique!(hullmethod)
+        end
+
         if θcombinations isa Vector{Tuple{Int, Int}}
             θcombinations = [[combo...] for combo in θcombinations]
         end
@@ -121,7 +125,8 @@ function check_bivariate_boundary_coverage(data_generator::Function,
     len_θs = length(θcombinations)
     combo_to_index = Dict{Tuple{Int,Int},Int}(Tuple(combo) => index for (index, combo) in enumerate(θcombinations))
 
-    coverage = zeros(len_θs, N)
+    full_len = len_θs * length(hullmethod)
+    coverage = zeros(full_len, N)
 
     bivariate_optimiser = get_bivariate_opt_func(profile_type, RadialMLEMethod())
     biv_opt_is_ellipse_analytical = bivariate_optimiser == bivariateψ_ellipse_analytical_vectorsearch
@@ -158,43 +163,45 @@ function check_bivariate_boundary_coverage(data_generator::Function,
                     show_progress=false, use_threads=false)
             end
 
-            for row_ind in 1:m_new.num_biv_profiles
-                θindices_tuple = m_new.biv_profiles_df[row_ind, :θindices]
-                θindices = [θindices_tuple...]
+            for (h, hmethod) in enumerate(hullmethod)
+                for row_ind in 1:m_new.num_biv_profiles
+                    θindices_tuple = m_new.biv_profiles_df[row_ind, :θindices]
+                    θindices = [θindices_tuple...]
 
-                conf_struct = m_new.biv_profiles_dict[row_ind]
-                polygonhull = construct_polygon_hull(m_new, θindices, conf_struct, confidence_level,
-                    m_new.biv_profiles_df[row_ind, :boundary_not_ordered], hullmethod, true)
+                    conf_struct = m_new.biv_profiles_dict[row_ind]
+                    polygonhull = construct_polygon_hull(m_new, θindices, conf_struct, confidence_level,
+                        m_new.biv_profiles_df[row_ind, :boundary_not_ordered], hmethod, true)
 
-                polygonhull_num_points = size(polygonhull, 2)
-                nodes = permutedims(polygonhull)
-                edges = zeros(Int, polygonhull_num_points, 2)
-                for j in 1:polygonhull_num_points-1; edges[j,:] .= j, j+1 end
-                edges[end,:] .= polygonhull_num_points, 1
+                    polygonhull_num_points = size(polygonhull, 2)
+                    nodes = permutedims(polygonhull)
+                    edges = zeros(Int, polygonhull_num_points, 2)
+                    for j in 1:polygonhull_num_points-1; edges[j,:] .= j, j+1 end
+                    edges[end,:] .= polygonhull_num_points, 1
 
-                dim_samples_row = m_new.dim_samples_row_exists[(θindices, sample_type)][confidence_level]
-                if dim_samples_row == 0; continue end
+                    dim_samples_row = m_new.dim_samples_row_exists[(θindices, sample_type)][confidence_level]
+                    if dim_samples_row == 0; continue end
 
-                num_dim_points = m_new.dim_samples_df[dim_samples_row, :num_points]
-                if num_dim_points < min_num_dim_points; continue end
+                    num_dim_points = m_new.dim_samples_df[dim_samples_row, :num_points]
+                    if num_dim_points < min_num_dim_points; continue end
 
-                dimensional_samples = m_new.dim_samples_dict[dim_samples_row].points[θindices, :]
+                    dimensional_samples = m_new.dim_samples_dict[dim_samples_row].points[θindices, :]
 
-                count=0
-                for j in axes(dimensional_samples, 2)
-                    is_inside, is_boundary = inpoly2(dimensional_samples[:,j], nodes, edges)
+                    count=0
+                    for j in axes(dimensional_samples, 2)
+                        is_inside, is_boundary = inpoly2(dimensional_samples[:,j], nodes, edges)
 
-                    if is_inside || is_boundary
-                        count += 1
+                        if is_inside || is_boundary
+                            count += 1
+                        end
                     end
+                    coverage[combo_to_index[θindices_tuple] + ((h-1)*len_θs), i] = count / num_dim_points
                 end
-                coverage[combo_to_index[θindices_tuple], i] = count / num_dim_points
             end
             next!(progress)
         end
 
     else
-        coverage_shared = SharedArray(zeros(len_θs, N))
+        coverage_shared = SharedArray(zeros(full_len, N))
         @sync begin
             @async while take!(channel)
                 next!(progress)
@@ -226,37 +233,39 @@ function check_bivariate_boundary_coverage(data_generator::Function,
                             show_progress=false, use_distributed=false, use_threads=false)
                     end
 
-                    for row_ind in 1:m_new.num_biv_profiles
-                        θindices_tuple = m_new.biv_profiles_df[row_ind, :θindices]
-                        θindices = [θindices_tuple...]
+                    for (h, hmethod) in enumerate(hullmethod)
+                        for row_ind in 1:m_new.num_biv_profiles
+                            θindices_tuple = m_new.biv_profiles_df[row_ind, :θindices]
+                            θindices = [θindices_tuple...]
 
-                        conf_struct = m_new.biv_profiles_dict[row_ind]
-                        polygonhull = construct_polygon_hull(m_new, θindices, conf_struct, confidence_level,
-                            m_new.biv_profiles_df[row_ind, :boundary_not_ordered], hullmethod, true)
+                            conf_struct = m_new.biv_profiles_dict[row_ind]
+                            polygonhull = construct_polygon_hull(m_new, θindices, conf_struct, confidence_level,
+                                m_new.biv_profiles_df[row_ind, :boundary_not_ordered], hmethod, true)
 
-                        polygonhull_num_points = size(polygonhull, 2)
-                        nodes = permutedims(polygonhull)
-                        edges = zeros(Int, polygonhull_num_points, 2)
-                        for j in 1:polygonhull_num_points-1; edges[j,:] .= j, j+1 end
-                        edges[end,:] .= polygonhull_num_points, 1
+                            polygonhull_num_points = size(polygonhull, 2)
+                            nodes = permutedims(polygonhull)
+                            edges = zeros(Int, polygonhull_num_points, 2)
+                            for j in 1:polygonhull_num_points-1; edges[j,:] .= j, j+1 end
+                            edges[end,:] .= polygonhull_num_points, 1
 
-                        dim_samples_row = m_new.dim_samples_row_exists[(θindices, sample_type)][confidence_level]
-                        if dim_samples_row == 0; continue end
+                            dim_samples_row = m_new.dim_samples_row_exists[(θindices, sample_type)][confidence_level]
+                            if dim_samples_row == 0; continue end
 
-                        num_dim_points = m_new.dim_samples_df[dim_samples_row, :num_points]
-                        if num_dim_points < min_num_dim_points; continue end
-                        
-                        dimensional_samples = m_new.dim_samples_dict[dim_samples_row].points[θindices, :]
+                            num_dim_points = m_new.dim_samples_df[dim_samples_row, :num_points]
+                            if num_dim_points < min_num_dim_points; continue end
+                            
+                            dimensional_samples = m_new.dim_samples_dict[dim_samples_row].points[θindices, :]
 
-                        count = 0
-                        for j in axes(dimensional_samples, 2)
-                            is_inside, is_boundary = inpoly2(dimensional_samples[:,j], nodes, edges)
+                            count = 0
+                            for j in axes(dimensional_samples, 2)
+                                is_inside, is_boundary = inpoly2(dimensional_samples[:,j], nodes, edges)
 
-                            if is_inside || is_boundary
-                                count += 1
+                                if is_inside || is_boundary
+                                    count += 1
+                                end
                             end
+                            coverage_shared[combo_to_index[θindices_tuple]+((h-1)*len_θs), i] = count / size(dimensional_samples, 2)
                         end
-                        coverage_shared[combo_to_index[θindices_tuple], i] = count / size(dimensional_samples, 2)
                     end
                     put!(channel, true); i^2
                 end
@@ -266,16 +275,18 @@ function check_bivariate_boundary_coverage(data_generator::Function,
         coverage .= coverage_shared
     end
 
-    quantile_intervals = zeros(len_θs, 2)
+    quantile_intervals = zeros(full_len, 2)
     lower_quantile = (1.0-coverage_estimate_quantile_level) / 2.0 
-    for i in 1:len_θs
+    for i in 1:full_len
         quantile_intervals[i, :] .= quantile(coverage[i, coverage[i,:] .!= 0.0], [lower_quantile, 1 - lower_quantile])
     end
 
-    coverage_mean = [mean(coverage[i, coverage[i,:] .!= 0.0]) for i in 1:len_θs]
+    coverage_mean = [mean(coverage[i, coverage[i, :].!=0.0]) for i in 1:full_len]
 
-    return DataFrame(θnames=[model.core.θnames[[combo...]] for combo in θcombinations],
-                        θindices=θcombinations, coverage=coverage_mean, 
+    return DataFrame(θnames=[model.core.θnames[[combo...]] for _ in hullmethod for combo in θcombinations],
+                        θindices=[combo for _ in hullmethod for combo in θcombinations], 
+                        hullmethod=[string(hmethod) for hmethod in hullmethod for _ in θcombinations], 
+                        coverage=coverage_mean, 
                         coverage_lb=quantile_intervals[:, 1], coverage_ub=quantile_intervals[:, 2],
-                        num_boundary_points=fill(sum(num_points), len_θs))
+                        num_boundary_points=fill(sum(num_points), full_len))
 end
