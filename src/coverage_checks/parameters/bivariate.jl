@@ -111,13 +111,15 @@ function check_bivariate_parameter_coverage(data_generator::Function,
     pointa = [0.0,0.0]
     uhat   = [0.0,0.0]
 
+    data = [data_generator(θtrue, generator_args) for _ in 1:N]
+
     channel = RemoteChannel(() -> Channel{Bool}(1))
     progress = Progress(N; desc="Computing bivariate parameter coverage: ",
         dt=PROGRESS__METER__DT, enabled=show_progress, showspeed=true)
 
     if distributed_over_parameters
         for _ in 1:N
-            new_data = data_generator(θtrue, generator_args)
+            new_data = data[i]
 
             m_new = initialise_LikelihoodModel(model.core.loglikefunction, new_data, model.core.θnames, θinitialguess, model.core.θlb, model.core.θub, model.core.θmagnitudes; biv_row_preallocation_size=len_θs, show_progress=false)
 
@@ -186,7 +188,7 @@ function check_bivariate_parameter_coverage(data_generator::Function,
 
             @async begin
                 @distributed (+) for i in 1:N
-                    new_data = data_generator(θtrue, generator_args)
+                    new_data = data[i]
 
                     m_new = initialise_LikelihoodModel(model.core.loglikefunction, new_data,
                         model.core.θnames, θinitialguess, model.core.θlb, model.core.θub,

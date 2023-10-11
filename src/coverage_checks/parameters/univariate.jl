@@ -79,13 +79,15 @@ function check_univariate_parameter_coverage(data_generator::Function,
 
     successes = zeros(Int, len_θs)
 
+    data = [data_generator(θtrue, generator_args) for _ in 1:N]
+
     channel = RemoteChannel(() -> Channel{Bool}(1))
     p = Progress(N; desc="Computing univariate parameter coverage: ",
         dt=PROGRESS__METER__DT, enabled=show_progress, showspeed=true)
 
     if distributed_over_parameters
         for _ in 1:N
-            new_data = data_generator(θtrue, generator_args)
+            new_data = data[i]
 
             m_new = initialise_LikelihoodModel(model.core.loglikefunction, new_data, model.core.θnames, θinitialguess, model.core.θlb, model.core.θub, model.core.θmagnitudes; uni_row_prealloaction_size=len_θs, show_progress=false)
 
@@ -117,7 +119,7 @@ function check_univariate_parameter_coverage(data_generator::Function,
 
             @async begin
                 @distributed (+) for i in 1:N
-                    new_data = data_generator(θtrue, generator_args)
+                    new_data = data[i]
 
                     m_new = initialise_LikelihoodModel(model.core.loglikefunction, new_data, 
                         model.core.θnames, θinitialguess, model.core.θlb, model.core.θub, 
