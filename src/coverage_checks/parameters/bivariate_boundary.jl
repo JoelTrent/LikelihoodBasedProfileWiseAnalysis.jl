@@ -15,7 +15,7 @@ Performs a simulation to estimate the coverage of approximate bivariate confiden
 1. Repeatedly drawing new observed data using `data_generator` for fixed true parameter values, θtrue and fitting the model. 
 2. `num_points_to_sample` points are then sampled in interest parameter space using `sample_type` and those that are inside the true bivariate confidence boundary are extracted. 
 3. Then bivariate confidence boundaries of `num_points` are found using `method` and `hullmethod` is used to construct 2D polygon hulls of the boundary points. 
-4. Finally, the percentage of extracted samples that are contained within the 2D polygon hull is extracted. The mean percentage (coverage) across all `N` simulations of the true boundary is recorded and returned with a default 95% simulation quantile interval within a DataFrame. The 95% simulation quantile interval is the 2.5% and 97.5% quantiles of the coverage across the `N simulations`. 
+4. Finally, the percentage of extracted samples that are contained within the 2D polygon hull is extracted. The median and mean percentage (coverage) across all `N` simulations of the true boundary is recorded and returned with a default 95% simulation quantile interval within a DataFrame. The median may be more reliable for use than the mean due to expected coverage approaching 1.0 when the polygon is a very good representation of the boundary. The 95% simulation quantile interval is the 2.5% and 97.5% quantiles of the coverage across the `N simulations`. 
 
 # Arguments
 - `data_generator`: a function with two arguments which generates data for fixed time points and true model parameters corresponding to the log-likelihood function contained in `model`. The two arguments must be the vector of true model parameters, `θtrue`, and a Tuple or NamedTuple, `generator_args`. Outputs a `data` Tuple or NamedTuple that corresponds to the log-likelihood function contained in `model`.
@@ -34,7 +34,7 @@ Performs a simulation to estimate the coverage of approximate bivariate confiden
 - `method`: a method of type [`AbstractBivariateMethod`](@ref) or a vector of methods of type [`AbstractBivariateMethod`](@ref) (if so `num_points` needs to be a vector of the same length). For a list of available methods use `bivariate_methods()` ([`bivariate_methods`](@ref)). Default is `RadialRandomMethod(3)` ([`RadialRandomMethod`](@ref)).
 - `sample_type`: the sampling method used to sample parameter space of type [`AbstractSampleType`]. Default is `LatinHypercubeSamples()` ([`LatinHypercubeSamples`](@ref)).
 - `hullmethod`: method of type [`AbstractBivariateHullMethod`](@ref) used to create a 2D polygon hull that approximates the bivariate boundary from a set of boundary points and internal points (method dependent) (or vector of type [`AbstractBivariateHullMethod`](@ref) if comparison between hull methods is1 desired). For available methods see [`bivariate_hull_methods()`](@ref). Default is `MPPHullMethod()` ([`MPPHullMethod`](@ref)).
-- `coverage_estimate_confidence_level`: a number ∈ (0.0, 1.0) for the level of a confidence interval of the estimated coverage. Default is `0.95` (95%).
+- `coverage_estimate_confidence_level`: a number ∈ (0.0, 1.0) for the level of the confidence interval of the estimated coverage (intervals are formed from simulation quantiles). Default is `0.95` (95%).
 - `show_progress`: boolean variable specifying whether to display progress bars on the percentage of simulation iterations completed and estimated time of completion. Default is `model.show_progress`.
 - `distributed_over_parameters`: boolean variable specifying whether to distribute the workload of the simulation across simulation iterations (false) or across the individual bivariate boundary calculations within each iteration (true). Default is `false`.
 
@@ -284,11 +284,13 @@ function check_bivariate_boundary_coverage(data_generator::Function,
     end
 
     coverage_mean = [mean(coverage[i, coverage[i, :].!=0.0]) for i in 1:full_len]
+    coverage_median = [median(coverage[i, coverage[i, :].!=0.0]) for i in 1:full_len]
 
     return DataFrame(θnames=[model.core.θnames[[combo...]] for _ in hullmethod for combo in θcombinations],
                         θindices=[combo for _ in hullmethod for combo in θcombinations], 
                         hullmethod=[string(hmethod) for hmethod in hullmethod for _ in θcombinations], 
-                        coverage=coverage_mean, 
+                        coverage_median=coverage_median, 
+                        coverage_mean=coverage_mean, 
                         coverage_lb=quantile_intervals[:, 1], coverage_ub=quantile_intervals[:, 2],
                         num_boundary_points=fill(sum(num_points), full_len))
 end
