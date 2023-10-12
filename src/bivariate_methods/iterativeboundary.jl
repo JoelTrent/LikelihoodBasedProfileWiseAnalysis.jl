@@ -383,7 +383,7 @@ function newboundarypoint!(p::NamedTuple,
                 
                 lb = isinf(g) ? 1e-12 * v_bar_norm : 0.0
 
-                ψ = find_zero(bivariate_optimiser, (lb, v_bar_norm), Roots.Brent(); atol=find_zero_atol, p=p)
+                ψ = find_zero(bivariate_optimiser, (lb, v_bar_norm), Roots.ITP(); atol=find_zero_atol, p=p)
 
                 boundarypoint = p.pointa + ψ*p.uhat
                 boundary[:, num_vertices] .= boundarypoint
@@ -505,7 +505,7 @@ function heapupdates_success!(edge_heap::TrackingHeap,
     # perform required updates
     if clockwise_from_vi
         # adjacent vertex is clockwise from vi
-        edge_clock[vi] = num_vertices
+        edge_clock[vi] = num_vertices*1
         edge_clock[num_vertices] = adj_vertex
 
         edge_anti[adj_vertex] = num_vertices
@@ -522,7 +522,7 @@ function heapupdates_success!(edge_heap::TrackingHeap,
         end
     else
         # adjacent vertex is anticlockwise from vi
-        edge_clock[adj_vertex] = num_vertices
+        edge_clock[adj_vertex] = num_vertices*1
         edge_clock[num_vertices] = vi
 
         edge_anti[vi] = num_vertices
