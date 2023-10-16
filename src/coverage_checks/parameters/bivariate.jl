@@ -29,7 +29,10 @@ Performs a simulation to estimate the coverage of bivariate confidence boundarie
 - `confidence_level`: a number ∈ (0.0, 1.0) for the confidence level to evaluate the confidence interval coverage at. Default is `0.95` (95%).
 - `profile_type`: whether to use the true log-likelihood function or an ellipse approximation of the log-likelihood function centred at the MLE (with optional use of parameter bounds). Available profile types are [`LogLikelihood`](@ref), [`EllipseApprox`](@ref) and [`EllipseApproxAnalytical`](@ref). Default is `LogLikelihood()` ([`LogLikelihood`](@ref)).
 - `method`: a method of type [`AbstractBivariateMethod`](@ref) or a vector of methods of type [`AbstractBivariateMethod`](@ref) (if so `num_points` needs to be a vector of the same length). For a list of available methods use `bivariate_methods()` ([`bivariate_methods`](@ref)). Default is `RadialRandomMethod(3)` ([`RadialRandomMethod`](@ref)).
+- `θlb_nuisance`: a vector of lower bounds on nuisance parameters, require `θlb_nuisance .≤ model.core.θmle`. Default is `model.core.θlb`. 
+- `θub_nuisance`: a vector of upper bounds on nuisance parameters, require `θub_nuisance .≥ model.core.θmle`. Default is `model.core.θub`.
 - `coverage_estimate_confidence_level`: a number ∈ (0.0, 1.0) for the level of a confidence interval of the estimated coverage. Default is `0.95` (95%).
+- `optimizationsettings`: a [`OptimizationSettings`](@ref) containing the optimisation settings used to find optimal values of nuisance parameters for a given interest parameter value. Default is `missing` (will use `model.core.optimizationsettings`).
 - `show_progress`: boolean variable specifying whether to display progress bars on the percentage of simulation iterations completed and estimated time of completion. Default is `model.show_progress`.
 - `distributed_over_parameters`: boolean variable specifying whether to distribute the workload of the simulation across simulation iterations (false) or across the individual bivariate boundary calculations within each iteration (true). Default is `false`.
 
@@ -63,8 +66,11 @@ function check_bivariate_parameter_coverage(data_generator::Function,
     θinitialguess::AbstractVector{<:Real}=θtrue;
     confidence_level::Float64=0.95,
     profile_type::AbstractProfileType=LogLikelihood(),
-    method::Union{AbstractBivariateMethod, Vector{<:AbstractBivariateMethod}}=RadialRandomMethod(3),
+    method::Union{AbstractBivariateMethod,Vector{<:AbstractBivariateMethod}}=RadialRandomMethod(3),
+    θlb_nuisance::AbstractVector{<:Real}=model.core.θlb,
+    θub_nuisance::AbstractVector{<:Real}=model.core.θub,
     coverage_estimate_confidence_level::Float64=0.95,
+    optimizationsettings::Union{OptimizationSettings,Missing}=missing,
     show_progress::Bool=model.show_progress,
     distributed_over_parameters::Bool=false)
 
@@ -83,6 +89,11 @@ function check_bivariate_parameter_coverage(data_generator::Function,
 
         N > 0 || throw(DomainError("N must be greater than 0"))
 
+        length(θlb_nuisance) == model.core.num_pars || throw(ArgumentError("θlb_nuisance must have the same length as the number of model parameters"))
+        length(θub_nuisance) == model.core.num_pars || throw(ArgumentError("θub_nuisance must have the same length as the number of model parameters"))
+        all(θlb_nuisance .≤ model.core.θmle) || throw(DomainError("θlb_nuisance must be less than or equal to model.core.θmle"))
+        all(θub_nuisance .≥ model.core.θmle) || throw(DomainError("θub_nuisance must be greater than or equal to model.core.θmle"))
+
         if θcombinations isa Vector{Tuple{Int, Int}}
             θcombinations = [[combo...] for combo in θcombinations]
         end
@@ -99,6 +110,7 @@ function check_bivariate_parameter_coverage(data_generator::Function,
     end
     local combine_methods::Bool
     argument_handling!()
+    optimizationsettings = ismissing(optimizationsettings) ? model.core.optimizationsettings : optimizationsettings
 
     len_θs = length(θcombinations)
     combo_to_index = Dict{Tuple{Int,Int},Int}(Tuple(combo) => index for (index, combo) in enumerate(θcombinations))
@@ -118,23 +130,25 @@ function check_bivariate_parameter_coverage(data_generator::Function,
         dt=PROGRESS__METER__DT, enabled=show_progress, showspeed=true)
 
     if distributed_over_parameters
-        for _ in 1:N
+        for i in 1:N
             new_data = data[i]
 
-            m_new = initialise_LikelihoodModel(model.core.loglikefunction, new_data, model.core.θnames, θinitialguess, model.core.θlb, model.core.θub, model.core.θmagnitudes; biv_row_preallocation_size=len_θs, show_progress=false)
+            m_new = initialise_LikelihoodModel(model.core.loglikefunction, new_data, model.core.θnames, θinitialguess, model.core.θlb, model.core.θub, model.core.θmagnitudes; biv_row_preallocation_size=len_θs, show_progress=false, optimizationsettings=optimizationsettings)
 
             if combine_methods
                 for (j, methodj) in enumerate(method) 
                     bivariate_confidenceprofiles!(m_new, θcombinations, num_points[j];
-                        confidence_level=confidence_level, profile_type=profile_type, method=methodj,
-                        use_threads=false)
+                        confidence_level=confidence_level, profile_type=profile_type,
+                        method=methodj,
+                        θlb_nuisance=θlb_nuisance, θub_nuisance=θub_nuisance, 
+                        optimizationsettings=optimizationsettings, use_threads=false)
                 end
                 combine_bivariate_boundaries!(m_new, confidence_level=confidence_level, 
                     not_evaluated_predictions=true)
             else
                 bivariate_confidenceprofiles!(m_new, θcombinations, num_points;
                     confidence_level=confidence_level, profile_type=profile_type, method=method, 
-                    use_threads=false)
+                    optimizationsettings=optimizationsettings, use_threads=false)
             end
 
             for row_ind in 1:m_new.num_biv_profiles
@@ -142,7 +156,7 @@ function check_bivariate_parameter_coverage(data_generator::Function,
 
                 ind1, ind2 = θindices
                 pointa .= θtrue[[ind1, ind2]]
-                newLb, newUb, initGuess, θranges, ωranges = init_nuisance_parameters(m_new, ind1, ind2)
+                newLb, newUb, initGuess, θranges, ωranges = init_nuisance_parameters(m_new, ind1, ind2, θlb_nuisance, θub_nuisance,)
 
                 if biv_opt_is_ellipse_analytical
                     p = (ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, pointa=pointa, uhat=uhat,
@@ -198,6 +212,7 @@ function check_bivariate_parameter_coverage(data_generator::Function,
                         for (j, methodj) in enumerate(method)
                             bivariate_confidenceprofiles!(m_new, θcombinations, num_points[j];
                                 confidence_level=confidence_level, profile_type=profile_type, method=methodj,
+                                θlb_nuisance=θlb_nuisance, θub_nuisance=θub_nuisance,
                                 use_distributed=false, use_threads=false)
                         end
                         combine_bivariate_boundaries!(m_new, confidence_level=confidence_level,
@@ -213,7 +228,7 @@ function check_bivariate_parameter_coverage(data_generator::Function,
 
                         ind1, ind2 = θindices
                         pointa .= θtrue[[ind1, ind2]]
-                        newLb, newUb, initGuess, θranges, ωranges = init_nuisance_parameters(m_new, ind1, ind2)
+                        newLb, newUb, initGuess, θranges, ωranges = init_nuisance_parameters(m_new, ind1, ind2, θlb_nuisance, θub_nuisance)
 
                         if biv_opt_is_ellipse_analytical
                             p = (ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, pointa=pointa, uhat=uhat,

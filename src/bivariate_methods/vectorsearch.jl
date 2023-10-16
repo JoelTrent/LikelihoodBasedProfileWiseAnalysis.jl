@@ -397,6 +397,8 @@ end
         consistent::NamedTuple, 
         ind1::Int, 
         ind2::Int,
+        θlb_nuisance::AbstractVector{<:Real},
+        θub_nuisance::AbstractVector{<:Real},
         mle_targetll::Float64,
         save_internal_points::Bool,
         find_zero_atol::Real, 
@@ -418,6 +420,8 @@ function bivariate_confidenceprofile_vectorsearch(bivariate_optimiser::Function,
                                                     consistent::NamedTuple, 
                                                     ind1::Int, 
                                                     ind2::Int,
+                                                    θlb_nuisance::AbstractVector{<:Real},
+                                                    θub_nuisance::AbstractVector{<:Real},
                                                     mle_targetll::Float64,
                                                     save_internal_points::Bool,
                                                     find_zero_atol::Real, 
@@ -431,7 +435,7 @@ function bivariate_confidenceprofile_vectorsearch(bivariate_optimiser::Function,
                                                     ellipse_start_point_shift::Float64=0.0,
                                                     ellipse_sqrt_distortion::Float64=0.0)
 
-    newLb, newUb, initGuess, θranges, ωranges = init_nuisance_parameters(model, ind1, ind2)
+    newLb, newUb, initGuess, θranges, ωranges = init_nuisance_parameters(model, ind1, ind2, θlb_nuisance, θub_nuisance)
 
     biv_opt_is_ellipse_analytical = bivariate_optimiser==bivariateψ_ellipse_analytical_vectorsearch
     

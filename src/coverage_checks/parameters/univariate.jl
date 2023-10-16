@@ -26,7 +26,10 @@ Performs a simulation to estimate the coverage of univariate confidence interval
 # Keyword Arguments
 - `confidence_level`: a number ∈ (0.0, 1.0) for the confidence level to evaluate the confidence interval coverage at. Default is `0.95` (95%).
 - `profile_type`: whether to use the true log-likelihood function or an ellipse approximation of the log-likelihood function centred at the MLE (with optional use of parameter bounds). Available profile types are [`LogLikelihood`](@ref), [`EllipseApprox`](@ref) and [`EllipseApproxAnalytical`](@ref). Default is `LogLikelihood()` ([`LogLikelihood`](@ref)).
+- `θlb_nuisance`: a vector of lower bounds on nuisance parameters, require `θlb_nuisance .≤ model.core.θmle`. Default is `model.core.θlb`. 
+- `θub_nuisance`: a vector of upper bounds on nuisance parameters, require `θub_nuisance .≥ model.core.θmle`. Default is `model.core.θub`.
 - `coverage_estimate_confidence_level`: a number ∈ (0.0, 1.0) for the level of a confidence interval of the estimated coverage. Default is `0.95` (95%).
+- `optimizationsettings`: a [`OptimizationSettings`](@ref) containing the optimisation settings used to find optimal values of nuisance parameters for a given interest parameter value. Default is `missing` (will use `default_OptimizationSettings()` (see [`default_OptimizationSettings`](@ref)).
 - `show_progress`: boolean variable specifying whether to display progress bars on the percentage of simulation iterations completed and estimated time of completion. Default is `model.show_progress`.
 - `distributed_over_parameters`: boolean variable specifying whether to distribute the workload of the simulation across simulation iterations (false) or across the individual confidence interval calculations within each iteration (true). Default is `false`.
 
@@ -54,8 +57,11 @@ function check_univariate_parameter_coverage(data_generator::Function,
     θs::AbstractVector{<:Int64},
     θinitialguess::AbstractVector{<:Real}=θtrue; 
     confidence_level::Float64=0.95, 
-    profile_type::AbstractProfileType=LogLikelihood(), 
+    profile_type::AbstractProfileType=LogLikelihood(),
+    θlb_nuisance::AbstractVector{<:Real}=model.core.θlb,
+    θub_nuisance::AbstractVector{<:Real}=model.core.θub,
     coverage_estimate_confidence_level::Float64=0.95,
+    optimizationsettings::Union{OptimizationSettings,Missing}=missing,
     show_progress::Bool=model.show_progress,
     distributed_over_parameters::Bool=false)
 
@@ -67,6 +73,11 @@ function check_univariate_parameter_coverage(data_generator::Function,
         get_target_loglikelihood(model, confidence_level, profile_type, 1)
 
         N > 0 || throw(DomainError("N must be greater than 0"))
+
+        length(θlb_nuisance) == model.core.num_pars || throw(ArgumentError("θlb_nuisance must have the same length as the number of model parameters"))
+        length(θub_nuisance) == model.core.num_pars || throw(ArgumentError("θub_nuisance must have the same length as the number of model parameters"))
+        all(θlb_nuisance .≤ model.core.θmle) || throw(DomainError("θlb_nuisance must be less than or equal to model.core.θmle"))
+        all(θub_nuisance .≥ model.core.θmle) || throw(DomainError("θub_nuisance must be greater than or equal to model.core.θmle"))
 
         (sort(θs); unique!(θs))
         1 ≤ θs[1] && θs[end] ≤ model.core.num_pars || throw(DomainError("θs can only contain parameter indexes between 1 and the number of model parameters"))
@@ -86,13 +97,17 @@ function check_univariate_parameter_coverage(data_generator::Function,
         dt=PROGRESS__METER__DT, enabled=show_progress, showspeed=true)
 
     if distributed_over_parameters
-        for _ in 1:N
+        for i in 1:N
             new_data = data[i]
 
-            m_new = initialise_LikelihoodModel(model.core.loglikefunction, new_data, model.core.θnames, θinitialguess, model.core.θlb, model.core.θub, model.core.θmagnitudes; uni_row_prealloaction_size=len_θs, show_progress=false)
+            m_new = initialise_LikelihoodModel(model.core.loglikefunction, new_data, model.core.θnames, θinitialguess, model.core.θlb, model.core.θub, model.core.θmagnitudes; uni_row_prealloaction_size=len_θs, show_progress=false, optimizationsettings=model.core.optimizationsettings)
 
+            lb, ub = correct_θbounds_nuisance(m_new, θlb_nuisance, θub_nuisance)
+            
             univariate_confidenceintervals!(m_new, θs; 
-                confidence_level=confidence_level, profile_type=profile_type, use_threads=false)
+                confidence_level=confidence_level, profile_type=profile_type, 
+                θlb_nuisance=lb, θub_nuisance=ub, use_threads=false,
+                optimizationsettings=optimizationsettings)
 
             for row_ind in 1:m_new.num_uni_profiles
                 θindex = m_new.uni_profiles_df[row_ind, :θindex]
@@ -123,10 +138,15 @@ function check_univariate_parameter_coverage(data_generator::Function,
 
                     m_new = initialise_LikelihoodModel(model.core.loglikefunction, new_data, 
                         model.core.θnames, θinitialguess, model.core.θlb, model.core.θub, 
-                        model.core.θmagnitudes; uni_row_prealloaction_size=len_θs, show_progress=false)
+                        model.core.θmagnitudes; uni_row_prealloaction_size=len_θs, show_progress=false,
+                        optimizationsettings=model.core.optimizationsettings)
+
+                    lb, ub = correct_θbounds_nuisance(m_new, θlb_nuisance, θub_nuisance)
 
                     univariate_confidenceintervals!(m_new, θs; 
-                        confidence_level=confidence_level, profile_type=profile_type, use_distributed=false, use_threads=false)
+                        confidence_level=confidence_level, profile_type=profile_type,
+                        θlb_nuisance=lb, θub_nuisance=ub, use_distributed=false, use_threads=false,
+                        optimizationsettings=optimizationsettings)
 
                     for row_ind in 1:m_new.num_uni_profiles
                         θindex = m_new.uni_profiles_df[row_ind, :θindex]

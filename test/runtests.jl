@@ -331,6 +331,10 @@ using EllipseSampling
             @test_throws DomainError   univariate_confidenceintervals!(m, additional_width=-1.0)
             @test_throws DomainError   univariate_confidenceintervals!(m, [1,4,2,3])
             @test_throws ArgumentError univariate_confidenceintervals!(m, existing_profiles=:merge)
+            @test_throws ArgumentError univariate_confidenceintervals!(m, θlb_nuisance=[1.])
+            @test_throws ArgumentError univariate_confidenceintervals!(m, θlb_nuisance=[1.])
+            @test_throws DomainError   univariate_confidenceintervals!(m, θlb_nuisance=m.core.θmle .+ 1.0)
+            @test_throws DomainError   univariate_confidenceintervals!(m, θub_nuisance=m.core.θmle .- 1.0)
 
             @test_throws DomainError   get_points_in_intervals!(m, 0)
             @test_throws DomainError   get_points_in_intervals!(m, 1, additional_width=-1.0)
@@ -343,6 +347,10 @@ using EllipseSampling
             @test_throws ArgumentError bivariate_confidenceprofiles!(m, [[1,2], [1]], 10)
             @test_throws ArgumentError bivariate_confidenceprofiles!(m, 10, existing_profiles=:something)
             @test_throws ArgumentError bivariate_confidenceprofiles!(m, 10, method=CombinedBivariateMethod())
+            @test_throws ArgumentError bivariate_confidenceprofiles!(m, 10, θlb_nuisance=[1.0])
+            @test_throws ArgumentError bivariate_confidenceprofiles!(m, 10, θlb_nuisance=[1.0])
+            @test_throws DomainError   bivariate_confidenceprofiles!(m, 10, θlb_nuisance=m.core.θmle .+ 1.0)
+            @test_throws DomainError   bivariate_confidenceprofiles!(m, 10, θub_nuisance=m.core.θmle .- 1.0)
 
             @test_throws DomainError   sample_bivariate_internal_points!(m, 0)
 
@@ -356,7 +364,11 @@ using EllipseSampling
             @test_throws ArgumentError dimensional_likelihood_samples!(m, [[1],[1,2]], [1,1], sample_type=UniformGridSamples())
             @test_throws ArgumentError dimensional_likelihood_samples!(m, 1, 10, existing_profiles=:merge)
             @test_throws ArgumentError dimensional_likelihood_samples!(m, 1, 10, lb=[1,1], ub=[2])
-            @test_throws ArgumentError dimensional_likelihood_samples!(m, 1, 10, lb=[1], ub=[2,2])
+            @test_throws ArgumentError dimensional_likelihood_samples!(m, 1, 10, lb=[1], ub=[2, 2])
+            @test_throws ArgumentError dimensional_likelihood_samples!(m, 1, 10, θlb_nuisance=[1.0])
+            @test_throws ArgumentError dimensional_likelihood_samples!(m, 1, 10, θlb_nuisance=[1.0])
+            @test_throws DomainError   dimensional_likelihood_samples!(m, 1, 10, θlb_nuisance=m.core.θmle .+ 1.0)
+            @test_throws DomainError   dimensional_likelihood_samples!(m, 1, 10, θub_nuisance=m.core.θmle .- 1.0)
             
             @test_throws DomainError   full_likelihood_sample!(m, 0)
             @test_throws DomainError   full_likelihood_sample!(m, 10, confidence_level=-0.1)
@@ -420,6 +432,12 @@ using EllipseSampling
             @test_throws ArgumentError dimensional_likelihood_samples!(m, 1, 10; use_distributed=false, use_threads=true)
             @test_throws ArgumentError full_likelihood_sample!(m, 10; use_distributed=false, use_threads=true)
             PlaceholderLikelihood.TimerOutputs.disable_debug_timings(PlaceholderLikelihood)
+
+            univariate_confidenceintervals!(m)
+            @test_throws ArgumentError get_points_in_intervals!(m, 1, θlb_nuisance=[1.0])
+            @test_throws ArgumentError get_points_in_intervals!(m, 1, θlb_nuisance=[1.0])
+            @test_throws DomainError   get_points_in_intervals!(m, 1, θlb_nuisance=m.core.θmle .+ 1.0)
+            @test_throws DomainError   get_points_in_intervals!(m, 1, θub_nuisance=m.core.θmle .- 1.0)
 
             @test remove_functions_from_core!(m) isa CoreLikelihoodModel
             @test_throws ArgumentError univariate_confidenceintervals!(m)

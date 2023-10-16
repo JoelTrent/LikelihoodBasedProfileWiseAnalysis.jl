@@ -20,6 +20,8 @@ end
         target_num_points::Int, 
         θindices::Tuple{Int,Int}, 
         profile_type::AbstractProfileType,
+        θlb_nuisance::AbstractVector{<:Real},
+        θub_nuisance::AbstractVector{<:Real},
         conf_struct::BivariateConfidenceStruct, 
         confidence_level::Float64,
         boundary_not_ordered::Bool,
@@ -32,6 +34,8 @@ function sample_internal_points_LHC(model::LikelihoodModel,
                                     target_num_points::Int,
                                     θindices::Tuple{Int,Int},
                                     profile_type::AbstractProfileType,
+                                    θlb_nuisance::AbstractVector{<:Real},
+                                    θub_nuisance::AbstractVector{<:Real},
                                     conf_struct::BivariateConfidenceStruct,
                                     confidence_level::Float64,
                                     boundary_not_ordered::Bool,
@@ -44,7 +48,7 @@ function sample_internal_points_LHC(model::LikelihoodModel,
     consistent = get_consistent_tuple(model, confidence_level, profile_type, 2)
     
     ind1, ind2 = θindices
-    newLb, newUb, initGuess, θranges, ωranges = init_nuisance_parameters(model, ind1, ind2)
+    newLb, newUb, initGuess, θranges, ωranges = init_nuisance_parameters(model, ind1, ind2, θlb_nuisance, θub_nuisance)
 
     q=(ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, 
         θranges=θranges, ωranges=ωranges, consistent=consistent)
@@ -144,6 +148,8 @@ end
         num_points::Int, 
         θindices::Tuple{Int,Int}, 
         profile_type::AbstractProfileType,
+        θlb_nuisance::AbstractVector{<:Real},
+        θub_nuisance::AbstractVector{<:Real},
         conf_struct::BivariateConfidenceStruct, 
         confidence_level::Float64,
         boundary_not_ordered::Bool,
@@ -157,6 +163,8 @@ function sample_internal_points_uniform_random(model::LikelihoodModel,
                                                 num_points::Int, 
                                                 θindices::Tuple{Int,Int}, 
                                                 profile_type::AbstractProfileType,
+                                                θlb_nuisance::AbstractVector{<:Real},
+                                                θub_nuisance::AbstractVector{<:Real},
                                                 conf_struct::BivariateConfidenceStruct, 
                                                 confidence_level::Float64,
                                                 boundary_not_ordered::Bool,
@@ -169,7 +177,7 @@ function sample_internal_points_uniform_random(model::LikelihoodModel,
     consistent = get_consistent_tuple(model, confidence_level, profile_type, 2)
 
     ind1, ind2 = θindices
-    newLb, newUb, initGuess, θranges, ωranges = init_nuisance_parameters(model, ind1, ind2)
+    newLb, newUb, initGuess, θranges, ωranges = init_nuisance_parameters(model, ind1, ind2, θlb_nuisance, θub_nuisance)
 
     q=(ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, 
         θranges=θranges, ωranges=ωranges, consistent=consistent)
@@ -238,6 +246,8 @@ end
         num_points::Int, 
         sample_type::AbstractSampleType,
         hullmethod::AbstractBivariateHullMethod, 
+        θlb_nuisance::AbstractVector{<:Real},
+        θub_nuisance::AbstractVector{<:Real},
         t::Union{AbstractVector,Missing},
         evaluate_predictions_for_samples::Bool,
         proportion_of_predictions_to_keep::Real,
@@ -254,6 +264,8 @@ function sample_internal_points_single_row(model::LikelihoodModel,
     num_points::Int, 
     sample_type::AbstractSampleType,
     hullmethod::AbstractBivariateHullMethod, 
+    θlb_nuisance::AbstractVector{<:Real},
+    θub_nuisance::AbstractVector{<:Real},
     t::Union{AbstractVector,Missing},
     evaluate_predictions_for_samples::Bool,
     proportion_of_predictions_to_keep::Real,
@@ -271,11 +283,11 @@ function sample_internal_points_single_row(model::LikelihoodModel,
         @timeit_debug timer "Sample bivariate internal points" begin
             if sample_type isa LatinHypercubeSamples
                 internal_points, rejection_rate = sample_internal_points_LHC(model, num_points, θindices,
-                    profile_type, conf_struct, confidence_level, boundary_not_ordered, hullmethod,
+                    profile_type, θlb_nuisance, θub_nuisance, conf_struct, confidence_level, boundary_not_ordered, hullmethod,
                     optimizationsettings, use_threads)
             end
             internal_points, rejection_rate = sample_internal_points_uniform_random(model, num_points, θindices,
-                profile_type, conf_struct, confidence_level, boundary_not_ordered, hullmethod,
+                profile_type, θlb_nuisance, θub_nuisance, conf_struct, confidence_level, boundary_not_ordered, hullmethod,
                 optimizationsettings, use_threads)
         end
 
@@ -283,9 +295,10 @@ function sample_internal_points_single_row(model::LikelihoodModel,
             predict_struct = model.biv_predictions_dict[biv_row_number]
 
             new_predict_struct = generate_prediction(model.core.predictfunction,
+                model.core.errorfunction,
                 model.core.data, t, model.core.ymle,
                 internal_points.points[:, (end-num_points+1):end],
-                proportion_of_predictions_to_keep)
+                proportion_of_predictions_to_keep, sub_df[i, :conf_level])
 
             merged_predict_struct = merge(predict_struct, new_predict_struct)
         else
@@ -322,8 +335,10 @@ Samples `num_points` internal points in interest parameter space of existing biv
 - `confidence_levels`: a vector of confidence levels. If empty, all confidence levels of bivariate profiles will be considered for finding interval points. Otherwise, only confidence levels in `confidence_levels` will be considered. Default is `Float64[]` (any confidence level).
 - `profile_types`: a vector of [`AbstractProfileType`](@ref) structs. If empty, all profile types of bivariate profiles are considered. Otherwise, only profiles with matching profile types will be considered. Default is `AbstractProfileType[]` (any profile type).
 - `methods`: a vector of [`AbstractBivariateMethod`](@ref) structs. If empty all methods used to find bivariate profiles are considered. Otherwise, only profiles with matching method types will be considered (struct arguments do not need to be the same). Default is `AbstractBivariateMethod[]` (any bivariate method).
-- `hullmethod`: method of type [`AbstractBivariateHullMethod`](@ref) used to create a 2D polygon hull that approximates the bivariate boundary from a set of boundary points and internal points (method dependent). For available methods see [`bivariate_hull_methods()`](@ref). Default is `MPPHullMethod()` ([`MPPHullMethod`](@ref)).
 - `sample_type`: either a [`UniformRandomSamples`](@ref) or [`LatinHypercubeSamples`](@ref) struct for how to sample internal points from the polygon hull. [`UniformRandomSamples`](@ref) are homogeneously sampled from the polygon and [`LatinHypercubeSamples`](@ref) use the intersection of a heuristically optimised Latin Hypercube sampling plan with the polygon. Default is `LatinHypercubeSamples()` ([`LatinHypercubeSamples`](@ref)).
+- `hullmethod`: method of type [`AbstractBivariateHullMethod`](@ref) used to create a 2D polygon hull that approximates the bivariate boundary from a set of boundary points and internal points (method dependent). For available methods see [`bivariate_hull_methods()`](@ref). Default is `MPPHullMethod()` ([`MPPHullMethod`](@ref)).
+- `θlb_nuisance`: a vector of lower bounds on nuisance parameters, require `θlb_nuisance .≤ model.core.θmle`. Default is `model.core.θlb`. 
+- `θub_nuisance`: a vector of upper bounds on nuisance parameters, require `θub_nuisance .≥ model.core.θmle`. Default is `model.core.θub`.
 - `t`: vector of timepoints to evaluate predictions at for each new sampled internal point from a bivariate boundary that has already had predictions evaluated. The vector must be the same vector used to produce these previous predictions, otherwise points will not be sampled from this boundary. Default is `missing`.
 - `evaluate_predictions_for_samples`: boolean variable specifying whether to evaluate predictions for sampled points given predictions have been evaluated for the boundary they were sampled from. If `false`, then existing predictions will be forgotten by the `model` and overwritten the next time predictions are evaluated for each profile internal points were sampled from. Default is `true`.
 - `proportion_of_predictions_to_keep`: The proportion of predictions from `num_points` internal points to save. Does not impact the extrema calculated from predictions. Default is `1.0`.
@@ -353,6 +368,8 @@ function sample_bivariate_internal_points!(model::LikelihoodModel,
                                     methods::Vector{<:AbstractBivariateMethod}=AbstractBivariateMethod[],
                                     sample_type::AbstractSampleType=LatinHypercubeSamples(),
                                     hullmethod::AbstractBivariateHullMethod=MPPHullMethod(),
+                                    θlb_nuisance::AbstractVector{<:Real}=model.core.θlb,
+                                    θub_nuisance::AbstractVector{<:Real}=model.core.θub,
                                     t::Union{AbstractVector, Missing}=missing,
                                     evaluate_predictions_for_samples::Bool=true,
                                     proportion_of_predictions_to_keep::Real=1.0,
@@ -365,6 +382,11 @@ function sample_bivariate_internal_points!(model::LikelihoodModel,
         0 < num_points || throw(DomainError("num_points must be a strictly positive integer"))
         model.core isa CoreLikelihoodModel || throw(ArgumentError("model does not contain a log-likelihood function. Add it using add_loglikelihood_function!"))
         sample_type isa UniformGridSamples && throw(ArgumentError("sample_bivariate_internal_points! is not defined for sample_type=UniformGridSamples()"))
+
+        length(θlb_nuisance) == model.core.num_pars || throw(ArgumentError("θlb_nuisance must have the same length as the number of model parameters"))
+        length(θub_nuisance) == model.core.num_pars || throw(ArgumentError("θub_nuisance must have the same length as the number of model parameters"))
+        all(θlb_nuisance .≤ model.core.θmle) || throw(DomainError("θlb_nuisance must be less than or equal to model.core.θmle"))
+        all(θub_nuisance .≥ model.core.θmle) || throw(DomainError("θub_nuisance must be greater than or equal to model.core.θmle"))
 
         (!use_distributed && use_threads && timeit_debug_enabled()) &&
             throw(ArgumentError("use_threads cannot be true when debug timings from TimerOutputs are enabled and use_distributed is false. Either set use_threads to false or disable debug timings using `PlaceholderLikelihood.TimerOutputs.disable_debug_timings(PlaceholderLikelihood)`"))
@@ -423,7 +445,7 @@ function sample_bivariate_internal_points!(model::LikelihoodModel,
                 internal_samples = @distributed (vcat) for i in 1:nrow(sub_df)
                     [(i, sub_df[i, :row_ind], 
                         sample_internal_points_single_row(model, sub_df, i, sub_df[i, :row_ind], num_points, sample_type, 
-                            hullmethod, t, evaluate_predictions_for_samples, proportion_of_predictions_to_keep, 
+                            hullmethod, θlb_nuisance, θub_nuisance, t, evaluate_predictions_for_samples, proportion_of_predictions_to_keep, 
                             optimizationsettings, use_threads, channel))]
                 end
                 
@@ -447,7 +469,7 @@ function sample_bivariate_internal_points!(model::LikelihoodModel,
                 for i in 1:nrow(sub_df)
                     row_ind = sub_df[i, :row_ind]
                     samples = sample_internal_points_single_row(model, sub_df, i, sub_df[i, :row_ind], num_points, sample_type, 
-                            hullmethod, t, evaluate_predictions_for_samples, proportion_of_predictions_to_keep, 
+                            hullmethod, θlb_nuisance, θub_nuisance, t, evaluate_predictions_for_samples, proportion_of_predictions_to_keep, 
                             optimizationsettings, use_threads, channel)
                 
                     if isnothing(samples); continue end

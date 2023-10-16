@@ -30,6 +30,8 @@ end
         num_points_in_interval::Int,
         θi::Int,
         profile_type::AbstractProfileType,
+        θlb_nuisance::AbstractVector{<:Real},
+        θub_nuisance::AbstractVector{<:Real},
         current_interval_points::PointsAndLogLikelihood,
         additional_width::Real,
         use_threads::Bool)
@@ -41,6 +43,8 @@ function get_points_in_interval_single_row(univariate_optimiser::Function,
                                 num_points_in_interval::Int,
                                 θi::Int,
                                 profile_type::AbstractProfileType,
+                                θlb_nuisance::AbstractVector{<:Real},
+                                θub_nuisance::AbstractVector{<:Real},
                                 current_interval_points::PointsAndLogLikelihood,
                                 additional_width::Real,
                                 optimizationsettings::OptimizationSettings,
@@ -51,7 +55,7 @@ function get_points_in_interval_single_row(univariate_optimiser::Function,
     
     boundary_indices = current_interval_points.boundary_col_indices
     
-    newLb, newUb, initGuess, θranges, ωranges = init_nuisance_parameters(model, θi)
+    newLb, newUb, initGuess, θranges, ωranges = init_nuisance_parameters(model, θi, θlb_nuisance, θub_nuisance)
     
     consistent = get_consistent_tuple(model, 0.0, profile_type, 1)
     q=(ind=θi, newLb=newLb, newUb=newUb, initGuess=initGuess, 
@@ -134,7 +138,9 @@ end
     get_points_in_interval_single_row(model::LikelihoodModel,
         uni_row_number::Int,
         num_points_in_interval::Int,
-        additional_width::Real
+        additional_width::Real,
+        θlb_nuisance::AbstractVector{<:Real},
+        θub_nuisance::AbstractVector{<:Real},
         use_threads::Bool,
         channel::RemoteChannel)
 
@@ -144,6 +150,8 @@ function get_points_in_interval_single_row(model::LikelihoodModel,
                                 uni_row_number::Int,
                                 num_points_in_interval::Int,
                                 additional_width::Real,
+                                θlb_nuisance::AbstractVector{<:Real},
+                                θub_nuisance::AbstractVector{<:Real},
                                 optimizationsettings::OptimizationSettings,
                                 use_threads::Bool,
                                 channel::RemoteChannel)
@@ -156,7 +164,7 @@ function get_points_in_interval_single_row(model::LikelihoodModel,
             current_interval_points = get_uni_confidence_interval_points(model, uni_row_number)
             
             output = get_points_in_interval_single_row(univariate_optimiser, model, num_points_in_interval,
-                θi, profile_type, current_interval_points, additional_width, optimizationsettings, use_threads)
+                θi, profile_type, θlb_nuisance, θub_nuisance, current_interval_points, additional_width, optimizationsettings, use_threads)
             put!(channel, true)
             return output 
         end
@@ -188,6 +196,8 @@ Evaluate and save `num_points_in_interval` linearly spaced points between the co
 - `additional_width`: a `Real` number greater than or equal to zero. Specifies the additional width to optionally evaluate outside the confidence interval's width. Half of this additional width will be placed on either side of the confidence interval. If the additional width goes outside a bound on the parameter, only up to the bound will be considered. The spacing of points in the additional width will try to match the spacing of points evaluated inside the interval. Useful for plots that visualise the confidence interval as it shows the trend of the log-likelihood profile outside the interval range. Default is `0.0`.
 - `confidence_levels`: a vector of confidence levels. If empty, all confidence levels of univariate profiles will be considered for finding interval points. Otherwise, only confidence levels in `confidence_levels` will be considered. Default is `Float64[]` (any confidence level).
 - `profile_types`: a vector of `AbstractProfileType` structs. If empty, all profile types of univariate profiles are considered. Otherwise, only profiles with matching profile types will be considered. Default is `AbstractProfileType[]` (any profile type).
+- `θlb_nuisance`: a vector of lower bounds on nuisance parameters, require `θlb_nuisance .≤ model.core.θmle`. Default is `model.core.θlb`. 
+- `θub_nuisance`: a vector of upper bounds on nuisance parameters, require `θub_nuisance .≥ model.core.θmle`. Default is `model.core.θub`.
 - `not_evaluated_predictions`: a boolean specifying whether to only get points in intervals of profiles that have not had predictions evaluated (true) or for all profiles (false). If `false`, then any existing predictions will be forgotten by the `model` and overwritten the next time predictions are evaluated for each profile. Default is `true`.
 - `optimizationsettings`: a [`OptimizationSettings`](@ref) containing the optimisation settings used to find optimal values of nuisance parameters for a given interest parameter value. Default is `missing` (will use `model.core.optimizationsettings`).
 - `show_progress`: boolean variable specifying whether to display progress bars on the percentage of `θs_to_profile` completed and estimated time of completion. Default is `model.show_progress`.
@@ -212,6 +222,8 @@ function get_points_in_intervals!(model::LikelihoodModel,
                                     additional_width::Real=0.0,
                                     confidence_levels::Vector{<:Float64}=Float64[],
                                     profile_types::Vector{<:AbstractProfileType}=AbstractProfileType[],
+                                    θlb_nuisance::AbstractVector{<:Float64}=model.core.θlb,
+                                    θub_nuisance::AbstractVector{<:Float64}=model.core.θub,
                                     not_evaluated_predictions::Bool=true,
                                     optimizationsettings::Union{OptimizationSettings,Missing}=missing,
                                     show_progress::Bool=model.show_progress,
@@ -222,7 +234,12 @@ function get_points_in_intervals!(model::LikelihoodModel,
         additional_width >= 0 || throw(DomainError("additional_width must be greater than or equal to zero"))
 
         model.core isa CoreLikelihoodModel || throw(ArgumentError("model does not contain a log-likelihood function. Add it using add_loglikelihood_function!"))
-    
+
+        length(θlb_nuisance) == model.core.num_pars || throw(ArgumentError("θlb_nuisance must have the same length as the number of model parameters"))
+        length(θub_nuisance) == model.core.num_pars || throw(ArgumentError("θub_nuisance must have the same length as the number of model parameters"))
+        all(θlb_nuisance .≤ model.core.θmle) || throw(DomainError("θlb_nuisance must be less than or equal to model.core.θmle"))
+        all(θub_nuisance .≥ model.core.θmle) || throw(DomainError("θub_nuisance must be greater than or equal to model.core.θmle"))
+
         (use_threads && timeit_debug_enabled()) &&
             throw(ArgumentError("use_threads cannot be true when debug timings from TimerOutputs are enabled. Either set use_threads to false or disable debug timings using `PlaceholderLikelihood.TimerOutputs.disable_debug_timings(PlaceholderLikelihood)`"))
 
@@ -254,6 +271,7 @@ function get_points_in_intervals!(model::LikelihoodModel,
             points_to_add = @distributed (vcat) for i in 1:nrow(sub_df)
                 [(sub_df[i, :row_ind], get_points_in_interval_single_row(model, sub_df[i, :row_ind], 
                                             num_points_in_interval, additional_width,
+                                            θlb_nuisance, θub_nuisance,
                                             optimizationsettings, use_threads, channel))]
             end
             put!(channel, false)

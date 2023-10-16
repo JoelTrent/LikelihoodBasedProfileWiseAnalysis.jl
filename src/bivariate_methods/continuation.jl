@@ -407,6 +407,8 @@ end
         ind1::Int, 
         ind2::Int,
         profile_type::AbstractProfileType,
+        θlb_nuisance::AbstractVector{<:Real},
+        θub_nuisance::AbstractVector{<:Real},
         ellipse_confidence_level::Float64, 
         target_confidence_level::Float64,
         ellipse_start_point_shift::Float64,
@@ -427,6 +429,8 @@ function bivariate_confidenceprofile_continuation(bivariate_optimiser::Function,
                                                     ind1::Int, 
                                                     ind2::Int,
                                                     profile_type::AbstractProfileType,
+                                                    θlb_nuisance::AbstractVector{<:Real},
+                                                    θub_nuisance::AbstractVector{<:Real},
                                                     ellipse_confidence_level::Float64, 
                                                     target_confidence_level::Float64,
                                                     ellipse_start_point_shift::Float64,
@@ -438,7 +442,7 @@ function bivariate_confidenceprofile_continuation(bivariate_optimiser::Function,
                                                     optimizationsettings::OptimizationSettings,
                                                     channel::RemoteChannel)
 
-    newLb, newUb, initGuess, θranges, ωranges = init_nuisance_parameters(model, ind1, ind2)
+    newLb, newUb, initGuess, θranges, ωranges = init_nuisance_parameters(model, ind1, ind2, θlb_nuisance, θub_nuisance)
     
     pointa = [0.0,0.0]
     uhat   = [0.0,0.0]

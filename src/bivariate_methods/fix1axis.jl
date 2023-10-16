@@ -136,6 +136,8 @@ end
         consistent::NamedTuple, 
         ind1::Int, 
         ind2::Int,
+        θlb_nuisance::AbstractVector{<:Real},
+        θub_nuisance::AbstractVector{<:Real},
         mle_targetll::Float64,
         save_internal_points::Bool, 
         find_zero_atol::Real, 
@@ -151,6 +153,8 @@ function bivariate_confidenceprofile_fix1axis(bivariate_optimiser::Function,
                                                 consistent::NamedTuple, 
                                                 ind1::Int, 
                                                 ind2::Int,
+                                                θlb_nuisance::AbstractVector{<:Real},
+                                                θub_nuisance::AbstractVector{<:Real},
                                                 mle_targetll::Float64,
                                                 save_internal_points::Bool, 
                                                 find_zero_atol::Real, 
@@ -158,7 +162,7 @@ function bivariate_confidenceprofile_fix1axis(bivariate_optimiser::Function,
                                                 use_threads::Bool,
                                                 channel::RemoteChannel)
 
-    newLb, newUb, initGuess, θranges, ωranges = init_nuisance_parameters(model, ind1, ind2)
+    newLb, newUb, initGuess, θranges, ωranges = init_nuisance_parameters(model, ind1, ind2, θlb_nuisance, θub_nuisance)
 
     biv_opt_is_ellipse_analytical = bivariate_optimiser==bivariateψ_ellipse_analytical
 

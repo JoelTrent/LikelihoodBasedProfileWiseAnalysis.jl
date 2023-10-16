@@ -518,7 +518,7 @@ function plot_bivariate_profiles_comparison(model::LikelihoodModel,
                                     sample_types::Vector{<:AbstractSampleType}=AbstractSampleType[],
                                     compare_within_methods::Bool=false,
                                     include_dim_samples::Bool=false,
-                                    palette_to_use::Symbol=:Paired_7, 
+                                    palette_to_use::Symbol=:Paired_6, 
                                     markeralpha::Number=0.7,
                                     label_only_MLE::Bool=false,
                                     kwargs...)

@@ -99,6 +99,8 @@ end
         confidence_level::Float64,
         lb::AbstractVector{<:Real}=Float64[],
         ub::AbstractVector{<:Real}=Float64[],
+        θlb_nuisance::AbstractVector{<:Real}=model.core.θlb,
+        θub_nuisance::AbstractVector{<:Real}=model.core.θub,
         optimizationsettings::OptimizationSettings=default_OptimizationSettings();
         use_threads=true,
         arguments_checked::Bool=false,
@@ -114,6 +116,8 @@ function uniform_grid(model::LikelihoodModel,
                         confidence_level::Float64,
                         lb::AbstractVector{<:Real}=Float64[],
                         ub::AbstractVector{<:Real}=Float64[],
+                        θlb_nuisance::AbstractVector{<:Real}=model.core.θlb,
+                        θub_nuisance::AbstractVector{<:Real}=model.core.θub,
                         optimizationsettings::OptimizationSettings=default_OptimizationSettings();
                         use_threads=true,
                         arguments_checked::Bool=false,
@@ -128,7 +132,7 @@ function uniform_grid(model::LikelihoodModel,
         points_per_dimension = fill(points_per_dimension, num_dims)
     end
 
-    newLb, newUb, initGuess, ωindices = init_nuisance_parameters(model, θindices, num_dims)
+    newLb, newUb, initGuess, ωindices = init_nuisance_parameters(model, θindices, num_dims, θlb_nuisance, θub_nuisance)
     consistent = get_consistent_tuple(model, confidence_level, LogLikelihood(), num_dims)
     q=(θindices=θindices, newLb=newLb, newUb=newUb, initGuess=initGuess,
         ωindices=ωindices, consistent=consistent)
@@ -232,6 +236,8 @@ end
         confidence_level::Float64,
         lb::AbstractVector{<:Real}=Float64[],
         ub::AbstractVector{<:Real}=Float64[],
+        θlb_nuisance::AbstractVector{<:Real}=model.core.θlb,
+        θub_nuisance::AbstractVector{<:Real}=model.core.θub,
         optimizationsettings::OptimizationSettings=default_OptimizationSettings();
         use_threads::Bool=true,
         use_distributed::Bool=false,
@@ -248,6 +254,8 @@ function uniform_random(model::LikelihoodModel,
                         confidence_level::Float64,
                         lb::AbstractVector{<:Real}=Float64[],
                         ub::AbstractVector{<:Real}=Float64[],
+                        θlb_nuisance::AbstractVector{<:Real}=model.core.θlb,
+                        θub_nuisance::AbstractVector{<:Real}=model.core.θub,
                         optimizationsettings::OptimizationSettings=default_OptimizationSettings();
                         use_threads::Bool=true,
                         arguments_checked::Bool=false,
@@ -258,7 +266,7 @@ function uniform_random(model::LikelihoodModel,
         num_points > 0 || throw(DomainError("num_points must be a strictly positive integer"))
     end
     
-    newLb, newUb, initGuess, ωindices = init_nuisance_parameters(model, θindices, num_dims)
+    newLb, newUb, initGuess, ωindices = init_nuisance_parameters(model, θindices, num_dims, θlb_nuisance, θub_nuisance)
     consistent = get_consistent_tuple(model, confidence_level, LogLikelihood(), num_dims)
     q=(θindices=θindices, newLb=newLb, newUb=newUb, initGuess=initGuess,
         ωindices=ωindices, consistent=consistent)
@@ -283,6 +291,8 @@ end
         confidence_level::Float64,
         lb::AbstractVector{<:Real}=Float64[],
         ub::AbstractVector{<:Real}=Float64[],
+        θlb_nuisance::AbstractVector{<:Real}=model.core.θlb,
+        θub_nuisance::AbstractVector{<:Real}=model.core.θub,
         optimizationsettings::OptimizationSettings=default_OptimizationSettings();
         use_threads::Bool=true,
         arguments_checked::Bool=false,
@@ -298,6 +308,8 @@ function LHS(model::LikelihoodModel,
             confidence_level::Float64,
             lb::AbstractVector{<:Real}=Float64[],
             ub::AbstractVector{<:Real}=Float64[],
+            θlb_nuisance::AbstractVector{<:Real}=model.core.θlb,
+            θub_nuisance::AbstractVector{<:Real}=model.core.θub,
             optimizationsettings::OptimizationSettings=default_OptimizationSettings();
             use_threads::Bool=true,
             arguments_checked::Bool=false,
@@ -309,7 +321,7 @@ function LHS(model::LikelihoodModel,
         lb, ub = check_if_bounds_supplied(model, θindices, lb, ub)
     end
 
-    newLb, newUb, initGuess, ωindices = init_nuisance_parameters(model, θindices, num_dims)
+    newLb, newUb, initGuess, ωindices = init_nuisance_parameters(model, θindices, num_dims, θlb_nuisance, θub_nuisance)
     consistent = get_consistent_tuple(model, confidence_level, LogLikelihood(), num_dims)
     q=(θindices=θindices, newLb=newLb, newUb=newUb, initGuess=initGuess,
         ωindices=ωindices, consistent=consistent)
@@ -334,6 +346,8 @@ end
         sample_type::AbstractSampleType,
         lb::AbstractVector{<:Real},
         ub::AbstractVector{<:Real},
+        θlb_nuisance::AbstractVector{<:Real},
+        θub_nuisance::AbstractVector{<:Real},
         optimizationsettings::OptimizationSettings,
         use_threads::Bool,
         channel::RemoteChannel)
@@ -347,6 +361,8 @@ function dimensional_likelihood_sample(model::LikelihoodModel,
                                     sample_type::AbstractSampleType,
                                     lb::AbstractVector{<:Real},
                                     ub::AbstractVector{<:Real}, 
+                                    θlb_nuisance::AbstractVector{<:Real},
+                                    θub_nuisance::AbstractVector{<:Real},
                                     optimizationsettings::OptimizationSettings,
                                     use_threads::Bool,
                                     channel::RemoteChannel)
@@ -355,16 +371,19 @@ function dimensional_likelihood_sample(model::LikelihoodModel,
         @timeit_debug timer "Dimensional likelihood sample" begin
             if sample_type isa UniformGridSamples
                 sample_struct = uniform_grid(model, θindices, num_points, confidence_level, lb, ub,
+                                                θlb_nuisance, θub_nuisance,
                                                 optimizationsettings;
                                                 use_threads=use_threads, arguments_checked=true,
                                                 channel=channel)
             elseif sample_type isa UniformRandomSamples
                 sample_struct = uniform_random(model, θindices, num_points, confidence_level, lb, ub,
+                                                θlb_nuisance, θub_nuisance,
                                                 optimizationsettings;             
                                                 use_threads=use_threads, arguments_checked=true,
                                                 channel=channel)
             elseif sample_type isa LatinHypercubeSamples
                 sample_struct = LHS(model, θindices, num_points, confidence_level, lb, ub,
+                                    θlb_nuisance, θub_nuisance,
                                     optimizationsettings;
                                     use_threads=use_threads, arguments_checked=true, channel=channel)
             end 
@@ -401,6 +420,8 @@ Samples `num_points_to_sample` points from interest parameter space, for each in
 - `sample_type`: the sampling method used to sample parameter space. Available sample types are [`UniformGridSamples`](@ref), [`UniformRandomSamples`](@ref) and [`LatinHypercubeSamples`](@ref). Default is `LatinHypercubeSamples()` ([`LatinHypercubeSamples`](@ref)).
 - `lb`: optional vector of lower bounds on interest parameters. Use to specify interest parameter lower bounds to sample over that are different than those contained in `model.core` (must be the same length as original bounds). Default is `Float64[]` (use lower bounds from `model.core`).
 - `ub`: optional vector of upper bounds on interest parameters. Use to specify interest parameter upper bounds to sample over that are different than those contained in `model.core` (must be the same length as original bounds). Default is `Float64[]` (use upper bounds from `model.core`).
+- `θlb_nuisance`: a vector of lower bounds on nuisance parameters, require `θlb_nuisance .≤ model.core.θmle`. Default is `model.core.θlb`. 
+- `θub_nuisance`: a vector of upper bounds on nuisance parameters, require `θub_nuisance .≥ model.core.θmle`. Default is `model.core.θub`.
 - `existing_profiles`: `Symbol ∈ [:ignore, :overwrite]` specifying what to do if samples already exist for a given `confidence_level` and `sample_type`.  Default is `:overwrite`.
 - `optimizationsettings`: a [`OptimizationSettings`](@ref) containing the optimisation settings used to find optimal values of nuisance parameters for a given interest parameter values. Default is `missing` (will use `model.core.optimizationsettings`).
 - `show_progress`: boolean variable specifying whether to display progress bars on the percentage of `θcombinations` completed and estimated time of completion. Default is `model.show_progress`.
@@ -428,6 +449,8 @@ function dimensional_likelihood_samples!(model::LikelihoodModel,
                                         sample_type::AbstractSampleType=LatinHypercubeSamples(),
                                         lb::AbstractVector{<:Real}=Float64[],
                                         ub::AbstractVector{<:Real}=Float64[],
+                                        θlb_nuisance::AbstractVector{<:Real}=model.core.θlb,
+                                        θub_nuisance::AbstractVector{<:Real}=model.core.θub,
                                         existing_profiles::Symbol=:overwrite,
                                         optimizationsettings::Union{OptimizationSettings,Missing}=missing,
                                         show_progress::Bool=model.show_progress,
@@ -455,6 +478,11 @@ function dimensional_likelihood_samples!(model::LikelihoodModel,
 
         # error handle confidence_level
         get_target_loglikelihood(model, confidence_level, LogLikelihood(), 1)
+
+        length(θlb_nuisance) == model.core.num_pars || throw(ArgumentError("θlb_nuisance must have the same length as the number of model parameters"))
+        length(θub_nuisance) == model.core.num_pars || throw(ArgumentError("θub_nuisance must have the same length as the number of model parameters"))
+        all(θlb_nuisance .≤ model.core.θmle) || throw(DomainError("θlb_nuisance must be less than or equal to model.core.θmle"))
+        all(θub_nuisance .≥ model.core.θmle) || throw(DomainError("θub_nuisance must be greater than or equal to model.core.θmle"))
         
         θindices = θindices[.!isempty.(θindices)]
         sort!.(θindices); unique!.(θindices)
@@ -539,7 +567,9 @@ function dimensional_likelihood_samples!(model::LikelihoodModel,
                 profiles_to_add = @distributed (vcat) for θs in θindices
                     [(θs, dimensional_likelihood_sample(model, θs, num_points_to_sample,
                                                         confidence_level, sample_type,
-                                                        lb[θs], ub[θs], optimizationsettings, 
+                                                        lb[θs], ub[θs], 
+                                                        θlb_nuisance, θub_nuisance,
+                                                        optimizationsettings, 
                                                         use_threads, channel))]
                 end
                 
@@ -569,7 +599,9 @@ function dimensional_likelihood_samples!(model::LikelihoodModel,
                 for (i, θs) in enumerate(θindices)
                     sample_struct = dimensional_likelihood_sample(model, θs, num_points_to_sample,
                                                         confidence_level, sample_type,
-                                                        lb[θs], ub[θs], optimizationsettings, 
+                                                        lb[θs], ub[θs],
+                                                        θlb_nuisance, θub_nuisance, 
+                                                        optimizationsettings, 
                                                         use_threads, channel)
 
                     if isnothing(sample_struct); continue end
@@ -616,6 +648,8 @@ function dimensional_likelihood_samples!(model::LikelihoodModel,
                                             sample_type::AbstractSampleType=LatinHypercubeSamples(),
                                             lb::AbstractVector{<:Real}=Float64[],
                                             ub::AbstractVector{<:Real}=Float64[],
+                                            θlb_nuisance::AbstractVector{<:Real}=model.core.θlb,
+                                            θub_nuisance::AbstractVector{<:Real}=model.core.θub,
                                             existing_profiles::Symbol=:overwrite,
                                             optimizationsettings::Union{OptimizationSettings,Missing}=missing,
                                             show_progress::Bool=model.show_progress,
@@ -627,6 +661,7 @@ function dimensional_likelihood_samples!(model::LikelihoodModel,
     dimensional_likelihood_samples!(model, θindices, num_points_to_sample,
                                     confidence_level=confidence_level, sample_type=sample_type,
                                     lb=lb, ub=ub,
+                                    θlb_nuisance=θlb_nuisance, θub_nuisance=θub_nuisance,
                                     existing_profiles=existing_profiles,
                                     optimizationsettings=optimizationsettings,
                                     use_distributed=use_distributed,
@@ -652,6 +687,8 @@ function dimensional_likelihood_samples!(model::LikelihoodModel,
                                             sample_type::AbstractSampleType=LatinHypercubeSamples(),
                                             lb::AbstractVector{<:Real}=Float64[],
                                             ub::AbstractVector{<:Real}=Float64[],
+                                            θlb_nuisance::AbstractVector{<:Real}=model.core.θlb,
+                                            θub_nuisance::AbstractVector{<:Real}=model.core.θub,
                                             existing_profiles::Symbol=:overwrite,
                                             optimizationsettings::Union{OptimizationSettings,Missing}=missing,
                                             show_progress::Bool=model.show_progress,
@@ -667,6 +704,7 @@ function dimensional_likelihood_samples!(model::LikelihoodModel,
     dimensional_likelihood_samples!(model, θcombinations, num_points_to_sample,
                                     confidence_level=confidence_level, sample_type=sample_type,
                                     lb=lb, ub=ub,
+                                    θlb_nuisance=θlb_nuisance, θub_nuisance=θub_nuisance,
                                     existing_profiles=existing_profiles,
                                     optimizationsettings=optimizationsettings,
                                     show_progress=show_progress,
@@ -690,6 +728,8 @@ function dimensional_likelihood_samples!(model::LikelihoodModel,
                                             sample_type::AbstractSampleType=LatinHypercubeSamples(),
                                             lb::AbstractVector{<:Real}=Float64[],
                                             ub::AbstractVector{<:Real}=Float64[],
+                                            θlb_nuisance::AbstractVector{<:Real}=model.core.θlb,
+                                            θub_nuisance::AbstractVector{<:Real}=model.core.θub,
                                             existing_profiles::Symbol=:overwrite,
                                             optimizationsettings::Union{OptimizationSettings,Missing}=missing,
                                             show_progress::Bool=model.show_progress,
@@ -701,6 +741,7 @@ function dimensional_likelihood_samples!(model::LikelihoodModel,
     dimensional_likelihood_samples!(model, θcombinations, num_points_to_sample,
                                     confidence_level=confidence_level, sample_type=sample_type,
                                     lb=lb, ub=ub,
+                                    θlb_nuisance=θlb_nuisance, θub_nuisance=θub_nuisance,
                                     existing_profiles=existing_profiles,
                                     optimizationsettings=optimizationsettings,
                                     show_progress=show_progress,

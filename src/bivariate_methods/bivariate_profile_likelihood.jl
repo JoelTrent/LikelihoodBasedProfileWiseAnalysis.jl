@@ -134,6 +134,8 @@ end
         ind2::Int,
         profile_type::AbstractProfileType,
         method::AbstractBivariateMethod,
+        θlb_nuisance::AbstractVector{<:Real},
+        θub_nuisance::AbstractVector{<:Real},
         mle_targetll::Float64,
         save_internal_points::Bool,
         find_zero_atol::Real,
@@ -151,6 +153,8 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
                                         ind2::Int,
                                         profile_type::AbstractProfileType,
                                         method::AbstractBivariateMethod,
+                                        θlb_nuisance::AbstractVector{<:Real},
+                                        θub_nuisance::AbstractVector{<:Real},
                                         mle_targetll::Float64,
                                         save_internal_points::Bool,
                                         find_zero_atol::Real,
@@ -169,7 +173,7 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
                                             start_point_shift=method.ellipse_start_point_shift,
                                             sqrt_distortion=method.ellipse_sqrt_distortion)
 
-                _, _, initGuess, θranges, ωranges = init_nuisance_parameters(model, ind1, ind2)
+                _, _, initGuess, θranges, ωranges = init_nuisance_parameters(model, ind1, ind2, θlb_nuisance, θub_nuisance)
 
                 boundary = get_ωs_bivariate_ellipse_analytical!(
                                     boundary_ellipse, 
@@ -185,6 +189,7 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
                 boundary, internal = bivariate_confidenceprofile_fix1axis(
                                         bivariate_optimiser, model, 
                                         num_points, consistent, ind1, ind2,
+                                        θlb_nuisance, θub_nuisance,
                                         mle_targetll, save_internal_points,
                                         find_zero_atol, optimizationsettings, 
                                         use_threads, channel)
@@ -193,6 +198,7 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
                 boundary, internal = bivariate_confidenceprofile_vectorsearch(
                                         bivariate_optimiser, model, 
                                         num_points, consistent, ind1, ind2,
+                                        θlb_nuisance, θub_nuisance,
                                         mle_targetll, save_internal_points, 
                                         find_zero_atol, optimizationsettings,
                                         use_threads, channel,
@@ -203,6 +209,7 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
                 boundary, internal = bivariate_confidenceprofile_vectorsearch(
                                         bivariate_optimiser, model, 
                                         num_points, consistent, ind1, ind2,
+                                        θlb_nuisance, θub_nuisance,
                                         mle_targetll, save_internal_points, 
                                         find_zero_atol, optimizationsettings,
                                         use_threads, channel,
@@ -213,6 +220,7 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
                 boundary, internal = bivariate_confidenceprofile_vectorsearch(
                                         bivariate_optimiser, model, 
                                         num_points, consistent, ind1, ind2,
+                                        θlb_nuisance, θub_nuisance,
                                         mle_targetll, save_internal_points, 
                                         find_zero_atol, optimizationsettings,
                                         use_threads, channel,
@@ -224,6 +232,7 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
                 boundary, internal = bivariate_confidenceprofile_continuation(
                                         bivariate_optimiser, 
                                         model, num_points, consistent, ind1, ind2, profile_type,
+                                        θlb_nuisance, θub_nuisance, 
                                         method.ellipse_confidence_level,
                                         confidence_level, 
                                         method.ellipse_start_point_shift,
@@ -237,6 +246,7 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
                 boundary, internal = bivariate_confidenceprofile_iterativeboundary(
                                         bivariate_optimiser, model,
                                         num_points, consistent, ind1, ind2,
+                                        θlb_nuisance, θub_nuisance,
                                         method.initial_num_points, method.angle_points_per_iter,
                                         method.edge_points_per_iter, method.radial_start_point_shift,
                                         method.ellipse_sqrt_distortion, method.use_ellipse,
@@ -288,6 +298,8 @@ Finds `num_points` `profile_type` boundary points at a specified `confidence_lev
 - `confidence_level`: a number ∈ (0.0, 1.0) for the confidence level on which to find the `profile_type` boundary. Default is `0.95` (95%).
 - `profile_type`: whether to use the true log-likelihood function or an ellipse approximation of the log-likelihood function centred at the MLE (with optional use of parameter bounds). Available profile types are [`LogLikelihood`](@ref), [`EllipseApprox`](@ref) and [`EllipseApproxAnalytical`](@ref). Default is `LogLikelihood()` ([`LogLikelihood`](@ref)).
 - `method`: a method of type [`AbstractBivariateMethod`](@ref). For a list of available methods use `bivariate_methods()` ([`bivariate_methods`](@ref)). Default is `RadialRandomMethod(3)` ([`RadialRandomMethod`](@ref)).
+- `θlb_nuisance`: a vector of lower bounds on nuisance parameters, require `θlb_nuisance .≤ model.core.θmle`. Default is `model.core.θlb`. 
+- `θub_nuisance`: a vector of upper bounds on nuisance parameters, require `θub_nuisance .≥ model.core.θmle`. Default is `model.core.θub`.
 - `save_internal_points`: boolean variable specifying whether to save points found inside the boundary during boundary computation. Internal points can be plotted in bivariate profile plots and will be used to generate predictions from a given bivariate profile. Default is `true`.
 - `existing_profiles`: `Symbol ∈ [:ignore, :merge, :overwrite]` specifying what to do if profiles already exist for a given `θcombination`, `confidence_level`, `profile_type` and `method`. See below for each symbol's meanings. Default is `:merge`.
 - `find_zero_atol`: a `Real` number greater than zero for the absolute tolerance of the log-likelihood function value from the target value to be used when searching for confidence intervals. Default is `model.find_zero_atol`.
@@ -334,6 +346,8 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
                                         confidence_level::Float64=0.95, 
                                         profile_type::AbstractProfileType=LogLikelihood(),
                                         method::AbstractBivariateMethod=RadialRandomMethod(3),
+                                        θlb_nuisance::AbstractVector{<:Real}=model.core.θlb,
+                                        θub_nuisance::AbstractVector{<:Real}=model.core.θub,
                                         save_internal_points::Bool=true,
                                         existing_profiles::Symbol=:merge,
                                         find_zero_atol::Real=model.find_zero_atol,
@@ -355,6 +369,11 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
         1 ≤ first.(θcombinations)[1] && maximum(last.(θcombinations)) ≤ model.core.num_pars || throw(DomainError("θcombinations can only contain parameter indexes between 1 and the number of model parameters"))
         
         extrema(length.(θcombinations)) == (2,2) || throw(ArgumentError("θcombinations must only contain vectors of length 2"))
+
+        length(θlb_nuisance) == model.core.num_pars || throw(ArgumentError("θlb_nuisance must have the same length as the number of model parameters"))
+        length(θub_nuisance) == model.core.num_pars || throw(ArgumentError("θub_nuisance must have the same length as the number of model parameters"))
+        all(θlb_nuisance .≤ model.core.θmle) || throw(DomainError("θlb_nuisance must be less than or equal to model.core.θmle"))
+        all(θub_nuisance .≥ model.core.θmle) || throw(DomainError("θub_nuisance must be greater than or equal to model.core.θmle"))
 
         (!use_distributed && use_threads && timeit_debug_enabled()) &&
             throw(ArgumentError("use_threads cannot be true when debug timings from TimerOutputs are enabled and use_distributed is false. Either set use_threads to false or disable debug timings using `PlaceholderLikelihood.TimerOutputs.disable_debug_timings(PlaceholderLikelihood)`"))
@@ -453,7 +472,7 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
                         bivariate_confidenceprofile(bivariate_optimiser, model, num_new_points[i],
                                                     confidence_level, consistent, 
                                                     θcombinations[i][1], θcombinations[i][2], profile_type,
-                                                    method, mle_targetll,
+                                                    method, θlb_nuisance, θub_nuisance, mle_targetll,
                                                     save_internal_points,
                                                     find_zero_atol,
                                                     optimizationsettings, false,
@@ -490,7 +509,7 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
                                         num_new_points[i],
                                         confidence_level, consistent,
                                         θcombinations[i][1], θcombinations[i][2], profile_type,
-                                        method, mle_targetll,
+                                        method, θlb_nuisance, θub_nuisance, mle_targetll,
                                         save_internal_points, 
                                         find_zero_atol, 
                                         optimizationsettings, use_threads,
@@ -537,6 +556,8 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
                                         confidence_level::Float64=0.95, 
                                         profile_type::AbstractProfileType=LogLikelihood(),
                                         method::AbstractBivariateMethod=RadialRandomMethod(3),
+                                        θlb_nuisance::AbstractVector{<:Real}=model.core.θlb,
+                                        θub_nuisance::AbstractVector{<:Real}=model.core.θub,
                                         save_internal_points::Bool=true,
                                         existing_profiles::Symbol=:merge,
                                         find_zero_atol::Real=model.find_zero_atol,
@@ -549,6 +570,7 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
 
     bivariate_confidenceprofiles!(model, θcombinations, num_points, 
             confidence_level=confidence_level, profile_type=profile_type, 
+            θlb_nuisance=θlb_nuisance, θub_nuisance=θub_nuisance,
             method=method,
             save_internal_points=save_internal_points,
             existing_profiles=existing_profiles,
@@ -574,6 +596,8 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
                                         confidence_level::Float64=0.95, 
                                         profile_type::AbstractProfileType=LogLikelihood(),
                                         method::AbstractBivariateMethod=RadialRandomMethod(3),
+                                        θlb_nuisance::AbstractVector{<:Real}=model.core.θlb,
+                                        θub_nuisance::AbstractVector{<:Real}=model.core.θub,
                                         save_internal_points::Bool=true,
                                         existing_profiles::Symbol=:merge,
                                         find_zero_atol::Real=model.find_zero_atol,
@@ -590,6 +614,7 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
 
     bivariate_confidenceprofiles!(model, θcombinations, num_points, 
             confidence_level=confidence_level, profile_type=profile_type, 
+            θlb_nuisance=θlb_nuisance, θub_nuisance=θub_nuisance,
             method=method,
             save_internal_points=save_internal_points,
             existing_profiles=existing_profiles,
@@ -613,6 +638,8 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
                                         confidence_level::Float64=0.95, 
                                         profile_type::AbstractProfileType=LogLikelihood(),
                                         method::AbstractBivariateMethod=RadialRandomMethod(3),
+                                        θlb_nuisance::AbstractVector{<:Real}=model.core.θlb,
+                                        θub_nuisance::AbstractVector{<:Real}=model.core.θub,
                                         save_internal_points::Bool=true,
                                         existing_profiles::Symbol=:merge,
                                         find_zero_atol::Real=model.find_zero_atol,
@@ -625,6 +652,7 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
 
     bivariate_confidenceprofiles!(model, θcombinations, num_points, 
             confidence_level=confidence_level, profile_type=profile_type, 
+            θlb_nuisance=θlb_nuisance, θub_nuisance=θub_nuisance,
             method=method,
             save_internal_points=save_internal_points,
             existing_profiles=existing_profiles,

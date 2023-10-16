@@ -26,4 +26,5 @@ PlaceholderLikelihood.variablemappingranges
 PlaceholderLikelihood.variablemapping!
 PlaceholderLikelihood.boundsmapping!
 PlaceholderLikelihood.init_nuisance_parameters
+PlaceholderLikelihood.correct_θbounds_nuisance
 ```

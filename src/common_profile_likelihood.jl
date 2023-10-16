@@ -1,4 +1,31 @@
 """
+    correct_θbounds_nuisance(m::LikelihoodModel,
+        θlb_nuisance::AbstractVector{<:Float64},
+        θub_nuisance::AbstractVector{<:Float64})
+
+Makes sure that nuisance parameter bounds contain the MLE parameter values - if not, set that part of the nuisance parameter bound to the bounds in `model.core`.
+"""
+function correct_θbounds_nuisance(m::LikelihoodModel,
+    θlb_nuisance::AbstractVector{<:Float64},
+    θub_nuisance::AbstractVector{<:Float64})
+    if all(θlb_nuisance .< m.core.θmle) && all(θub_nuisance .> m.core.θmle)
+        return θlb_nuisance, θub_nuisance
+    end
+
+    lb_new = θlb_nuisance .* 1.0
+    ub_new = θub_nuisance .* 1.0
+    if any(θlb_nuisance .≥ m.core.θmle)
+        inds = θlb_nuisance .≥ m.core.θmle
+        lb_new[inds] .= m.core.θlb[inds]
+    end
+    if any(θub_nuisance .≤ m.core.θmle)
+        inds = θub_nuisance .≤ m.core.θmle
+        ub_new[inds] .= m.core.θub[inds]
+    end
+    return lb_new, ub_new
+end
+
+"""
     setmagnitudes!(model::LikelihoodModel, θmagnitudes::AbstractVector{<:Real})
 
 Updates the magnitudes of each parameter in `model` from `model.core.θmagnitudes` to `θmagnitudes`.

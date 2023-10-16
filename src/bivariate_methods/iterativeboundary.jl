@@ -698,6 +698,8 @@ end
         consistent::NamedTuple, 
         ind1::Int, 
         ind2::Int,
+        θlb_nuisance::AbstractVector{<:Real},
+        θub_nuisance::AbstractVector{<:Real},
         initial_num_points::Int,
         angle_points_per_iter::Int,
         edge_points_per_iter::Int,
@@ -719,6 +721,8 @@ function bivariate_confidenceprofile_iterativeboundary(bivariate_optimiser::Func
                                                 consistent::NamedTuple, 
                                                 ind1::Int, 
                                                 ind2::Int,
+                                                θlb_nuisance::AbstractVector{<:Real},
+                                                θub_nuisance::AbstractVector{<:Real},
                                                 initial_num_points::Int,
                                                 angle_points_per_iter::Int,
                                                 edge_points_per_iter::Int,
@@ -733,7 +737,7 @@ function bivariate_confidenceprofile_iterativeboundary(bivariate_optimiser::Func
                                                 channel::RemoteChannel)
 
     num_points ≥ initial_num_points || throw(ArgumentError("num_points must be greater than or equal to initial_num_points"))
-    newLb, newUb, initGuess, θranges, ωranges = init_nuisance_parameters(model, ind1, ind2)
+    newLb, newUb, initGuess, θranges, ωranges = init_nuisance_parameters(model, ind1, ind2, θlb_nuisance, θub_nuisance)
 
     biv_opt_is_ellipse_analytical = bivariate_optimiser==bivariateψ_ellipse_analytical
 

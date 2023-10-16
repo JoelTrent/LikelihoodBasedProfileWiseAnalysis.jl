@@ -78,13 +78,13 @@ end
 
 Initialises the lower and upper bounds, and initial guess for nuisance parameters using [`PlaceholderLikelihood.boundsmapping!`](@ref) and ranges that map variables between nuisance parameter and parameter space using [`PlaceholderLikelihood.variablemappingranges`](@ref), given an interest parameter at `index`. The initial guess for nuisance parameters is their corresponding value at the maximum likelihood estimate (`model.core.θmle`).
 """
-function init_nuisance_parameters(model::LikelihoodModel, index::Int)
+function init_nuisance_parameters(model::LikelihoodModel, index::Int, θlb_nuisance::AbstractVector{<:Float64}, θub_nuisance::AbstractVector{<:Float64})
     newLb     = zeros(model.core.num_pars-1) 
     newUb     = zeros(model.core.num_pars-1)
     initGuess = zeros(model.core.num_pars-1)
 
-    boundsmapping!(newLb, model.core.θlb, index)
-    boundsmapping!(newUb, model.core.θub, index)
+    boundsmapping!(newLb, θlb_nuisance, index)
+    boundsmapping!(newUb, θub_nuisance, index)
     boundsmapping!(initGuess, model.core.θmle, index)
 
     θranges, ωranges = variablemappingranges(model.core.num_pars, index)
@@ -97,13 +97,13 @@ end
 
 Initialises the lower and upper bounds, and initial guess for nuisance parameters using [`PlaceholderLikelihood.boundsmapping!`](@ref) and ranges that map variables between nuisance parameter and parameter space using [`PlaceholderLikelihood.variablemappingranges`](@ref), given interest parameters at `index1` and `index2` where `index1 < index2`. The initial guess for nuisance parameters is their corresponding value at the maximum likelihood estimate (`model.core.θmle`).
 """
-function init_nuisance_parameters(model::LikelihoodModel, index1::Int, index2::Int)
+function init_nuisance_parameters(model::LikelihoodModel, index1::Int, index2::Int, θlb_nuisance::AbstractVector{<:Float64}, θub_nuisance::AbstractVector{<:Float64})
     newLb     = zeros(model.core.num_pars - 2)
     newUb     = zeros(model.core.num_pars - 2)
     initGuess = zeros(model.core.num_pars - 2)
 
-    boundsmapping!(newLb, model.core.θlb, index1, index2)
-    boundsmapping!(newUb, model.core.θub, index1, index2)
+    boundsmapping!(newLb, θlb_nuisance, index1, index2)
+    boundsmapping!(newUb, θub_nuisance, index1, index2)
     boundsmapping!(initGuess, model.core.θmle, index1, index2)
 
     θranges, ωranges = variablemappingranges(model.core.num_pars, index1, index2)
@@ -116,15 +116,15 @@ end
 
 Initialises the lower and upper bounds, and initial guess for nuisance parameters and indices that map variables between parameter and nuisance parameter space, given interest parameters in `θindices`. The initial guess for nuisance parameters is their corresponding value at the maximum likelihood estimate (`model.core.θmle`).
 """
-function init_nuisance_parameters(model::LikelihoodModel, θindices::Vector{Int}, num_dims::Int)
+function init_nuisance_parameters(model::LikelihoodModel, θindices::Vector{Int}, num_dims::Int, θlb_nuisance::AbstractVector{<:Float64}, θub_nuisance::AbstractVector{<:Float64})
 
     ωindices  = setdiff(1:model.core.num_pars, θindices)
     newLb     = zeros(model.core.num_pars-num_dims) 
     newUb     = zeros(model.core.num_pars-num_dims)
     initGuess = zeros(model.core.num_pars-num_dims)
 
-    newLb     .= model.core.θlb[ωindices]
-    newUb     .= model.core.θub[ωindices]
+    newLb     .= θlb_nuisance[ωindices]
+    newUb     .= θub_nuisance[ωindices]
     initGuess .= model.core.θmle[ωindices]
 
     return newLb, newUb, initGuess, ωindices
