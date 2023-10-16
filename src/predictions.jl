@@ -238,12 +238,14 @@ function generate_prediction_univariate(model::LikelihoodModel,
 
     interval_points = get_uni_confidence_interval_points(model, sub_df[row_i, :row_ind])
     boundary_col_indices = interval_points.boundary_col_indices
-    boundary_range = boundary_col_indices[1]:boundary_col_indices[2]
+    actual_internal = interval_points.ll .≥ get_target_loglikelihood(model, sub_df[row_i, :conf_level], sub_df[row_i, :profile_type], 1)
+    internal_indices = collect(1:length(interval_points.ll))[actual_internal]
+    boundary_and_internal = union(boundary_col_indices, internal_indices)
     
     return generate_prediction(model.core.predictfunction, 
                 model.core.errorfunction,
                 model.core.data, t, model.core.ymle,
-                interval_points.points[:, boundary_range], proportion_to_keep, 
+                interval_points.points[:, boundary_and_internal], proportion_to_keep, 
                 sub_df[row_i, :conf_level], channel)
 end
 
