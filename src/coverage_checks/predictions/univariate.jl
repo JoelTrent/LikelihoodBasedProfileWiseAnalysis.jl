@@ -30,7 +30,10 @@ Performs a simulation to estimate the prediction coverage of univariate confiden
 - `num_points_in_interval`: an integer number of points to optionally evaluate within the confidence interval for each interest parameter using [`get_points_in_intervals!`](@ref). Points are linearly spaced in the interval. Useful for predictions from univariate profiles. Default is `0`. 
 - `confidence_level`: a number ∈ (0.0, 1.0) for the confidence level to evaluate the confidence interval coverage at. Default is `0.95` (95%).
 - `profile_type`: whether to use the true log-likelihood function or an ellipse approximation of the log-likelihood function centred at the MLE (with optional use of parameter bounds). Available profile types are [`LogLikelihood`](@ref), [`EllipseApprox`](@ref) and [`EllipseApproxAnalytical`](@ref). Default is `LogLikelihood()` ([`LogLikelihood`](@ref)).
+- `θlb_nuisance`: a vector of lower bounds on nuisance parameters, require `θlb_nuisance .≤ model.core.θmle`. Default is `model.core.θlb`. 
+- `θub_nuisance`: a vector of upper bounds on nuisance parameters, require `θub_nuisance .≥ model.core.θmle`. Default is `model.core.θub`.
 - `coverage_estimate_confidence_level`: a number ∈ (0.0, 1.0) for the level of a confidence interval of the estimated coverage. Default is `0.95` (95%).
+- `optimizationsettings`: a [`OptimizationSettings`](@ref) containing the optimisation settings used to find optimal values of nuisance parameters for a given interest parameter value. Default is `missing` (will use `default_OptimizationSettings()` (see [`default_OptimizationSettings`](@ref)).
 - `show_progress`: boolean variable specifying whether to display progress bars on the percentage of simulation iterations completed and estimated time of completion. Default is `model.show_progress`.
 - `distributed_over_parameters`: boolean variable specifying whether to distribute the workload of the simulation across simulation iterations (false) or across the individual confidence interval calculations within each iteration (true). Default is `false`.
 
@@ -58,8 +61,11 @@ function check_univariate_prediction_coverage(data_generator::Function,
     θinitialguess::AbstractVector{<:Real}=θtrue;
     num_points_in_interval::Int=0,
     confidence_level::Float64=0.95, 
-    profile_type::AbstractProfileType=LogLikelihood(), 
+    profile_type::AbstractProfileType=LogLikelihood(),
+    θlb_nuisance::AbstractVector{<:Real}=model.core.θlb,
+    θub_nuisance::AbstractVector{<:Real}=model.core.θub,
     coverage_estimate_confidence_level::Float64=0.95,
+    optimizationsettings::Union{OptimizationSettings,Missing}=missing,
     show_progress::Bool=model.show_progress,
     distributed_over_parameters::Bool=false)
 
@@ -75,6 +81,11 @@ function check_univariate_prediction_coverage(data_generator::Function,
         
         N > 0 || throw(DomainError("N must be greater than 0"))
         
+        length(θlb_nuisance) == model.core.num_pars || throw(ArgumentError("θlb_nuisance must have the same length as the number of model parameters"))
+        length(θub_nuisance) == model.core.num_pars || throw(ArgumentError("θub_nuisance must have the same length as the number of model parameters"))
+        all(θlb_nuisance .≤ model.core.θmle) || throw(DomainError("θlb_nuisance must be less than or equal to model.core.θmle"))
+        all(θub_nuisance .≥ model.core.θmle) || throw(DomainError("θub_nuisance must be greater than or equal to model.core.θmle"))
+
         (sort(θs); unique!(θs))
         1 ≤ θs[1] && θs[end] ≤ model.core.num_pars || throw(DomainError("θs can only contain parameter indexes between 1 and the number of model parameters"))
         return nothing
@@ -103,11 +114,13 @@ function check_univariate_prediction_coverage(data_generator::Function,
 
             m_new = initialise_LikelihoodModel(model.core.loglikefunction, model.core.predictfunction,
                 new_data, model.core.θnames, θinitialguess, model.core.θlb, model.core.θub, 
-                model.core.θmagnitudes; uni_row_prealloaction_size=len_θs, show_progress=false)
+                model.core.θmagnitudes; uni_row_prealloaction_size=len_θs, show_progress=false,
+                optimizationsettings=model.core.optimizationsettings)
 
             univariate_confidenceintervals!(m_new, deepcopy(θs);
                 num_points_in_interval=num_points_in_interval, confidence_level=confidence_level, 
-                profile_type=profile_type, use_threads=false)
+                profile_type=profile_type, use_threads=false,
+                optimizationsettings=optimizationsettings)
 
             generate_predictions_univariate!(m_new, t, 0.0)
 
@@ -146,11 +159,13 @@ function check_univariate_prediction_coverage(data_generator::Function,
 
                     m_new = initialise_LikelihoodModel(model.core.loglikefunction, model.core.predictfunction, 
                         new_data, model.core.θnames, θinitialguess, model.core.θlb, model.core.θub, 
-                        model.core.θmagnitudes; uni_row_prealloaction_size=len_θs, show_progress=false)
+                        model.core.θmagnitudes; uni_row_prealloaction_size=len_θs, show_progress=false,
+                        optimizationsettings=model.core.optimizationsettings)
 
                     univariate_confidenceintervals!(m_new, deepcopy(θs); 
                         num_points_in_interval=num_points_in_interval, confidence_level=confidence_level, 
-                        profile_type=profile_type, use_distributed=false, use_threads=false)
+                        profile_type=profile_type, use_distributed=false, use_threads=false,
+                        optimizationsettings=optimizationsettings)
 
                     generate_predictions_univariate!(m_new, t, 0.0, use_distributed=false)
 
@@ -225,7 +240,10 @@ Performs a simulation to estimate the prediction realisation coverage of univari
 - `num_points_in_interval`: an integer number of points to optionally evaluate within the confidence interval for each interest parameter using [`get_points_in_intervals!`](@ref). Points are linearly spaced in the interval. Useful for predictions from univariate profiles. Default is `0`. 
 - `confidence_level`: a number ∈ (0.0, 1.0) for the confidence level to evaluate the confidence interval coverage at. Default is `0.95` (95%).
 - `profile_type`: whether to use the true log-likelihood function or an ellipse approximation of the log-likelihood function centred at the MLE (with optional use of parameter bounds). Available profile types are [`LogLikelihood`](@ref), [`EllipseApprox`](@ref) and [`EllipseApproxAnalytical`](@ref). Default is `LogLikelihood()` ([`LogLikelihood`](@ref)).
+- `θlb_nuisance`: a vector of lower bounds on nuisance parameters, require `θlb_nuisance .≤ model.core.θmle`. Default is `model.core.θlb`. 
+- `θub_nuisance`: a vector of upper bounds on nuisance parameters, require `θub_nuisance .≥ model.core.θmle`. Default is `model.core.θub`.
 - `coverage_estimate_confidence_level`: a number ∈ (0.0, 1.0) for the level of a confidence interval of the estimated coverage. Default is `0.95` (95%).
+- `optimizationsettings`: a [`OptimizationSettings`](@ref) containing the optimisation settings used to find optimal values of nuisance parameters for a given interest parameter value. Default is `missing` (will use `default_OptimizationSettings()` (see [`default_OptimizationSettings`](@ref)).
 - `show_progress`: boolean variable specifying whether to display progress bars on the percentage of simulation iterations completed and estimated time of completion. Default is `model.show_progress`.
 - `distributed_over_parameters`: boolean variable specifying whether to distribute the workload of the simulation across simulation iterations (false) or across the individual confidence interval calculations within each iteration (true). Default is `false`.
 
@@ -255,7 +273,10 @@ function check_univariate_prediction_realisations_coverage(data_generator::Funct
     num_points_in_interval::Int=0,
     confidence_level::Float64=0.95,
     profile_type::AbstractProfileType=LogLikelihood(),
+    θlb_nuisance::AbstractVector{<:Real}=model.core.θlb,
+    θub_nuisance::AbstractVector{<:Real}=model.core.θub,
     coverage_estimate_confidence_level::Float64=0.95,
+    optimizationsettings::Union{OptimizationSettings,Missing}=missing,
     show_progress::Bool=model.show_progress,
     distributed_over_parameters::Bool=false)
 
@@ -270,6 +291,11 @@ function check_univariate_prediction_realisations_coverage(data_generator::Funct
         get_target_loglikelihood(model, confidence_level, profile_type, 1)
 
         N > 0 || throw(DomainError("N must be greater than 0"))
+
+        length(θlb_nuisance) == model.core.num_pars || throw(ArgumentError("θlb_nuisance must have the same length as the number of model parameters"))
+        length(θub_nuisance) == model.core.num_pars || throw(ArgumentError("θub_nuisance must have the same length as the number of model parameters"))
+        all(θlb_nuisance .≤ model.core.θmle) || throw(DomainError("θlb_nuisance must be less than or equal to model.core.θmle"))
+        all(θub_nuisance .≥ model.core.θmle) || throw(DomainError("θub_nuisance must be greater than or equal to model.core.θmle"))
 
         !ismissing(model.core.errorfunction) || throw(ArgumentError("model must contain an error function for creating prediction realisation confidence intervals. Add one when creating model with initialise_LikelihoodModel or using add_error_function!"))
 
@@ -306,11 +332,13 @@ function check_univariate_prediction_realisations_coverage(data_generator::Funct
             m_new = initialise_LikelihoodModel(model.core.loglikefunction, model.core.predictfunction,
                 model.core.errorfunction,
                 new_data, model.core.θnames, θinitialguess, model.core.θlb, model.core.θub,
-                model.core.θmagnitudes; uni_row_prealloaction_size=len_θs, show_progress=false)
+                model.core.θmagnitudes; uni_row_prealloaction_size=len_θs, show_progress=false,
+                optimizationsettings=model.core.optimizationsettings)
 
             univariate_confidenceintervals!(m_new, deepcopy(θs);
                 num_points_in_interval=num_points_in_interval, confidence_level=bonferroni_confidence_level,
-                profile_type=profile_type, use_threads=false)
+                profile_type=profile_type, use_threads=false,
+                optimizationsettings=optimizationsettings)
 
             generate_predictions_univariate!(m_new, t, 0.0)
 
@@ -340,11 +368,13 @@ function check_univariate_prediction_realisations_coverage(data_generator::Funct
                     m_new = initialise_LikelihoodModel(model.core.loglikefunction, model.core.predictfunction,
                         model.core.errorfunction,
                         new_data, model.core.θnames, θinitialguess, model.core.θlb, model.core.θub,
-                        model.core.θmagnitudes; uni_row_prealloaction_size=len_θs, show_progress=false)
+                        model.core.θmagnitudes; uni_row_prealloaction_size=len_θs, show_progress=false,
+                        optimizationsettings=model.core.optimizationsettings)
 
                     univariate_confidenceintervals!(m_new, deepcopy(θs);
                         num_points_in_interval=num_points_in_interval, confidence_level=bonferroni_confidence_level,
-                        profile_type=profile_type, use_distributed=false, use_threads=false)
+                        profile_type=profile_type, use_distributed=false, use_threads=false,
+                        optimizationsettings=optimizationsettings)
 
                     generate_predictions_univariate!(m_new, t, 0.0, use_distributed=false)
 

@@ -32,7 +32,10 @@ Performs a simulation to estimate the prediction coverage of dimensional confide
 # Keyword Arguments
 - `confidence_level`: a number ∈ (0.0, 1.0) for the confidence level to find samples within and evaluate coverage at. Default is `0.95` (95%).
 - `sample_type`: the sampling method used to sample parameter space. Available sample types are [`UniformGridSamples`](@ref), [`UniformRandomSamples`](@ref) and [`LatinHypercubeSamples`](@ref). Default is `LatinHypercubeSamples()` ([`LatinHypercubeSamples`](@ref)).
+- `θlb_nuisance`: a vector of lower bounds on nuisance parameters, require `θlb_nuisance .≤ model.core.θmle`. Default is `model.core.θlb`. 
+- `θub_nuisance`: a vector of upper bounds on nuisance parameters, require `θub_nuisance .≥ model.core.θmle`. Default is `model.core.θub`.
 - `coverage_estimate_confidence_level`: a number ∈ (0.0, 1.0) for the level of a confidence interval of the estimated coverage. Default is `0.95` (95%).
+- `optimizationsettings`: a [`OptimizationSettings`](@ref) containing the optimisation settings used to find optimal values of nuisance parameters for a given interest parameter value. Default is `missing` (will use `default_OptimizationSettings()` (see [`default_OptimizationSettings`](@ref)).
 - `show_progress`: boolean variable specifying whether to display progress bars on the percentage of simulation iterations completed and estimated time of completion. Default is `model.show_progress`.
 - `distributed_over_parameters`: boolean variable specifying whether to distribute the workload of the simulation across simulation iterations (false) or across the individual confidence interval calculations within each iteration (true). Default is `false`.
 
@@ -58,7 +61,10 @@ function check_dimensional_prediction_coverage(data_generator::Function,
     θinitialguess::AbstractVector{<:Real}=θtrue;
     confidence_level::Float64=0.95, 
     sample_type::AbstractSampleType=LatinHypercubeSamples(),
+    θlb_nuisance::AbstractVector{<:Real}=model.core.θlb,
+    θub_nuisance::AbstractVector{<:Real}=model.core.θub,
     coverage_estimate_confidence_level::Float64=0.95,
+    optimizationsettings::Union{OptimizationSettings,Missing}=missing,
     show_progress::Bool=model.show_progress,
     distributed_over_parameters::Bool=false)
 
@@ -83,6 +89,11 @@ function check_dimensional_prediction_coverage(data_generator::Function,
         get_target_loglikelihood(model, confidence_level, LogLikelihood(), 1)
 
         N > 0 || throw(DomainError("N must be greater than 0"))
+
+        length(θlb_nuisance) == model.core.num_pars || throw(ArgumentError("θlb_nuisance must have the same length as the number of model parameters"))
+        length(θub_nuisance) == model.core.num_pars || throw(ArgumentError("θub_nuisance must have the same length as the number of model parameters"))
+        all(θlb_nuisance .≤ model.core.θmle) || throw(DomainError("θlb_nuisance must be less than or equal to model.core.θmle"))
+        all(θub_nuisance .≥ model.core.θmle) || throw(DomainError("θub_nuisance must be greater than or equal to model.core.θmle"))
 
         if θindices isa Vector{Vector{Symbol}}
             θindices = convertθnames_toindices(model, θnames)
@@ -123,11 +134,13 @@ function check_dimensional_prediction_coverage(data_generator::Function,
 
             m_new = initialise_LikelihoodModel(model.core.loglikefunction, model.core.predictfunction,
                 new_data, model.core.θnames, θinitialguess, model.core.θlb, model.core.θub, 
-                model.core.θmagnitudes; biv_row_preallocation_size=len_θs, show_progress=false)
+                model.core.θmagnitudes; biv_row_preallocation_size=len_θs, show_progress=false,
+                optimizationsettings=model.core.optimizationsettings)
 
             dimensional_likelihood_samples!(m_new, deepcopy(θindices), num_points_to_sample,
                 confidence_level=confidence_level, sample_type=sample_type,
-                use_threads=false)
+                θlb_nuisance=lb, θub_nuisance=ub, use_threads=false,
+                optimizationsettings=optimizationsettings)
 
             generate_predictions_dim_samples!(m_new, t, 0.0)
 
@@ -156,11 +169,13 @@ function check_dimensional_prediction_coverage(data_generator::Function,
 
                     m_new = initialise_LikelihoodModel(model.core.loglikefunction, model.core.predictfunction, 
                         new_data, model.core.θnames, θinitialguess, model.core.θlb, model.core.θub, 
-                        model.core.θmagnitudes; uni_row_prealloaction_size=len_θs, show_progress=false)
+                        model.core.θmagnitudes; uni_row_prealloaction_size=len_θs, show_progress=false,
+                        optimizationsettings=model.core.optimizationsettings)
 
                     dimensional_likelihood_samples!(m_new, deepcopy(θindices), num_points_to_sample,
                         confidence_level=confidence_level, sample_type=sample_type,
-                        use_distributed=false, use_threads=false)
+                        θlb_nuisance=lb, θub_nuisance=ub, use_distributed=false, use_threads=false,
+                        optimizationsettings=optimizationsettings)
         
                     generate_predictions_dim_samples!(m_new, t, 0.0, use_distributed=false)
 
@@ -232,7 +247,10 @@ Performs a simulation to estimate the prediction realisation coverage of dimensi
 # Keyword Arguments
 - `confidence_level`: a number ∈ (0.0, 1.0) for the confidence level to find samples within and evaluate coverage at. Default is `0.95` (95%).
 - `sample_type`: the sampling method used to sample parameter space. Available sample types are [`UniformGridSamples`](@ref), [`UniformRandomSamples`](@ref) and [`LatinHypercubeSamples`](@ref). Default is `LatinHypercubeSamples()` ([`LatinHypercubeSamples`](@ref)).
+- `θlb_nuisance`: a vector of lower bounds on nuisance parameters, require `θlb_nuisance .≤ model.core.θmle`. Default is `model.core.θlb`. 
+- `θub_nuisance`: a vector of upper bounds on nuisance parameters, require `θub_nuisance .≥ model.core.θmle`. Default is `model.core.θub`.
 - `coverage_estimate_confidence_level`: a number ∈ (0.0, 1.0) for the level of a confidence interval of the estimated coverage. Default is `0.95` (95%).
+- `optimizationsettings`: a [`OptimizationSettings`](@ref) containing the optimisation settings used to find optimal values of nuisance parameters for a given interest parameter value. Default is `missing` (will use `default_OptimizationSettings()` (see [`default_OptimizationSettings`](@ref)).
 - `show_progress`: boolean variable specifying whether to display progress bars on the percentage of simulation iterations completed and estimated time of completion. Default is `model.show_progress`.
 - `distributed_over_parameters`: boolean variable specifying whether to distribute the workload of the simulation across simulation iterations (false) or across the individual confidence interval calculations within each iteration (true). Default is `false`.
 
@@ -259,7 +277,10 @@ function check_dimensional_prediction_realisations_coverage(data_generator::Func
     θinitialguess::AbstractVector{<:Real}=θtrue;
     confidence_level::Float64=0.95,
     sample_type::AbstractSampleType=LatinHypercubeSamples(),
+    θlb_nuisance::AbstractVector{<:Real}=model.core.θlb,
+    θub_nuisance::AbstractVector{<:Real}=model.core.θub,
     coverage_estimate_confidence_level::Float64=0.95,
+    optimizationsettings::Union{OptimizationSettings,Missing}=missing,
     show_progress::Bool=model.show_progress,
     distributed_over_parameters::Bool=false)
 
@@ -284,6 +305,11 @@ function check_dimensional_prediction_realisations_coverage(data_generator::Func
         get_target_loglikelihood(model, confidence_level, LogLikelihood(), 1)
 
         N > 0 || throw(DomainError("N must be greater than 0"))
+
+        length(θlb_nuisance) == model.core.num_pars || throw(ArgumentError("θlb_nuisance must have the same length as the number of model parameters"))
+        length(θub_nuisance) == model.core.num_pars || throw(ArgumentError("θub_nuisance must have the same length as the number of model parameters"))
+        all(θlb_nuisance .≤ model.core.θmle) || throw(DomainError("θlb_nuisance must be less than or equal to model.core.θmle"))
+        all(θub_nuisance .≥ model.core.θmle) || throw(DomainError("θub_nuisance must be greater than or equal to model.core.θmle"))
 
         !ismissing(model.core.errorfunction) || throw(ArgumentError("model must contain an error function for creating prediction realisation confidence intervals. Add one when creating model with initialise_LikelihoodModel or using add_error_function!"))
 
@@ -332,11 +358,13 @@ function check_dimensional_prediction_realisations_coverage(data_generator::Func
             m_new = initialise_LikelihoodModel(model.core.loglikefunction, model.core.predictfunction,
                 model.core.errorfunction,
                 new_data, model.core.θnames, θinitialguess, model.core.θlb, model.core.θub,
-                model.core.θmagnitudes; biv_row_preallocation_size=len_θs, show_progress=false)
+                model.core.θmagnitudes; biv_row_preallocation_size=len_θs, show_progress=false, 
+                        optimizationsettings=model.core.optimizationsettings)
 
             dimensional_likelihood_samples!(m_new, deepcopy(θindices), num_points_to_sample,
                 confidence_level=bonferroni_confidence_level, sample_type=sample_type,
-                use_threads=false)
+                θlb_nuisance=lb, θub_nuisance=ub, use_threads=false,
+                optimizationsettings=optimizationsettings)
 
             generate_predictions_dim_samples!(m_new, t, 0.0)
 
@@ -366,11 +394,14 @@ function check_dimensional_prediction_realisations_coverage(data_generator::Func
                     m_new = initialise_LikelihoodModel(model.core.loglikefunction, model.core.predictfunction,
                         model.core.errorfunction,
                         new_data, model.core.θnames, θinitialguess, model.core.θlb, model.core.θub,
-                        model.core.θmagnitudes; uni_row_prealloaction_size=len_θs, show_progress=false)
+                        model.core.θmagnitudes; uni_row_prealloaction_size=len_θs, show_progress=false, 
+                        optimizationsettings=model.core.optimizationsettings)
 
                     dimensional_likelihood_samples!(m_new, deepcopy(θindices), num_points_to_sample,
                         confidence_level=bonferroni_confidence_level, sample_type=sample_type,
-                        use_distributed=false, use_threads=false)
+                        θlb_nuisance=lb, θub_nuisance=ub,
+                        use_distributed=false, use_threads=false,
+                        optimizationsettings=optimizationsettings)
 
                     generate_predictions_dim_samples!(m_new, t, 0.0, use_distributed=false)
 

@@ -156,14 +156,16 @@ function check_bivariate_parameter_coverage(data_generator::Function,
 
                 ind1, ind2 = θindices
                 pointa .= θtrue[[ind1, ind2]]
-                newLb, newUb, initGuess, θranges, ωranges = init_nuisance_parameters(m_new, ind1, ind2, θlb_nuisance, θub_nuisance,)
+                newLb, newUb, initGuess, θranges, ωranges = init_nuisance_parameters(m_new, ind1, ind2, θlb_nuisance, θub_nuisance)
+
+                q = (ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess,
+                    θranges=θranges, ωranges=ωranges, consistent=consistent)
 
                 if biv_opt_is_ellipse_analytical
-                    p = (ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, pointa=pointa, uhat=uhat,
-                        θranges=θranges, ωranges=ωranges, consistent=consistent)
+                    p = (pointa=pointa, uhat=uhat, q=q, options=optimizationsettings)
                 else
-                    p = (ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, pointa=pointa, uhat=uhat,
-                        θranges=θranges, ωranges=ωranges, consistent=consistent, ω_opt=zeros(model.core.num_pars - 2))
+                    p = (ω_opt=zeros(model.core.num_pars-2), pointa=pointa, 
+                        uhat=uhat, q=q, options=optimizationsettings)
                 end
 
                 # first check if inside ll threshold
@@ -230,12 +232,14 @@ function check_bivariate_parameter_coverage(data_generator::Function,
                         pointa .= θtrue[[ind1, ind2]]
                         newLb, newUb, initGuess, θranges, ωranges = init_nuisance_parameters(m_new, ind1, ind2, θlb_nuisance, θub_nuisance)
 
+                        q = (ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess,
+                            θranges=θranges, ωranges=ωranges, consistent=consistent)
+
                         if biv_opt_is_ellipse_analytical
-                            p = (ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, pointa=pointa, uhat=uhat,
-                                θranges=θranges, ωranges=ωranges, consistent=consistent)
+                            p = (pointa=pointa, uhat=uhat, q=q, options=optimizationsettings)
                         else
-                            p = (ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, pointa=pointa, uhat=uhat,
-                                θranges=θranges, ωranges=ωranges, consistent=consistent, ω_opt=zeros(model.core.num_pars - 2))
+                            p = (ω_opt=zeros(model.core.num_pars - 2), pointa=pointa,
+                                uhat=uhat, q=q, options=optimizationsettings)
                         end
 
                         # first check if inside ll threshold

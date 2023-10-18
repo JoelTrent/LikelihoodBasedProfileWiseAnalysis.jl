@@ -33,7 +33,10 @@ Performs a simulation to estimate the prediction coverage of bivariate confidenc
 - `num_internal_points`: an integer number of points to optionally evaluate within the a polygon hull approximation of a bivariate boundary for each interest parameter pair using [`sample_bivariate_internal_points`](@ref). Default is `0`. 
 - `hullmethod`: method of type [`AbstractBivariateHullMethod`](@ref) used to create a 2D polygon hull that approximates the bivariate boundary from a set of boundary points and internal points (method dependent). For available methods see [`bivariate_hull_methods()`](@ref). Default is `MPPHullMethod()` ([`MPPHullMethod`](@ref)).
 - `sample_type`: either a [`UniformRandomSamples`](@ref) or [`LatinHypercubeSamples`](@ref) struct for how to sample internal points from the polygon hull. [`UniformRandomSamples`](@ref) are homogeneously sampled from the polygon and [`LatinHypercubeSamples`](@ref) use the intersection of a heuristically optimised Latin Hypercube sampling plan with the polygon. Default is `LatinHypercubeSamples()` ([`LatinHypercubeSamples`](@ref)).
-- `confidence_level`: a number ∈ (0.0, 1.0) for the confidence level to evaluate the confidence interval coverage at. Default is `0.95` (95%).
+- `θlb_nuisance`: a vector of lower bounds on nuisance parameters, require `θlb_nuisance .≤ model.core.θmle`. Default is `model.core.θlb`. 
+- `θub_nuisance`: a vector of upper bounds on nuisance parameters, require `θub_nuisance .≥ model.core.θmle`. Default is `model.core.θub`.
+- `coverage_estimate_confidence_level`: a number ∈ (0.0, 1.0) for the level of a confidence interval of the estimated coverage. Default is `0.95` (95%).
+- `optimizationsettings`: a [`OptimizationSettings`](@ref) containing the optimisation settings used to find optimal values of nuisance parameters for a given interest parameter value. Default is `missing` (will use `default_OptimizationSettings()` (see [`default_OptimizationSettings`](@ref)).
 - `profile_type`: whether to use the true log-likelihood function or an ellipse approximation of the log-likelihood function centred at the MLE (with optional use of parameter bounds). Available profile types are [`LogLikelihood`](@ref), [`EllipseApprox`](@ref) and [`EllipseApproxAnalytical`](@ref). Default is `LogLikelihood()` ([`LogLikelihood`](@ref)).
 - `coverage_estimate_confidence_level`: a number ∈ (0.0, 1.0) for the level of a confidence interval of the estimated coverage. Default is `0.95` (95%).
 - `show_progress`: boolean variable specifying whether to display progress bars on the percentage of simulation iterations completed and estimated time of completion. Default is `model.show_progress`.
@@ -67,8 +70,11 @@ function check_bivariate_prediction_coverage(data_generator::Function,
     sample_type::AbstractSampleType=LatinHypercubeSamples(),
     confidence_level::Float64=0.95, 
     profile_type::AbstractProfileType=LogLikelihood(), 
-    method::Union{AbstractBivariateMethod, Vector{<:AbstractBivariateMethod}}=RadialRandomMethod(3),
+    method::Union{AbstractBivariateMethod,Vector{<:AbstractBivariateMethod}}=RadialRandomMethod(3),
+    θlb_nuisance::AbstractVector{<:Real}=model.core.θlb,
+    θub_nuisance::AbstractVector{<:Real}=model.core.θub,
     coverage_estimate_confidence_level::Float64=0.95,
+    optimizationsettings::Union{OptimizationSettings,Missing}=missing,
     show_progress::Bool=model.show_progress,
     distributed_over_parameters::Bool=false)
 
@@ -89,6 +95,11 @@ function check_bivariate_prediction_coverage(data_generator::Function,
         end
 
         N > 0 || throw(DomainError("N must be greater than 0"))
+
+        length(θlb_nuisance) == model.core.num_pars || throw(ArgumentError("θlb_nuisance must have the same length as the number of model parameters"))
+        length(θub_nuisance) == model.core.num_pars || throw(ArgumentError("θub_nuisance must have the same length as the number of model parameters"))
+        all(θlb_nuisance .≤ model.core.θmle) || throw(DomainError("θlb_nuisance must be less than or equal to model.core.θmle"))
+        all(θub_nuisance .≥ model.core.θmle) || throw(DomainError("θub_nuisance must be greater than or equal to model.core.θmle"))
 
         if θcombinations isa Vector{Tuple{Int, Int}}
             θcombinations = [[combo...] for combo in θcombinations]
@@ -128,24 +139,30 @@ function check_bivariate_prediction_coverage(data_generator::Function,
 
             m_new = initialise_LikelihoodModel(model.core.loglikefunction, model.core.predictfunction,
                 new_data, model.core.θnames, θinitialguess, model.core.θlb, model.core.θub, 
-                model.core.θmagnitudes; biv_row_preallocation_size=len_θs, show_progress=false)
+                model.core.θmagnitudes; biv_row_preallocation_size=len_θs, show_progress=false,
+                optimizationsettings=model.core.optimizationsettings)
 
             if combine_methods
                 for (j, methodj) in enumerate(method) 
                     bivariate_confidenceprofiles!(m_new, deepcopy(θcombinations), num_points[j];
-                        confidence_level=confidence_level, profile_type=profile_type, method=methodj,
-                        use_threads=false)
+                        confidence_level=confidence_level, profile_type=profile_type, method=methodj, θlb_nuisance=lb, θub_nuisance=ub,
+                        use_threads=false,
+                        optimizationsettings=optimizationsettings)
                 end
                 combine_bivariate_boundaries!(m_new, confidence_level=confidence_level, 
                     not_evaluated_predictions=true)
             else
                 bivariate_confidenceprofiles!(m_new, deepcopy(θcombinations), num_points;
-                    confidence_level=confidence_level, profile_type=profile_type, method=method, 
-                    use_threads=false)
+                    confidence_level=confidence_level, profile_type=profile_type, method=method, θlb_nuisance=lb, θub_nuisance=ub,
+                    use_threads=false,
+                    optimizationsettings=optimizationsettings)
             end
             
             if num_internal_points > 0 
-                sample_bivariate_internal_points!(m_new, num_internal_points, sample_type=sample_type, hullmethod=hullmethod, use_threads=false)
+                sample_bivariate_internal_points!(m_new, num_internal_points,
+                    sample_type=sample_type, hullmethod=hullmethod, 
+                    θlb_nuisance=lb, θub_nuisance=ub, use_threads=false,
+                    optimizationsettings=optimizationsettings)
             end
 
             generate_predictions_bivariate!(m_new, t, 0.0)
@@ -175,24 +192,32 @@ function check_bivariate_prediction_coverage(data_generator::Function,
 
                     m_new = initialise_LikelihoodModel(model.core.loglikefunction, model.core.predictfunction, 
                         new_data, model.core.θnames, θinitialguess, model.core.θlb, model.core.θub, 
-                        model.core.θmagnitudes; uni_row_prealloaction_size=len_θs, show_progress=false)
+                        model.core.θmagnitudes; uni_row_prealloaction_size=len_θs, show_progress=false,
+                        optimizationsettings=model.core.optimizationsettings)
 
                     if combine_methods
                         for (j, methodj) in enumerate(method) 
                             bivariate_confidenceprofiles!(m_new, deepcopy(θcombinations), num_points[j];
                                 confidence_level=confidence_level, profile_type=profile_type, method=methodj,
-                                use_distributed=false, use_threads=false)
+                                θlb_nuisance=lb, θub_nuisance=ub,
+                                use_distributed=false, use_threads=false,
+                                optimizationsettings=optimizationsettings)
                         end
                         combine_bivariate_boundaries!(m_new, confidence_level=confidence_level, 
                             not_evaluated_predictions=true)
                     else
                         bivariate_confidenceprofiles!(m_new, deepcopy(θcombinations), num_points;
-                            confidence_level=confidence_level, profile_type=profile_type, method=method, 
-                            use_distributed=false, use_threads=false)
+                            confidence_level=confidence_level, profile_type=profile_type, method=method, θlb_nuisance=lb, θub_nuisance=ub,
+                            use_distributed=false, use_threads=false,
+                            optimizationsettings=optimizationsettings)
                     end
                     
                     if num_internal_points > 0 
-                        sample_bivariate_internal_points!(m_new, num_internal_points, sample_type=sample_type, hullmethod=hullmethod, use_distributed=false, use_threads=false)
+                        sample_bivariate_internal_points!(m_new, num_internal_points,
+                            sample_type=sample_type, hullmethod=hullmethod,
+                            θlb_nuisance=lb, θub_nuisance=ub, 
+                            use_distributed=false, use_threads=false,
+                            optimizationsettings=optimizationsettings)
                     end
         
                     generate_predictions_bivariate!(m_new, t, 0.0, use_distributed=false)
@@ -277,7 +302,10 @@ Performs a simulation to estimate the prediction realisation coverage of bivaria
 - `sample_type`: either a [`UniformRandomSamples`](@ref) or [`LatinHypercubeSamples`](@ref) struct for how to sample internal points from the polygon hull. [`UniformRandomSamples`](@ref) are homogeneously sampled from the polygon and [`LatinHypercubeSamples`](@ref) use the intersection of a heuristically optimised Latin Hypercube sampling plan with the polygon. Default is `LatinHypercubeSamples()` ([`LatinHypercubeSamples`](@ref)).
 - `confidence_level`: a number ∈ (0.0, 1.0) for the confidence level to evaluate the confidence interval coverage at. Default is `0.95` (95%).
 - `profile_type`: whether to use the true log-likelihood function or an ellipse approximation of the log-likelihood function centred at the MLE (with optional use of parameter bounds). Available profile types are [`LogLikelihood`](@ref), [`EllipseApprox`](@ref) and [`EllipseApproxAnalytical`](@ref). Default is `LogLikelihood()` ([`LogLikelihood`](@ref)).
+- `θlb_nuisance`: a vector of lower bounds on nuisance parameters, require `θlb_nuisance .≤ model.core.θmle`. Default is `model.core.θlb`. 
+- `θub_nuisance`: a vector of upper bounds on nuisance parameters, require `θub_nuisance .≥ model.core.θmle`. Default is `model.core.θub`.
 - `coverage_estimate_confidence_level`: a number ∈ (0.0, 1.0) for the level of a confidence interval of the estimated coverage. Default is `0.95` (95%).
+- `optimizationsettings`: a [`OptimizationSettings`](@ref) containing the optimisation settings used to find optimal values of nuisance parameters for a given interest parameter value. Default is `missing` (will use `default_OptimizationSettings()` (see [`default_OptimizationSettings`](@ref)).
 - `show_progress`: boolean variable specifying whether to display progress bars on the percentage of simulation iterations completed and estimated time of completion. Default is `model.show_progress`.
 - `distributed_over_parameters`: boolean variable specifying whether to distribute the workload of the simulation across simulation iterations (false) or across the individual confidence interval calculations within each iteration (true). Default is `false`.
 
@@ -311,7 +339,10 @@ function check_bivariate_prediction_realisations_coverage(data_generator::Functi
     confidence_level::Float64=0.95,
     profile_type::AbstractProfileType=LogLikelihood(),
     method::Union{AbstractBivariateMethod,Vector{<:AbstractBivariateMethod}}=RadialRandomMethod(3),
+    θlb_nuisance::AbstractVector{<:Real}=model.core.θlb,
+    θub_nuisance::AbstractVector{<:Real}=model.core.θub,
     coverage_estimate_confidence_level::Float64=0.95,
+    optimizationsettings::Union{OptimizationSettings,Missing}=missing,
     show_progress::Bool=model.show_progress,
     distributed_over_parameters::Bool=false)
 
@@ -332,6 +363,11 @@ function check_bivariate_prediction_realisations_coverage(data_generator::Functi
         end
 
         N > 0 || throw(DomainError("N must be greater than 0"))
+
+        length(θlb_nuisance) == model.core.num_pars || throw(ArgumentError("θlb_nuisance must have the same length as the number of model parameters"))
+        length(θub_nuisance) == model.core.num_pars || throw(ArgumentError("θub_nuisance must have the same length as the number of model parameters"))
+        all(θlb_nuisance .≤ model.core.θmle) || throw(DomainError("θlb_nuisance must be less than or equal to model.core.θmle"))
+        all(θub_nuisance .≥ model.core.θmle) || throw(DomainError("θub_nuisance must be greater than or equal to model.core.θmle"))
 
         !ismissing(model.core.errorfunction) || throw(ArgumentError("model must contain an error function for creating prediction realisation confidence intervals. Add one when creating model with initialise_LikelihoodModel or using add_error_function!"))
 
@@ -377,24 +413,32 @@ function check_bivariate_prediction_realisations_coverage(data_generator::Functi
             m_new = initialise_LikelihoodModel(model.core.loglikefunction, model.core.predictfunction,
                 model.core.errorfunction,
                 new_data, model.core.θnames, θinitialguess, model.core.θlb, model.core.θub,
-                model.core.θmagnitudes; biv_row_preallocation_size=len_θs, show_progress=false)
+                model.core.θmagnitudes; biv_row_preallocation_size=len_θs, show_progress=false,
+                optimizationsettings=model.core.optimizationsettings)
 
             if combine_methods
                 for (j, methodj) in enumerate(method)
                     bivariate_confidenceprofiles!(m_new, deepcopy(θcombinations), num_points[j];
                         confidence_level=bonferroni_confidence_level, profile_type=profile_type, method=methodj,
-                        use_threads=false)
+                        θlb_nuisance=lb, θub_nuisance=ub,
+                        use_threads=false,
+                        optimizationsettings=optimizationsettings)
                 end
                 combine_bivariate_boundaries!(m_new, confidence_level=bonferroni_confidence_level,
                     not_evaluated_predictions=true)
             else
                 bivariate_confidenceprofiles!(m_new, deepcopy(θcombinations), num_points;
                     confidence_level=bonferroni_confidence_level, profile_type=profile_type, method=method,
-                    use_threads=false)
+                    θlb_nuisance=lb, θub_nuisance=ub,
+                    use_threads=false,
+                    optimizationsettings=optimizationsettings)
             end
 
             if num_internal_points > 0
-                sample_bivariate_internal_points!(m_new, num_internal_points, sample_type=sample_type, hullmethod=hullmethod, use_threads=false)
+                sample_bivariate_internal_points!(m_new, num_internal_points,
+                    sample_type=sample_type, hullmethod=hullmethod, 
+                    θlb_nuisance=lb, θub_nuisance=ub, use_threads=false,
+                    optimizationsettings=optimizationsettings)
             end
 
             generate_predictions_bivariate!(m_new, t, 0.0)
@@ -425,24 +469,33 @@ function check_bivariate_prediction_realisations_coverage(data_generator::Functi
                     m_new = initialise_LikelihoodModel(model.core.loglikefunction, model.core.predictfunction,
                         model.core.errorfunction,
                         new_data, model.core.θnames, θinitialguess, model.core.θlb, model.core.θub,
-                        model.core.θmagnitudes; uni_row_prealloaction_size=len_θs, show_progress=false)
+                        model.core.θmagnitudes; uni_row_prealloaction_size=len_θs, show_progress=false,
+                        optimizationsettings=model.core.optimizationsettings)
 
                     if combine_methods
                         for (j, methodj) in enumerate(method)
                             bivariate_confidenceprofiles!(m_new, deepcopy(θcombinations), num_points[j];
                                 confidence_level=bonferroni_confidence_level, profile_type=profile_type, method=methodj,
-                                use_distributed=false, use_threads=false)
+                                θlb_nuisance=lb, θub_nuisance=ub,
+                                use_distributed=false, use_threads=false,
+                                optimizationsettings=optimizationsettings)
                         end
                         combine_bivariate_boundaries!(m_new, confidence_level=bonferroni_confidence_level,
                             not_evaluated_predictions=true)
                     else
                         bivariate_confidenceprofiles!(m_new, deepcopy(θcombinations), num_points;
                             confidence_level=bonferroni_confidence_level, profile_type=profile_type, method=method,
-                            use_distributed=false, use_threads=false)
+                            θlb_nuisance=lb, θub_nuisance=ub,
+                            use_distributed=false, use_threads=false,
+                            optimizationsettings=optimizationsettings)
                     end
 
                     if num_internal_points > 0
-                        sample_bivariate_internal_points!(m_new, num_internal_points, sample_type=sample_type, hullmethod=hullmethod, use_distributed=false, use_threads=false)
+                        sample_bivariate_internal_points!(m_new, num_internal_points,
+                            sample_type=sample_type, hullmethod=hullmethod,
+                            θlb_nuisance=lb, θub_nuisance=ub, 
+                            use_distributed=false, use_threads=false,
+                            optimizationsettings=optimizationsettings)
                     end
 
                     generate_predictions_bivariate!(m_new, t, 0.0, use_distributed=false)

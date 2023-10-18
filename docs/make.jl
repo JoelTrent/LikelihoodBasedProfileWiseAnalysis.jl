@@ -30,7 +30,8 @@ makedocs(;
             "Timing and Profiling" => "user_interface/timing_and_profiling.md",
             "Simulated Coverage Checks" => 
                 ["Parameter Confidence Intervals" => "user_interface/coverage/univariate_intervals.md",
-                "Bivariate Parameter Confidence Boundaries" => "user_interface/coverage/bivariate_boundaries.md"]],
+                "Bivariate Parameter Confidence Boundaries" => "user_interface/coverage/bivariate_boundaries.md",
+                "Predictions and Realisations" => "user_interface/coverage/predictions_and_realisations.md"]],
         "Internal Library" => 
             ["Common Functions" => "internal_library/common.md",
             "Initialisation" => "internal_library/initialisation.md",
