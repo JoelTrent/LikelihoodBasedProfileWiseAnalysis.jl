@@ -240,7 +240,7 @@ function univariate_confidenceinterval(univariate_optimiser::Function,
 
                 g = univariate_optimiser(bracket_r[2], p)
                 if isapprox(g, 0.0, atol=find_zero_atol)
-                    interval_points[θi,2] = bracket_r[r]
+                    interval_points[θi,2] = bracket_r[2]
                     variablemapping!(@view(interval_points[:,2]), p.ω_opt, θranges, ωranges)
                     ll[2] = mle_targetll
                 elseif g < 0.0
