@@ -137,6 +137,8 @@ function check_dimensional_prediction_coverage(data_generator::Function,
                 model.core.θmagnitudes; biv_row_preallocation_size=len_θs, show_progress=false,
                 optimizationsettings=model.core.optimizationsettings)
 
+            lb, ub = correct_θbounds_nuisance(m_new, θlb_nuisance, θub_nuisance)
+
             dimensional_likelihood_samples!(m_new, deepcopy(θindices), num_points_to_sample,
                 confidence_level=confidence_level, sample_type=sample_type,
                 θlb_nuisance=lb, θub_nuisance=ub, use_threads=false,
@@ -171,6 +173,8 @@ function check_dimensional_prediction_coverage(data_generator::Function,
                         new_data, model.core.θnames, θinitialguess, model.core.θlb, model.core.θub, 
                         model.core.θmagnitudes; uni_row_prealloaction_size=len_θs, show_progress=false,
                         optimizationsettings=model.core.optimizationsettings)
+
+                    lb, ub = correct_θbounds_nuisance(m_new, θlb_nuisance, θub_nuisance)
 
                     dimensional_likelihood_samples!(m_new, deepcopy(θindices), num_points_to_sample,
                         confidence_level=confidence_level, sample_type=sample_type,
@@ -361,6 +365,9 @@ function check_dimensional_prediction_realisations_coverage(data_generator::Func
                 model.core.θmagnitudes; biv_row_preallocation_size=len_θs, show_progress=false, 
                         optimizationsettings=model.core.optimizationsettings)
 
+
+            lb, ub = correct_θbounds_nuisance(m_new, θlb_nuisance, θub_nuisance)
+
             dimensional_likelihood_samples!(m_new, deepcopy(θindices), num_points_to_sample,
                 confidence_level=bonferroni_confidence_level, sample_type=sample_type,
                 θlb_nuisance=lb, θub_nuisance=ub, use_threads=false,
@@ -396,6 +403,8 @@ function check_dimensional_prediction_realisations_coverage(data_generator::Func
                         new_data, model.core.θnames, θinitialguess, model.core.θlb, model.core.θub,
                         model.core.θmagnitudes; uni_row_prealloaction_size=len_θs, show_progress=false, 
                         optimizationsettings=model.core.optimizationsettings)
+
+                    lb, ub = correct_θbounds_nuisance(m_new, θlb_nuisance, θub_nuisance)
 
                     dimensional_likelihood_samples!(m_new, deepcopy(θindices), num_points_to_sample,
                         confidence_level=bonferroni_confidence_level, sample_type=sample_type,

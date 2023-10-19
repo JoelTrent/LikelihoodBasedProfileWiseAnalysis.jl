@@ -142,6 +142,8 @@ function check_bivariate_prediction_coverage(data_generator::Function,
                 model.core.θmagnitudes; biv_row_preallocation_size=len_θs, show_progress=false,
                 optimizationsettings=model.core.optimizationsettings)
 
+            lb, ub = correct_θbounds_nuisance(m_new, θlb_nuisance, θub_nuisance)
+
             if combine_methods
                 for (j, methodj) in enumerate(method) 
                     bivariate_confidenceprofiles!(m_new, deepcopy(θcombinations), num_points[j];
@@ -194,6 +196,8 @@ function check_bivariate_prediction_coverage(data_generator::Function,
                         new_data, model.core.θnames, θinitialguess, model.core.θlb, model.core.θub, 
                         model.core.θmagnitudes; uni_row_prealloaction_size=len_θs, show_progress=false,
                         optimizationsettings=model.core.optimizationsettings)
+
+                    lb, ub = correct_θbounds_nuisance(m_new, θlb_nuisance, θub_nuisance)
 
                     if combine_methods
                         for (j, methodj) in enumerate(method) 
@@ -416,6 +420,8 @@ function check_bivariate_prediction_realisations_coverage(data_generator::Functi
                 model.core.θmagnitudes; biv_row_preallocation_size=len_θs, show_progress=false,
                 optimizationsettings=model.core.optimizationsettings)
 
+            lb, ub = correct_θbounds_nuisance(m_new, θlb_nuisance, θub_nuisance)
+
             if combine_methods
                 for (j, methodj) in enumerate(method)
                     bivariate_confidenceprofiles!(m_new, deepcopy(θcombinations), num_points[j];
@@ -471,6 +477,8 @@ function check_bivariate_prediction_realisations_coverage(data_generator::Functi
                         new_data, model.core.θnames, θinitialguess, model.core.θlb, model.core.θub,
                         model.core.θmagnitudes; uni_row_prealloaction_size=len_θs, show_progress=false,
                         optimizationsettings=model.core.optimizationsettings)
+
+                    lb, ub = correct_θbounds_nuisance(m_new, θlb_nuisance, θub_nuisance)
 
                     if combine_methods
                         for (j, methodj) in enumerate(method)
