@@ -10,7 +10,7 @@
 
 Performs a simulation to estimate the prediction coverage of univariate confidence profiles for parameters in `θs` given a model by: 
     
-1. Repeatedly drawing new observed data using `data_generator` for fixed true parameter values, θtrue, and fixed true prediction value. 
+1. Repeatedly drawing new observed data using `data_generator` for fixed true parameter values, `θtrue`, and fixed true prediction value. 
 2. Fitting the model and univariate confidence intervals. 
 3. Sampling points along the profile within the confidence intervals.
 4. Evaluating predictions from the points in the profile and finding the prediction extrema.
@@ -222,17 +222,22 @@ end
         θinitialguess::AbstractVector{<:Real}=θtrue; 
         <keyword arguments>)
 
-Performs a simulation to estimate the prediction realisation coverage of univariate confidence profiles for parameters in `θs` given a model by: 
-    
-1. Repeatedly drawing new observed training data using `data_generator` and `training_generator_args` for fixed true parameter values, θtrue, and fixed true prediction value. 
-2. Fitting the model and univariate confidence intervals using training data. 
-3. Sampling points along the profile within the confidence intervals.
-4. Evaluating predictions from the points in the profile and finding the prediction extrema.
-5. Drawing new observed testing data using `data_generator` and `training_generator_args` for fixed true paramter values, θtrue, and fixed true prediction value. 
-6. Checking whether the prediction extrema contain the observed testing data, in a pointwise and simultaneous fashion. The estimated simultaneous coverage is returned with a default 95% confidence interval within a DataFrame. 
+Performs a simulation to estimate the prediction reference set and realisation coverage of univariate confidence profiles for parameters in `θs` given a model by: 
+
+1. Constructing the `confidence_level` reference set for predictions from the fixed true parameter values, `θ_true`.
+2. Repeatedly drawing new observed training data using `data_generator` and `training_generator_args` for fixed true parameter values, `θtrue`, and fixed true prediction value. 
+3. Fitting the model using training data.
+4. Fitting the model and univariate confidence intervals using training data. 
+5. Sampling points along the profile within the confidence intervals.
+6. Evaluating predictions from the points in the profile and finding the prediction extrema (reference tolerance sets).
+7. Drawing new observed testing data using `data_generator` and `training_generator_args` for fixed true parameter values, `θtrue`, and fixed true prediction value. 
+8. Checking whether the prediction extrema (reference tolerance set) contains the prediction reference set from Step 1, in a pointwise and simultaneous fashion. 
+9. Checking whether the prediction extrema contain the observed testing data, in a pointwise and simultaneous fashion. 
+10. The estimated simultaneous coverage of the reference set and the prediction realisations (observed testing data) is returned with a default 95% confidence interval, alongside pointwise coverage, within a DataFrame.  
 
 # Arguments
 - `data_generator`: a function with two arguments which generates data for fixed time points and true model parameters corresponding to the log-likelihood function contained in `model`. The two arguments must be the vector of true model parameters, `θtrue`, and a Tuple or NamedTuple, `generator_args`. When used with `training_generator_args`, it outputs a `data` Tuple or NamedTuple that corresponds to the log-likelihood function contained in `model`. When used with `testing_generator_args`, it outputs an array containing the observed data to use as the test data set.
+- `reference_set_generator`: a function with three arguments which generates the `confidence_level` data reference set for fixed time points and true model parameters corresponding to the log-likelihood function contained in `model`. The three arguments must be the vector of true model parameters, `θtrue`, a Tuple or NamedTuple, `generator_args`, and a number (0.0, 1.0) for the confidence level at which to evaluate the reference set. When used with `testing_generator_args` it outputs a tuple of two arrays, `(lq, uq)`, which contain the lower and upper quantiles of the reference set. 
 - `training_generator_args`: a Tuple or NamedTuple containing any additional information required by both the log-likelihood function and `data_generator`, such as the time points to be evaluated at, used to create the training set of data. If evaluating the log-likelihood function requires more than just the simulated data, arguments for the `data` output of `data_generator` should be passed in via `training_generator_args`. 
 - `testing_generator_args`: a Tuple or NamedTuple containing any additional information required by both the log-likelihood function and `data_generator`, such as the time points to be evaluated at, used to create the test data set. If evaluating the log-likelihood function requires more than just the simulated data, arguments for the `data` output of `data_generator` should be passed in via `testing_generator_args`. 
 - `t`: a vector of time points to compute predictions and evaluate coverage at, which are the same as the time points used to create the test data set.
@@ -268,6 +273,7 @@ The uncertainty in estimates of the prediction realisation coverage under the si
     The current implementation only considers two extremes of the log-likelihood and whether the truth is between these two points. If the profile likelihood function is bimodal, it's possible the method has only found one set of correct confidence intervals (estimated coverage will be correct, but less than expected) or found one extrema on distinct sets (estimated coverage may be incorrect and will either be larger than expected or much lower than expected). 
 """
 function check_univariate_prediction_realisations_coverage(data_generator::Function,
+    reference_set_generator::Function,
     training_generator_args::Union{Tuple,NamedTuple},
     testing_generator_args::Union{Tuple,NamedTuple},
     t::AbstractVector,
@@ -320,12 +326,15 @@ function check_univariate_prediction_realisations_coverage(data_generator::Funct
     len_θs = length(θs)
     # θs_to_θi = Dict{Int,Int}(θindex => θi for (θi, θindex) in enumerate(θs))
 
+    successes_reference = zeros(Int, len_θs + 1)
+    successes_reference_pointwise = [zeros(size(y_true)) for _ in 1:(len_θs+1)]
     successes = zeros(Int, len_θs + 1)
     successes_pointwise = [zeros(size(y_true)) for _ in 1:(len_θs+1)]
     iteration_is_included = falses(N)
 
     data_training = [data_generator(θtrue, training_generator_args) for _ in 1:N]
     data_testing = [data_generator(θtrue, testing_generator_args) for _ in 1:N]
+    reference_set_testing = reference_set_generator(θtrue, testing_generator_args, confidence_level)
 
     channel = RemoteChannel(() -> Channel{Bool}(1))
     p = Progress(N; desc="Computing univariate prediction realisation coverage: ",
@@ -358,9 +367,18 @@ function check_univariate_prediction_realisations_coverage(data_generator::Funct
             successes_pointwise[1:len_θs] .+= last.(indiv_cov)
             successes_pointwise[end] += last(union_cov)
 
+            indiv_cov, union_cov = evaluate_coverage_reference_sets(m_new, reference_set_testing, :univariate, multiple_outputs, len_θs, iteration_is_included[i])
+            successes_reference[1:len_θs] .+= first.(indiv_cov)
+            successes_reference[end] += first(union_cov)
+
+            successes_reference_pointwise[1:len_θs] .+= last.(indiv_cov)
+            successes_reference_pointwise[end] += last(union_cov)
+
             next!(p)
         end
     else
+        successes_reference_bool = SharedArray{Bool}(len_θs + 1, N)
+        successes_reference_bool .= false
         successes_bool = SharedArray{Bool}(len_θs + 1, N)
         successes_bool .= false
         iteration_is_included_shared = SharedArray{Bool}(N)
@@ -371,7 +389,7 @@ function check_univariate_prediction_realisations_coverage(data_generator::Funct
             end
 
             @async begin
-                successes_pointwise_bool = @distributed (vcat) for i in 1:N
+                successes_pointwise_bool_ = @distributed (vcat) for i in 1:N
                     new_data = data_training[i]
 
                     m_new = initialise_LikelihoodModel(model.core.loglikefunction, model.core.predictfunction,
@@ -394,34 +412,48 @@ function check_univariate_prediction_realisations_coverage(data_generator::Funct
                     successes_bool[1:len_θs, i] .= first.(indiv_cov)
                     successes_bool[end, i] = first(union_cov)
 
+                    indiv_cov_ref, union_cov_ref = evaluate_coverage_reference_sets(m_new, reference_set_testing, :univariate, multiple_outputs, len_θs, iteration_is_included_shared[i])
+                    successes_reference_bool[1:len_θs, i] .= first.(indiv_cov_ref)
+                    successes_reference_bool[end, i] = first(union_cov_ref)
+
                     put!(channel, true)
-                    (vcat(last.(indiv_cov), [last(union_cov)]),)
+                    (vcat(last.(indiv_cov), [last(union_cov)]), vcat(last.(indiv_cov_ref), [last(union_cov_ref)]))
                 end
                 put!(channel, false)
                 iteration_is_included .= iteration_is_included_shared
-                for (i, pointwise_bool) in enumerate(successes_pointwise_bool)
-                    successes_pointwise .+= first(pointwise_bool)
+                for (pointwise_bool, pointwise_reference_bool) in successes_pointwise_bool_
+                    successes_pointwise .+= pointwise_bool
+                    successes_reference_pointwise .+= pointwise_reference_bool
                 end
             end
         end
         successes .= sum(successes_bool, dims=2)
+        successes_reference .= sum(successes_reference_bool, dims=2)
     end
 
     N_counted = sum(iteration_is_included)
-    coverage = successes ./ N_counted
-    conf_ints = zeros(len_θs + 1, 2)
+    coverage_realisations = successes ./ N_counted
+    coverage_reference_sets = successes_reference ./ N_counted
+    conf_ints_realisations = zeros(len_θs + 1, 2)
+    conf_ints_reference_sets = zeros(len_θs + 1, 2)
     for i in 1:(len_θs+1)
-        conf_ints[i, :] .= HypothesisTests.confint(HypothesisTests.BinomialTest(successes[i], N_counted),
+        conf_ints_realisations[i, :] .= HypothesisTests.confint(HypothesisTests.BinomialTest(successes[i], N_counted),
+            level=coverage_estimate_confidence_level)
+        conf_ints_reference_sets[i, :] .= HypothesisTests.confint(HypothesisTests.BinomialTest(successes_reference[i], N_counted),
             level=coverage_estimate_confidence_level)
         successes_pointwise[i] = successes_pointwise[i] ./ N_counted
+        successes_reference_pointwise[i] = successes_reference_pointwise[i] ./ N_counted
     end
 
     points_in_interval = zeros(Int, len_θs + 1)
     points_in_interval[1:len_θs] .= num_points_in_interval
     points_in_interval[end] = num_points_in_interval * len_θs
 
+
     return DataFrame(θname=[model.core.θnames[θs]..., :union], θindex=[θs..., θs],
-        simultaneous_coverage=coverage, coverage_lb=conf_ints[:, 1], coverage_ub=conf_ints[:, 2],
-        pointwise_coverage=successes_pointwise,
+        simultaneous_coverage_reference_sets=coverage_reference_sets, coverage_reference_sets_lb=conf_ints_reference_sets[:, 1], coverage_reference_sets_ub=conf_ints_reference_sets[:, 2],
+        pointwise_coverage_reference_sets=successes_reference_pointwise,
+        simultaneous_coverage_realisations=coverage_realisations, coverage_realisations_lb=conf_ints_realisations[:, 1], coverage_realisations_ub=conf_ints_realisations[:, 2],
+        pointwise_coverage_realisations=successes_pointwise,
         num_points_in_interval=points_in_interval)
 end

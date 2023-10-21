@@ -49,9 +49,12 @@ function union_of_prediction_realisations_extrema(df::DataFrame, dict::Dict, mul
 end
 
 """
-simultaneous coverage requires y_true to be inside y_pred for every column in y_true (every observed variable)
+    evaluate_coverage(y_true::Array, 
+        y_pred_extrema::Union{Array,Missing}, 
+        multiple_outputs::Bool)
+simultaneous coverage requires y_true to be inside y_pred for every row and column in y_true (every observed variable)
 
-pointwise coverage is 
+pointwise coverage is on a row and column basis; whether y_true is inside y_pred at each individual row and column 
 """
 function evaluate_coverage(y_true::Array, y_pred_extrema::Union{Array,Missing}, multiple_outputs::Bool)
     pointwise = falses(size(y_true))
@@ -71,7 +74,11 @@ function evaluate_coverage(y_true::Array, y_pred_extrema::Union{Array,Missing}, 
 end
 
 """
-
+    evaluate_coverage(model::LikelihoodModel, 
+        y_true::Array, 
+        profile_kind::Symbol, 
+        multiple_outputs::Bool, 
+        len_θs::Int)
 """
 function evaluate_coverage(model::LikelihoodModel, y_true::Array, profile_kind::Symbol, multiple_outputs::Bool, len_θs::Int)
     missing_profiles=false
@@ -105,7 +112,11 @@ function evaluate_coverage(model::LikelihoodModel, y_true::Array, profile_kind::
 end
 
 """
-
+    evaluate_coverage_realisations(model::LikelihoodModel, 
+        testing_data::Array, 
+        profile_kind::Symbol, 
+        multiple_outputs::Bool, 
+        len_θs::Int)
 """
 function evaluate_coverage_realisations(model::LikelihoodModel, testing_data::Array, profile_kind::Symbol, multiple_outputs::Bool, len_θs::Int)
     missing_profiles = false
@@ -136,4 +147,70 @@ function evaluate_coverage_realisations(model::LikelihoodModel, testing_data::Ar
     union_coverage = evaluate_coverage(testing_data, extrema_union, multiple_outputs)
 
     return individual_coverage, union_coverage, true
+end
+
+
+
+"""
+    evaluate_coverage_reference_sets(y_true::Array, 
+        y_pred_extrema::Union{Array,Missing}, 
+        multiple_outputs::Bool)
+simultaneous coverage requires y_true to be inside y_pred for every row and column in y_true (every observed variable)
+
+pointwise coverage is on a row and column basis; whether y_true is inside y_pred at each individual row and column 
+"""
+function evaluate_coverage_reference_sets(reference_set_data::Tuple{Array,Array}, y_pred_extrema::Union{Array,Missing}, multiple_outputs::Bool)
+    ref_set_lq, ref_set_uq = reference_set_data
+    pointwise = falses(size(ref_set_lq))
+    if ismissing(y_pred_extrema)
+        return false, pointwise
+    end
+
+    if multiple_outputs
+        for col in axes(ref_set_lq, 2)
+            pointwise[:, col] .= Base.isbetween.(y_pred_extrema[:, 1, col], ref_set_lq[:, col], y_pred_extrema[:, 2, col]) .&& 
+                Base.isbetween.(y_pred_extrema[:, 1, col], ref_set_uq[:, col], y_pred_extrema[:, 2, col])
+        end
+        return all(pointwise), pointwise
+    end
+
+    pointwise .= Base.isbetween.(y_pred_extrema[:,1], ref_set_lq, y_pred_extrema[:,2]) .&&
+        Base.isbetween.(y_pred_extrema[:,1], ref_set_uq, y_pred_extrema[:,2])
+    return all(pointwise), pointwise
+end
+
+"""
+    evaluate_coverage_reference_sets(model::LikelihoodModel, 
+        reference_set_data::Tuple{Array,Array}, 
+        profile_kind::Symbol, 
+        multiple_outputs::Bool, 
+        len_θs::Int, 
+        not_missing_profiles::Bool)
+"""
+function evaluate_coverage_reference_sets(model::LikelihoodModel, 
+        reference_set_data::Tuple{Array,Array}, 
+        profile_kind::Symbol, 
+        multiple_outputs::Bool, 
+        len_θs::Int, 
+        not_missing_profiles::Bool)
+
+    if profile_kind == :univariate
+        df, dict = model.uni_profiles_df, model.uni_predictions_dict
+    elseif profile_kind == :bivariate
+        df, dict = model.biv_profiles_df, model.biv_predictions_dict
+    elseif profile_kind == :dimensional
+        df, dict = model.dim_samples_df, model.dim_predictions_dict
+    end
+
+    if !not_missing_profiles
+        individual_coverage = [evaluate_coverage_reference_sets(reference_set_data, missing, multiple_outputs) for _ in 1:len_θs]
+        union_coverage = evaluate_coverage_reference_sets(reference_set_data, missing, multiple_outputs)
+        return individual_coverage, union_coverage
+    end
+
+    individual_coverage = [evaluate_coverage_reference_sets(reference_set_data, dict[row_ind].realisations.extrema, multiple_outputs) for row_ind in df.row_ind]
+    extrema_union = union_of_prediction_realisations_extrema(df, dict, multiple_outputs)
+    union_coverage = evaluate_coverage_reference_sets(reference_set_data, extrema_union, multiple_outputs)
+
+    return individual_coverage, union_coverage
 end
