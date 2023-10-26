@@ -6,6 +6,7 @@ Pages = ["ellipse_likelihood.md"]
 
 ```@docs
 PlaceholderLikelihood.getMLE_hessian_and_covariance
+PlaceholderLikelihood.test_hessian_identifiability
 ```
 
 ## Likelihood

@@ -176,9 +176,9 @@ Initialises a [`LikelihoodModel`](@ref) struct, which contains all model informa
 
 # Keyword Arguments
 - `optimizationsettings`: optimization settings used to optimize the log-likelihood function using [Optimization.jl](https://docs.sciml.ai/Optimization/stable/). Default is `default_OptimizationSettings()` (see [`default_OptimizationSettings`](@ref)).
-- `uni_row_prealloaction_size`: number of rows of `uni_profiles_df` to preallocate. Default is NaN (a single row).
-- `biv_row_preallocation_size`: number of rows of `biv_profiles_df` to preallocate. Default is NaN (a single row).
-- `dim_row_preallocation_size`: number of rows of `dim_samples_df` to preallocate. Default is NaN (a single row).
+- `uni_row_prealloaction_size`: number of rows of `uni_profiles_df` to preallocate. Default is `missing` (a single row).
+- `biv_row_preallocation_size`: number of rows of `biv_profiles_df` to preallocate. Default is `missing` (a single row).
+- `dim_row_preallocation_size`: number of rows of `dim_samples_df` to preallocate. Default is `missing` (a single row).
 - `find_zero_atol`: a `Real` number greater than zero for the absolute tolerance of the log-likelihood function value from the target value to be used when searching for confidence intervals/boundaries. Default is `0.001`.
 - `show_progress`: Whether to show the progress of profiling across sets of interest parameters. 
 """
@@ -192,15 +192,28 @@ function initialise_LikelihoodModel(loglikefunction::Function,
     θub::AbstractVector{<:Real},
     θmagnitudes::AbstractVector{<:Real}=Float64[];
     optimizationsettings::OptimizationSettings=default_OptimizationSettings(),
-    uni_row_prealloaction_size::Real=NaN,
-    biv_row_preallocation_size::Real=NaN,
-    dim_row_preallocation_size::Real=NaN,
+    uni_row_prealloaction_size::Union{Missing,Int}=missing,
+    biv_row_preallocation_size::Union{Missing,Int}=missing,
+    dim_row_preallocation_size::Union{Missing,Int}=missing,
     find_zero_atol::Real=0.001,
     show_progress::Bool=true)
 
     # Initialise CoreLikelihoodModel, finding the MLE solution
     θnameToIndex = Dict{Symbol,Int}(name=>i for (i, name) in enumerate(θnames))
     num_pars = length(θnames)
+
+    function argument_handling()
+        num_pars == length(θinitialguess) || throw(ArgumentError("The length of θinitialguess must be the same as the length of θnames"))
+        num_pars == length(θlb) || throw(ArgumentError("The length of θlb must be the same as the length of θnames"))
+        num_pars == length(θub) || throw(ArgumentError("The length of θub must be the same as the length of θnames"))
+
+        if !isempty(θmagnitudes)
+            num_pars == length(θmagnitudes) || throw(ArgumentError("The length of θmagnitudes must be the same as the length of θnames"))
+        end
+        return nothing
+    end
+
+    argument_handling()
 
     function negloglikefunction(θ, data); return -loglikefunction(θ, data) end
     (θmle, maximisedmle) = optimise(negloglikefunction, data, optimizationsettings, θinitialguess, θlb, θub)
@@ -230,20 +243,20 @@ function initialise_LikelihoodModel(loglikefunction::Function,
     num_biv_profiles = 0
     num_dim_samples = 0
 
-    uni_profiles_df = isnan(uni_row_prealloaction_size) ? init_uni_profiles_df(1) : init_uni_profiles_df(uni_row_prealloaction_size)
+    uni_profiles_df = ismissing(uni_row_prealloaction_size) ? init_uni_profiles_df(1) : init_uni_profiles_df(uni_row_prealloaction_size)
     # if zero, is invalid row
     uni_profile_row_exists = Dict{Tuple{Int, AbstractProfileType}, DefaultDict{Float64, Int}}()    
     # uni_profile_row_exists = DefaultDict{Tuple{Int, Float64, AbstractProfileType}, Int}(0)
     uni_profiles_dict = Dict{Int, UnivariateConfidenceStruct}()
 
     num_combinations = binomial(num_pars, 2)
-    biv_profiles_df = isnan(biv_row_preallocation_size) ? init_biv_profiles_df(1) : init_biv_profiles_df(biv_row_preallocation_size)
+    biv_profiles_df = ismissing(biv_row_preallocation_size) ? init_biv_profiles_df(1) : init_biv_profiles_df(biv_row_preallocation_size)
     # if zero, is invalid row
     biv_profile_row_exists = Dict{Tuple{Tuple{Int, Int}, AbstractProfileType, AbstractBivariateMethod}, DefaultDict{Float64, Int}}()
     biv_profiles_dict = Dict{Int, BivariateConfidenceStruct}()
 
     dim_samples_row_exists = Dict{Union{AbstractSampleType, Tuple{Vector{Int}, AbstractSampleType}}, DefaultDict{Float64, Int}}()
-    dim_samples_df = isnan(dim_row_preallocation_size) ? init_dim_samples_df(1) : init_dim_samples_df(dim_row_preallocation_size)
+    dim_samples_df = ismissing(dim_row_preallocation_size) ? init_dim_samples_df(1) : init_dim_samples_df(dim_row_preallocation_size)
     dim_samples_dict = Dict{Int, SampledConfidenceStruct}()
 
     uni_predictions_dict = Dict{Int, AbstractPredictionStruct}()
@@ -286,9 +299,9 @@ function initialise_LikelihoodModel(loglikefunction::Function,
     θub::Vector{<:Float64},
     θmagnitudes::Vector{<:Real}=zeros(0);
     optimizationsettings::OptimizationSettings=default_OptimizationSettings(),
-    uni_row_prealloaction_size::Real=NaN,
-    biv_row_preallocation_size::Real=NaN,
-    dim_row_preallocation_size::Real=NaN,
+    uni_row_prealloaction_size::Union{Missing,Int}=missing,
+    biv_row_preallocation_size::Union{Missing,Int}=missing,
+    dim_row_preallocation_size::Union{Missing,Int}=missing,
     find_zero_atol::Real=0.001,
     show_progress::Bool=true)
 
@@ -322,9 +335,9 @@ function initialise_LikelihoodModel(loglikefunction::Function,
     θub::Vector{<:Float64},
     θmagnitudes::Vector{<:Real}=zeros(0);
     optimizationsettings::OptimizationSettings=default_OptimizationSettings(),
-    uni_row_prealloaction_size::Real=NaN,
-    biv_row_preallocation_size::Real=NaN,
-    dim_row_preallocation_size::Real=NaN,
+    uni_row_prealloaction_size::Union{Missing,Int}=missing,
+    biv_row_preallocation_size::Union{Missing,Int}=missing,
+    dim_row_preallocation_size::Union{Missing,Int}=missing,
     find_zero_atol::Real=0.001,
     show_progress::Bool=true)
 

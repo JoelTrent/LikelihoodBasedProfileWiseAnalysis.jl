@@ -44,13 +44,74 @@ function ellipse_like(θ::Vector{T}, mleTuple::@NamedTuple{θmle::Vector{T}, Hml
 end
 
 """
+    test_hessian_identifiability(Hmle::Matrix{T}, num_pars::Int) where T<:Float64
+
+Modified R code from Cole, (2020): https://doi.org/10.1201/9781315120003, (https://www.kent.ac.uk/smsas/personal/djc24/parameterredundancy.html) in book code, `bassicocc.R`.
+
+The cutoff used to estimate whether a standardised eigenvalue is close enough to zero to indicate non-identifiability is 1e-12*number of parameters, which is a smaller value than used in  Viallefont et. al. (1998) (https://doi.org/10.1002/(SICI)1521-4036(199807)40:3<313::AID-BIMJ313>3.0.CO;2-2) and Cole (2020) (https://doi.org/10.1201/9781315120003) due to smaller error in the calculation of `Hmle` via automatic differentiation. This cutoff is meant as an indication of non-identifiability/singularity; the hessian may still be identifiable/non-singular even if a warning occurs.
+"""
+function test_hessian_identifiability(Hmle::Matrix{T}, num_pars::Int) where T<:Float64
+
+    # Uses 1e-9 * num_pars Viallefont et. al. (1998) https://doi.org/10.1002/(SICI)1521-4036(199807)40:3<313::AID-BIMJ313>3.0.CO;2-2
+    # Referenced in Cole (2020) https://doi.org/10.1201/9781315120003 
+    # We use even smaller value due to smaller error in calculation of Hmle via automatic differentiation
+    cutoff = 1e-12 * num_pars 
+
+    # Cole (2020) https://doi.org/10.1201/9781315120003 
+    epsilon= 0.01
+
+    E = eigen(Hmle)
+    standard_eigenvalues = abs.(E.values) ./ maximum(abs.(E.values))
+    num_estimable_pars = 0
+
+    small_eigvals = Int[]
+    for i in 1:num_pars
+        if standard_eigenvalues[i] >= cutoff
+           num_estimable_pars += 1
+        else
+            push!(small_eigvals, i)
+        end
+    end
+    identifiable_pars = Int[]
+    if minimum(standard_eigenvalues) < cutoff
+        for i in 1:num_pars 
+            indent = 1
+            for j in eachindex(small_eigvals) 
+                if abs(E.vectors[i, small_eigvals[j]]) > epsilon
+                    indent = 0 
+                end
+            end
+            if indent == 1
+                push!(identifiable_pars, i)
+            end
+        end
+    end
+    if minimum(standard_eigenvalues) < cutoff
+
+        message = "the model is likely to be non-identifiable or parameter redundant as the Hessian of the log-likelihood function at the MLE point is close to singular. Using EllipseApproxAnalytical or EllipseApprox profile types may result in errors or poor results. Smallest standardised eigenvalue: "*string(minimum(standard_eigenvalues))
+        
+        if isempty(identifiable_pars)
+            message = message*". None of the original parameters are estimable"
+        else 
+            message = message*". Number of estimable parameters: "*string(num_estimable_pars)
+            message = message*". Estimable parameter indexes: "*string(identifiable_pars)
+        end
+        @warn message
+    end
+    return nothing
+end
+
+"""
     getMLE_hessian_and_covariance(f::Function, θmle::Vector{<:Float64})
 
 Computes the negative hessian of function `f` at `θmle` using [ForwardDiff.jl](https://juliadiff.org/ForwardDiff.jl/stable/user/api/#ForwardDiff.hessian) and it's pseudoinverse, returning both matrices.
+
+Hessian identifiability is tested using [`PlaceholderLikelihood.test_hessian_identifiability`](@ref).
 """
 function getMLE_hessian_and_covariance(f::Function, θmle::Vector{<:Float64})
 
     Hmle = -ForwardDiff.hessian(f, θmle)
+    test_hessian_identifiability(Hmle, length(θmle))
 
     # if inverse fails then may have locally non-identifiable parameter OR parameter is
     # a delta distribution given data.
