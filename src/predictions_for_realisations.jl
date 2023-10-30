@@ -28,7 +28,7 @@ function add_error_function!(model::LikelihoodModel,
 end
 
 """
-    normal_error_σ_known(predictions::Array, 
+    normal_error_σ_known(predictions::AbstractArray, 
         θ::AbstractVector, 
         confidence_level::Float64, 
         σ::Real)
@@ -39,21 +39,21 @@ To use this function as the error model you must create a new function with only
 
 Two equivalent examples of this specification with `σ` set to 1.3:
 ```julia
-errorfunction(predictions, θ, bcl) = normal_error_σ_known(predictions, θ, bcl, 1.3)
+errorfunction(predictions, θ, confidence_level) = normal_error_σ_known(predictions, θ, confidence_level, 1.3)
 
-function errorfunction(predictions, θ, bcl) 
-    normal_error_σ_known(predictions, θ, bcl, 1.3)
+function errorfunction(predictions, θ, confidence_level) 
+    normal_error_σ_known(predictions, θ, confidence_level, 1.3)
 end
 ```
 """
-function normal_error_σ_known(predictions::Array, θ::AbstractVector, confidence_level::Float64, σ::Real)
+function normal_error_σ_known(predictions::AbstractArray, θ::AbstractVector, confidence_level::Float64, σ::Real)
     lq = predictions .+ quantile(Normal(0, σ), (1.0-confidence_level)/2.0)
     uq = predictions .+ quantile(Normal(0, σ), 1.0 - ((1.0-confidence_level)/2.0))
     return lq, uq
 end
 
 """
-    normal_error_σ_estimated(predictions::Array, 
+    normal_error_σ_estimated(predictions::AbstractArray, 
         θ::AbstractVector, 
         confidence_level::Float64, 
         σ_θindex::Int)
@@ -64,21 +64,21 @@ To use this function as the error model you must create a new function with only
 
 Two equivalent examples of this specification with `σ` stored at the end of the `θ` parameter vector, which has 4 elements (length 4):
 ```julia
-errorfunction(predictions, θ, bcl) = normal_error_σ_estimated(predictions, θ, bcl, 4)
+errorfunction(predictions, θ, confidence_level) = normal_error_σ_estimated(predictions, θ, confidence_level, 4)
 
-function errorfunction(predictions, θ, bcl) 
-    normal_error_σ_estimated(predictions, θ, bcl, 4)
+function errorfunction(predictions, θ, confidence_level) 
+    normal_error_σ_estimated(predictions, θ, confidence_level, 4)
 end
 ```
 """
-function normal_error_σ_estimated(predictions::Array, θ::AbstractVector, confidence_level::Float64, σ_θindex::Int)
+function normal_error_σ_estimated(predictions::AbstractArray, θ::AbstractVector, confidence_level::Float64, σ_θindex::Int)
     lq = predictions .+ quantile(Normal(0, θ[σ_θindex]), (1.0-confidence_level)/2.0)
     uq = predictions .+ quantile(Normal(0, θ[σ_θindex]), 1.0 - ((1.0-confidence_level)/2.0))
     return lq, uq
 end
 
 """
-    lognormal_error_σ_known(predictions::Array, 
+    lognormal_error_σ_known(predictions::AbstractArray, 
         θ::AbstractVector, 
         confidence_level::Float64, 
         σ::Real)
@@ -89,14 +89,14 @@ To use this function as the error model you must create a new function with only
 
 Two equivalent examples of this specification with `σ` set to 1.3:
 ```julia
-errorfunction(predictions, θ, bcl) = lognormal_error_σ_known(predictions, θ, bcl, 1.3)
+errorfunction(predictions, θ, confidence_level) = lognormal_error_σ_known(predictions, θ, confidence_level, 1.3)
 
-function errorfunction(predictions, θ, bcl) 
-    lognormal_error_σ_known(predictions, θ, bcl, 1.3)
+function errorfunction(predictions, θ, confidence_level) 
+    lognormal_error_σ_known(predictions, θ, confidence_level, 1.3)
 end
 ```
 """
-function lognormal_error_σ_known(predictions::Array, θ::AbstractVector, confidence_level::Float64, σ::Real)
+function lognormal_error_σ_known(predictions::AbstractArray, θ::AbstractVector, confidence_level::Float64, σ::Real)
     THalpha = 1.0 - confidence_level
     lq, uq = zeros(size(predictions)), zeros(size(predictions))
 
@@ -109,7 +109,7 @@ function lognormal_error_σ_known(predictions::Array, θ::AbstractVector, confid
 end
 
 """
-    lognormal_error_σ_estimated(predictions::Array, 
+    lognormal_error_σ_estimated(predictions::AbstractArray, 
         θ::AbstractVector, 
         confidence_level::Float64, 
         σ_θindex::Int)
@@ -120,14 +120,14 @@ To use this function as the error model you must create a new function with only
 
 Two equivalent examples of this specification with `σ` stored at the end of the `θ` parameter vector, which has 4 elements (length 4):
 ```julia
-errorfunction(predictions, θ, bcl) = lognormal_error_σ_estimated(predictions, θ, bcl, 4)
+errorfunction(predictions, θ, confidence_level) = lognormal_error_σ_estimated(predictions, θ, confidence_level, 4)
 
-function errorfunction(predictions, θ, bcl) 
-    lognormal_error_σ_estimated(predictions, θ, bcl, 4)
+function errorfunction(predictions, θ, confidence_level) 
+    lognormal_error_σ_estimated(predictions, θ, confidence_level, 4)
 end
 ```
 """
-function lognormal_error_σ_estimated(predictions::Array, θ::AbstractVector, confidence_level::Float64, σ_θindex::Int)
+function lognormal_error_σ_estimated(predictions::AbstractArray, θ::AbstractVector, confidence_level::Float64, σ_θindex::Int)
     THalpha = 1.0 - confidence_level
     lq, uq = zeros(size(predictions)), zeros(size(predictions))
 
@@ -140,7 +140,7 @@ function lognormal_error_σ_estimated(predictions::Array, θ::AbstractVector, co
 end
 
 """
-    poisson_error(predictions::Array, 
+    poisson_error(predictions::AbstractArray, 
         θ::AbstractVector, 
         confidence_level::Float64)
 
@@ -148,7 +148,7 @@ Use a poisson error model to quantify the uncertainty in the predictions of real
 
 To use this function as the error model you don't need to create a new function, just specify this function directly.
 """
-function poisson_error(predictions::Array, θ::AbstractVector, confidence_level::Float64)
+function poisson_error(predictions::AbstractArray, θ::AbstractVector, confidence_level::Float64)
     THalpha = 1.0-confidence_level
     lq, uq = zeros(size(predictions)), zeros(size(predictions))
 
@@ -162,13 +162,13 @@ end
 
 """
     predict_realisations(errorfunction::Function, 
-        predictions::Array, 
+        predictions::AbstractArray, 
         θ::AbstractVector,
         confidence_level::Float64)
 
 
 """
-function predict_realisations(errorfunction::Function, predictions::Array, θ::AbstractVector, confidence_level::Float64)
+function predict_realisations(errorfunction::Function, predictions::AbstractArray, θ::AbstractVector, confidence_level::Float64)
     lq, uq = errorfunction(predictions, θ, confidence_level)
     return lq, uq
 end

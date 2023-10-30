@@ -317,9 +317,7 @@ function check_univariate_prediction_realisations_coverage(data_generator::Funct
     end
 
     argument_handling!()
-
-    bonferroni_confidence_level = 1.0 - ((1.0-confidence_level)/2.0)
-
+    
     y_true = model.core.predictfunction(θtrue, model.core.data, t)
     multiple_outputs = ndims(y_true) == 2
 
@@ -353,7 +351,7 @@ function check_univariate_prediction_realisations_coverage(data_generator::Funct
             lb, ub = correct_θbounds_nuisance(m_new, θlb_nuisance, θub_nuisance)
 
             univariate_confidenceintervals!(m_new, deepcopy(θs);
-                num_points_in_interval=num_points_in_interval, confidence_level=bonferroni_confidence_level,
+                num_points_in_interval=num_points_in_interval, confidence_level=confidence_level,
                 θlb_nuisance=lb, θub_nuisance=ub,
                 profile_type=profile_type, use_threads=false,
                 optimizationsettings=optimizationsettings)
@@ -401,7 +399,7 @@ function check_univariate_prediction_realisations_coverage(data_generator::Funct
                     lb, ub = correct_θbounds_nuisance(m_new, θlb_nuisance, θub_nuisance)
 
                     univariate_confidenceintervals!(m_new, deepcopy(θs);
-                        num_points_in_interval=num_points_in_interval, confidence_level=bonferroni_confidence_level,
+                        num_points_in_interval=num_points_in_interval, confidence_level=confidence_level,
                         profile_type=profile_type, use_distributed=false,
                         θlb_nuisance=lb, θub_nuisance=ub, use_threads=false,
                         optimizationsettings=optimizationsettings)
