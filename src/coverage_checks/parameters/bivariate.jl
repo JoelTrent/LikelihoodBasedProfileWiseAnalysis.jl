@@ -119,9 +119,6 @@ function check_bivariate_parameter_coverage(data_generator::Function,
 
     bivariate_optimiser = get_bivariate_opt_func(profile_type, RadialMLEMethod())
     biv_opt_is_ellipse_analytical = bivariate_optimiser == bivariateψ_ellipse_analytical_vectorsearch
-    consistent = get_consistent_tuple(model, confidence_level, profile_type, 2)
-    pointa = [0.0,0.0]
-    uhat   = [0.0,0.0]
 
     data = [data_generator(θtrue, generator_args) for _ in 1:N]
 
@@ -151,11 +148,14 @@ function check_bivariate_parameter_coverage(data_generator::Function,
                     optimizationsettings=optimizationsettings, use_threads=false)
             end
 
+            consistent = get_consistent_tuple(m_new, confidence_level, profile_type, 2)
+
             for row_ind in 1:m_new.num_biv_profiles
                 θindices = m_new.biv_profiles_df[row_ind, :θindices]
 
                 ind1, ind2 = θindices
-                pointa .= θtrue[[ind1, ind2]]
+                pointa = θtrue[[ind1, ind2]]
+                uhat=[0.0,0.0]
                 newLb, newUb, initGuess, θranges, ωranges = init_nuisance_parameters(m_new, ind1, ind2, θlb_nuisance, θub_nuisance)
 
                 q = (ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess,
@@ -208,7 +208,7 @@ function check_bivariate_parameter_coverage(data_generator::Function,
 
                     m_new = initialise_LikelihoodModel(model.core.loglikefunction, new_data,
                         model.core.θnames, θinitialguess, model.core.θlb, model.core.θub,
-                        model.core.θmagnitudes; uni_row_prealloaction_size=len_θs, show_progress=false)
+                        model.core.θmagnitudes; biv_row_preallocation_size=len_θs, show_progress=false)
 
                     if combine_methods
                         for (j, methodj) in enumerate(method)
@@ -225,11 +225,13 @@ function check_bivariate_parameter_coverage(data_generator::Function,
                             use_distributed=false, use_threads=false)
                     end
 
+                    consistent = get_consistent_tuple(m_new, confidence_level, profile_type, 2)
                     for row_ind in 1:m_new.num_biv_profiles
                         θindices = m_new.biv_profiles_df[row_ind, :θindices]
 
                         ind1, ind2 = θindices
-                        pointa .= θtrue[[ind1, ind2]]
+                        pointa = θtrue[[ind1, ind2]]
+                        uhat = [0.0, 0.0]
                         newLb, newUb, initGuess, θranges, ωranges = init_nuisance_parameters(m_new, ind1, ind2, θlb_nuisance, θub_nuisance)
 
                         q = (ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess,

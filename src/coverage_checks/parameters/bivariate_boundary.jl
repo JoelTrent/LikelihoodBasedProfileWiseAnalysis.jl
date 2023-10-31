@@ -141,9 +141,6 @@ function check_bivariate_boundary_coverage(data_generator::Function,
 
     bivariate_optimiser = get_bivariate_opt_func(profile_type, RadialMLEMethod())
     biv_opt_is_ellipse_analytical = bivariate_optimiser == bivariateψ_ellipse_analytical_vectorsearch
-    consistent = get_consistent_tuple(model, confidence_level, profile_type, 2)
-    pointa = [0.0,0.0]
-    uhat   = [0.0,0.0]
     min_num_dim_points = 20
 
     data = [data_generator(θtrue, generator_args) for _ in 1:N]
