@@ -224,7 +224,7 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
                                         mle_targetll, save_internal_points, 
                                         find_zero_atol, optimizationsettings,
                                         use_threads, channel,
-                                        ellipse_confidence_level=0.1,
+                                        ellipse_confidence_level=confidence_level,
                                         ellipse_start_point_shift=method.ellipse_start_point_shift,
                                         ellipse_sqrt_distortion=method.ellipse_sqrt_distortion)
 
@@ -249,7 +249,8 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
                                         θlb_nuisance, θub_nuisance,
                                         method.initial_num_points, method.angle_points_per_iter,
                                         method.edge_points_per_iter, method.radial_start_point_shift,
-                                        method.ellipse_sqrt_distortion, method.use_ellipse,
+                                        method.ellipse_sqrt_distortion, confidence_level, 
+                                        method.use_ellipse,
                                         mle_targetll, save_internal_points,
                                         find_zero_atol, optimizationsettings, 
                                         use_threads, channel)

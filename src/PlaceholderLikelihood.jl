@@ -14,7 +14,10 @@ using Random, StatsBase, Combinatorics, Distributions
 using Distances, TravelingSalesmanHeuristics
 using Clustering, Meshes, ConcaveHull, PolygonInbounds
 using AngleBetweenVectors
-using Distributed, SharedArrays, FLoops
+using Distributed, SharedArrays
+using FLoops
+FLoops.assistant(false)
+
 using Requires
 
 import HypothesisTests

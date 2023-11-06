@@ -26,6 +26,7 @@ function findNpointpairs_radialMLE!(q::NamedTuple,
                                     use_threads::Bool)
 
     mle_point = model.core.θmle[[ind1, ind2]]
+    internal = zeros(2,num_points) .= mle_point
     external = zeros(2,num_points)
     external_all = zeros(model.core.num_pars, biv_opt_is_ellipse_analytical ? 0 : num_points)
     point_is_on_bounds = falses(num_points)
@@ -77,7 +78,7 @@ function findNpointpairs_radialMLE!(q::NamedTuple,
         @warn string("The ", _upper_or_lower, " bound on variable ", model.core.θnames[_bound_ind], " is inside the confidence boundary")
     end
 
-    return external, external_all, point_is_on_bounds, any(point_is_on_bounds)
+    return internal, external, external_all, point_is_on_bounds, any(point_is_on_bounds)
 end
 
 """
@@ -143,6 +144,7 @@ end
         biv_opt_is_ellipse_analytical::Bool,
         radial_start_point_shift::Float64,
         ellipse_sqrt_distortion::Float64,
+        ellipse_confidence_level::Float64,
         use_ellipse::Bool,
         save_internal_points::Bool,
         find_zero_atol::Real, 
@@ -164,6 +166,7 @@ function iterativeboundary_init(bivariate_optimiser::Function,
                                 biv_opt_is_ellipse_analytical::Bool,
                                 radial_start_point_shift::Float64,
                                 ellipse_sqrt_distortion::Float64,
+                                ellipse_confidence_level::Float64,
                                 use_ellipse::Bool,
                                 save_internal_points::Bool,
                                 find_zero_atol::Real, 
@@ -179,15 +182,23 @@ function iterativeboundary_init(bivariate_optimiser::Function,
     point_is_on_bounds = falses(num_points)
 
     if use_ellipse
-        _, _, _, external, external_all, point_is_on_bounds_external, bound_warning = 
+        internal, internal_all_init, ll_values_init, external, external_all, point_is_on_bounds_external, bound_warning = 
             findNpointpairs_radialMLE!(q, bivariate_optimiser, model, 
                                         initial_num_points, ind1, ind2, 
+                                        0.0, false,
                                         biv_opt_is_ellipse_analytical,
-                                        0.1, radial_start_point_shift, 
+                                        ellipse_confidence_level, 
+                                        radial_start_point_shift, 
                                         ellipse_sqrt_distortion,
                                         optimizationsettings, use_threads)
+
+        if save_internal_points
+            internal_count = length(ll_values_init)
+            ll_values[1:internal_count] .= ll_values_init
+            internal_all[:, 1:internal_count] .= internal_all_init
+        end
     else
-        external, external_all, point_is_on_bounds_external, bound_warning = 
+        internal, external, external_all, point_is_on_bounds_external, bound_warning = 
             findNpointpairs_radialMLE!(q, bivariate_optimiser, model, 
                                         initial_num_points, ind1, ind2, 
                                         biv_opt_is_ellipse_analytical,
@@ -215,8 +226,8 @@ function iterativeboundary_init(bivariate_optimiser::Function,
                     boundary_all[:,i] .= external_all[:,i]
                 end
             else
-                p.pointa .= mle_point .* 1.0
-                v_bar = external[:,i] .- mle_point
+                p.pointa .= internal[:, i] .* 1.0
+                v_bar = external[:,i] .- internal[:,i]
 
                 v_bar_norm = norm(v_bar, 2)
                 p.uhat .= v_bar ./ v_bar_norm
@@ -705,6 +716,7 @@ end
         edge_points_per_iter::Int,
         radial_start_point_shift::Float64,
         ellipse_sqrt_distortion::Float64,
+        ellipse_confidence_level::Float64,
         use_ellipse::Bool,
         mle_targetll::Float64,
         save_internal_points::Bool,
@@ -728,6 +740,7 @@ function bivariate_confidenceprofile_iterativeboundary(bivariate_optimiser::Func
                                                 edge_points_per_iter::Int,
                                                 radial_start_point_shift::Float64,
                                                 ellipse_sqrt_distortion::Float64,
+                                                ellipse_confidence_level::Float64,
                                                 use_ellipse::Bool,
                                                 mle_targetll::Float64,
                                                 save_internal_points::Bool,
@@ -750,6 +763,7 @@ function bivariate_confidenceprofile_iterativeboundary(bivariate_optimiser::Func
     return_tuple = iterativeboundary_init(bivariate_optimiser, model, num_points, q, ind1, ind2,
                                             initial_num_points, biv_opt_is_ellipse_analytical,
                                             radial_start_point_shift, ellipse_sqrt_distortion,
+                                            ellipse_confidence_level,
                                             use_ellipse, save_internal_points, find_zero_atol, 
                                             optimizationsettings, use_threads, channel)
 

@@ -312,6 +312,8 @@ end
         num_points::Int, 
         ind1::Int, 
         ind2::Int,
+        mle_targetll::Float64,
+        save_internal_points::Bool,
         biv_opt_is_ellipse_analytical::Bool, 
         ellipse_confidence_level::Float64,
         ellipse_start_point_shift::Float64,
@@ -329,6 +331,8 @@ function findNpointpairs_radialMLE!(q::NamedTuple,
                                     num_points::Int, 
                                     ind1::Int, 
                                     ind2::Int,
+                                    mle_targetll::Float64,
+                                    save_internal_points::Bool,
                                     biv_opt_is_ellipse_analytical::Bool, 
                                     ellipse_confidence_level::Float64,
                                     ellipse_start_point_shift::Float64,
@@ -338,11 +342,17 @@ function findNpointpairs_radialMLE!(q::NamedTuple,
 
     mle_point = model.core.θmle[[ind1, ind2]]
     internal = zeros(2,num_points) .= mle_point
+    internal_all = zeros(model.core.num_pars, ifelse(save_internal_points, num_points, 0))
+    ll_values = zeros(ifelse(save_internal_points, num_points, 0))
     external = zeros(2,num_points)
     external_all = zeros(model.core.num_pars, biv_opt_is_ellipse_analytical ? 0 : num_points)
     point_is_on_bounds = falses(num_points)
+    unique_internal_points = falses(num_points)
     # warn if bound prevents reaching boundary
     bound_inds = [(0, 'a') for _ in 1:num_points]
+
+    ind1_bounds = (model.core.θlb[ind1], model.core.θub[ind1])
+    ind2_bounds = (model.core.θlb[ind2], model.core.θub[ind2])
 
     check_ellipse_approx_exists!(model)
     ellipse_points = generate_N_clustered_points(num_points, model.ellipse_MLE_approx.Γmle,
@@ -358,13 +368,49 @@ function findNpointpairs_radialMLE!(q::NamedTuple,
         FLoops.@init ω_opt = zeros(model.core.num_pars-2)
         p = (ω_opt=ω_opt, pointa=pointa, uhat=uhat, q=q, options=optimizationsettings)
 
-        dir_vector = ellipse_points[:,i] .- mle_point
-        external[:,i], bound_ind, upper_or_lower = findpointonbounds(model, mle_point, dir_vector, ind1, ind2, true)
+        g = 0.0
+        
+        if (ind1_bounds[1] < ellipse_points[1,i] && ellipse_points[1,i] < ind1_bounds[2]) && 
+                (ind2_bounds[1] < ellipse_points[2,i] && ellipse_points[2,i] < ind2_bounds[2]) 
+            p.pointa .= ellipse_points[:,i]
+            h = bivariate_optimiser(0.0, p)
+            if h ≤ 0.0 
+                external[:,i] .= ellipse_points[:,i]
+                dir_vector = ellipse_points[:,i] .- mle_point
+                _, bound_ind, upper_or_lower = findpointonbounds(model, mle_point, dir_vector, ind1, ind2, true)
+                g = h
+            else
+                internal[:,i] .= ellipse_points[:,i]
 
-        p.pointa .= external[:,i]
-        g = bivariate_optimiser(0.0, p)
-        if g ≥ 0
-            point_is_on_bounds[i] = true
+                if save_internal_points
+                    @inbounds ll_values[i] = h * 1.0
+                    unique_internal_points[i] = true
+                    internal_all[[ind1, ind2], i] .= ellipse_points[:,i]
+                    if !biv_opt_is_ellipse_analytical
+                        variablemapping!(@view(internal_all[:, i]), ω_opt, q.θranges, q.ωranges)
+                    end
+                end
+
+                dir_vector = ellipse_points[:,i] .- mle_point
+                external[:,i], bound_ind, upper_or_lower = findpointonbounds(model, mle_point, dir_vector, ind1, ind2, true)
+                p.pointa .= external[:,i]
+
+                g = bivariate_optimiser(0.0, p)
+            end
+        else
+            dir_vector = ellipse_points[:, i] .- mle_point
+            external[:, i], bound_ind, upper_or_lower = findpointonbounds(model, mle_point, dir_vector, ind1, ind2, true)
+            p.pointa .= external[:, i]
+
+            g = bivariate_optimiser(0.0, p)            
+        end
+
+        # technically a ellipse point that has (h == 0) = true could also trigger this 
+        # and lead to improper messaging about a point being on the bounds when it's not.
+        # However, we need this to be set to on the bounds so that we use this point as the boundary point
+        # (which it is)
+        if g ≥ 0.0 
+            point_is_on_bounds[i] = true 
             bound_inds[i] = (bound_ind, upper_or_lower)
             if !biv_opt_is_ellipse_analytical
                 external_all[[ind1, ind2], i] .= external[:, i]
@@ -385,8 +431,10 @@ function findNpointpairs_radialMLE!(q::NamedTuple,
         @warn string("The ", _upper_or_lower, " bound on variable ", model.core.θnames[_bound_ind], " is inside the confidence boundary")
     end
 
-    internal_all = zeros(model.core.num_pars, 0)
-    ll_values = zeros(0)
+    if save_internal_points 
+        internal_all = internal_all[:, unique_internal_points]
+        ll_values = ll_values[unique_internal_points] .+ mle_targetll
+    end
     return internal, internal_all, ll_values, external, external_all, point_is_on_bounds, any(point_is_on_bounds)
 end
 
@@ -448,7 +496,7 @@ function bivariate_confidenceprofile_vectorsearch(bivariate_optimiser::Function,
     if ellipse_confidence_level !== -1.0
         internal, internal_all, ll_values, external, external_all, point_is_on_bounds, _ =
             findNpointpairs_radialMLE!(q, bivariate_optimiser, model, num_points, ind1, ind2, 
-                                        biv_opt_is_ellipse_analytical,
+                                        mle_targetll, save_internal_points, biv_opt_is_ellipse_analytical,
                                         ellipse_confidence_level, ellipse_start_point_shift, ellipse_sqrt_distortion,
                                         optimizationsettings, use_threads)
 
