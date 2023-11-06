@@ -130,6 +130,7 @@ end
         θub_nuisance::AbstractVector{<:Real},
         mle_targetll::Float64,
         use_existing_profiles::Bool,
+        use_ellipse_approx_analytical_start::Bool,
         num_points_in_interval::Int,
         additional_width::Real,
         find_zero_atol::Real,
@@ -153,6 +154,7 @@ function univariate_confidenceinterval(univariate_optimiser::Function,
                                         θub_nuisance::AbstractVector{<:Real},
                                         mle_targetll::Float64,
                                         use_existing_profiles::Bool,
+                                        use_ellipse_approx_analytical_start::Bool,
                                         num_points_in_interval::Int,
                                         additional_width::Real,
                                         find_zero_atol::Real,
@@ -176,6 +178,19 @@ function univariate_confidenceinterval(univariate_optimiser::Function,
                                                                 profile_type)
             else
                 bracket_l, bracket_r = Float64[], Float64[]
+            end
+
+            if use_ellipse_approx_analytical_start && !(profile_type isa EllipseApproxAnalytical)
+                if haskey(model.uni_profile_row_exists, (θi, EllipseApproxAnalytical())) && 
+                        model.uni_profile_row_exists[(θi, EllipseApproxAnalytical())][confidence_level] != 0
+
+                    analytical_interval = get_uni_confidence_interval(model, 
+                        model.uni_profile_row_exists[(θi, EllipseApproxAnalytical())][confidence_level])
+                else
+                    analytical_interval = [NaN, NaN]
+                end
+            else
+                analytical_interval = [NaN, NaN]
             end
 
             if isempty(bracket_l)
@@ -219,7 +234,22 @@ function univariate_confidenceinterval(univariate_optimiser::Function,
 
             if use_find_zero
                 # by definition, g(θmle[i],p) == abs(llstar) > 0, so only have to check one side of interval to make sure it brackets a zero
-                g = univariate_optimiser(bracket_l[1], p)
+
+                g = 0.0
+                if !isnan(analytical_interval[1]) && (bracket_l[1] < analytical_interval[1] && analytical_interval[1] < bracket_l[2])
+                    h = univariate_optimiser(analytical_interval[1], p)
+
+                    if h ≤ find_zero_atol
+                        bracket_l[1] = analytical_interval[1]
+                        g = h
+                    else
+                        bracket_l[2] = analytical_interval[1]
+                        g = univariate_optimiser(bracket_l[1], p)
+                    end
+                else
+                    g = univariate_optimiser(bracket_l[1], p)
+                end
+
                 if isapprox(g, 0.0, atol=find_zero_atol)
                     interval_points[θi,1] = bracket_l[1]
                     variablemapping!(@view(interval_points[:,1]), p.ω_opt, θranges, ωranges)
@@ -238,7 +268,21 @@ function univariate_confidenceinterval(univariate_optimiser::Function,
                 end
                 put!(channel, true)
 
-                g = univariate_optimiser(bracket_r[2], p)
+
+                if !isnan(analytical_interval[2]) && (bracket_r[1] < analytical_interval[2] && analytical_interval[2] < bracket_r[2])
+                    h = univariate_optimiser(analytical_interval[2], p)
+
+                    if h ≤ find_zero_atol
+                        bracket_r[2] = analytical_interval[2]
+                        g = h
+                    else
+                        bracket_r[1] = analytical_interval[2]
+                        g = univariate_optimiser(bracket_r[2], p)
+                    end
+                else
+                    g = univariate_optimiser(bracket_r[2], p)
+                end
+
                 if isapprox(g, 0.0, atol=find_zero_atol)
                     interval_points[θi,2] = bracket_r[2]
                     variablemapping!(@view(interval_points[:,2]), p.ω_opt, θranges, ωranges)
@@ -314,6 +358,7 @@ Computes likelihood-based confidence interval profiles for the provided `θs_to_
 - `θlb_nuisance`: a vector of lower bounds on nuisance parameters, require `θlb_nuisance .≤ model.core.θmle`. Default is `model.core.θlb`. 
 - `θub_nuisance`: a vector of upper bounds on nuisance parameters, require `θub_nuisance .≥ model.core.θmle`. Default is `model.core.θub`.
 - `use_existing_profiles`: boolean variable specifying whether to use existing profiles of a parameter `θi` to decrease the width of the bracket used to search for the desired confidence interval using [`PlaceholderLikelihood.get_interval_brackets`](@ref). Default is `false`.
+- `use_ellipse_approx_analytical_start`: boolean variable specifying whether to use existing profiles at `confidence_level` of type [`EllipseApproxAnalytical`](@ref) of a parameter `θi` to decrease the width of the bracket used to search for the desired confidence interval. Can decrease search times significantly for [`LogLikelihood`](@ref) profile types. Default is `false`.
 - `num_points_in_interval`: an integer number of points to optionally evaluate within the confidence interval for each interest parameter using [`get_points_in_intervals!`](@ref). Points are linearly spaced in the interval and have their optimised log-likelihood value recorded. Useful for plots that visualise the confidence interval or for predictions from univariate profiles. Default is `0`. 
 - `additional_width`: a `Real` number greater than or equal to zero. Specifies the additional width to optionally evaluate outside the confidence interval's width if `num_points_in_interval` is greater than 0 using [`get_points_in_intervals!`](@ref). Half of this additional width will be placed on either side of the confidence interval. If the additional width goes outside a bound on the parameter, only up to the bound will be considered. The spacing of points in the additional width will try to match the spacing of points evaluated inside the interval. Useful for plots that visualise the confidence interval as it shows the trend of the log-likelihood profile outside the interval range. Default is `0.0`.
 - `existing_profiles`: `Symbol ∈ [:ignore, :overwrite]` specifying what to do if profiles already exist for a given interest parameter, `confidence_level` and `profile_type`. See below for each symbol's meanings. Default is `:merge`.
@@ -352,6 +397,7 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
                                         θlb_nuisance::AbstractVector{<:Real}=model.core.θlb,
                                         θub_nuisance::AbstractVector{<:Real}=model.core.θub,
                                         use_existing_profiles::Bool=false,
+                                        use_ellipse_approx_analytical_start::Bool=false,
                                         num_points_in_interval::Int=0,
                                         additional_width::Real=0.0,
                                         existing_profiles::Symbol=:ignore,
@@ -443,6 +489,7 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
                                                         θlb_nuisance, θub_nuisance,
                                                         mle_targetll,
                                                         use_existing_profiles,
+                                                        use_ellipse_approx_analytical_start,
                                                         num_points_in_interval,
                                                         additional_width, find_zero_atol,
                                                         optimizationsettings,
@@ -474,6 +521,7 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
                                                                     θlb_nuisance, θub_nuisance,
                                                                     mle_targetll,
                                                                     use_existing_profiles,
+                                                                    use_ellipse_approx_analytical_start,
                                                                     num_points_in_interval,
                                                                     additional_width, find_zero_atol,
                                                                     optimizationsettings,
@@ -516,6 +564,7 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
                                         θlb_nuisance::AbstractVector{<:Real}=model.core.θlb,
                                         θub_nuisance::AbstractVector{<:Real}=model.core.θub,
                                         use_existing_profiles::Bool=false,
+                                        use_ellipse_approx_analytical_start::Bool=false,
                                         num_points_in_interval::Int=0,
                                         additional_width::Real=0.0,
                                         existing_profiles::Symbol=:ignore,
@@ -534,6 +583,7 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
                                 num_points_in_interval=num_points_in_interval,
                                 additional_width=additional_width,
                                 existing_profiles=existing_profiles,
+                                use_ellipse_approx_analytical_start=use_ellipse_approx_analytical_start,
                                 find_zero_atol=find_zero_atol,
                                 optimizationsettings=optimizationsettings,
                                 show_progress=show_progress,
@@ -556,6 +606,7 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
                                         θlb_nuisance::AbstractVector{<:Real}=model.core.θlb,
                                         θub_nuisance::AbstractVector{<:Real}=model.core.θub,
                                         use_existing_profiles::Bool=false,
+                                        use_ellipse_approx_analytical_start::Bool=false,
                                         num_points_in_interval::Int=0,
                                         additional_width::Real=0.0,
                                         existing_profiles::Symbol=:ignore,
@@ -575,6 +626,7 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
                                 θlb_nuisance=θlb_nuisance,
                                 θub_nuisance=θub_nuisance,
                                 use_existing_profiles=use_existing_profiles,
+                                use_ellipse_approx_analytical_start=use_ellipse_approx_analytical_start,
                                 num_points_in_interval=num_points_in_interval,
                                 additional_width=additional_width,
                                 existing_profiles=existing_profiles,
