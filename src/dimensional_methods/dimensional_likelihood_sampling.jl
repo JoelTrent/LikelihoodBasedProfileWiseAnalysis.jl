@@ -570,7 +570,7 @@ function dimensional_likelihood_samples!(model::LikelihoodModel,
                                                         lb[θs], ub[θs], 
                                                         θlb_nuisance, θub_nuisance,
                                                         optimizationsettings, 
-                                                        use_threads, channel))]
+                                                        false, channel))]
                 end
                 
                 for (i, (θs, sample_struct)) in enumerate(profiles_to_add)

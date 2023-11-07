@@ -446,7 +446,7 @@ function sample_bivariate_internal_points!(model::LikelihoodModel,
                     [(i, sub_df[i, :row_ind], 
                         sample_internal_points_single_row(model, sub_df, i, sub_df[i, :row_ind], num_points, sample_type, 
                             hullmethod, θlb_nuisance, θub_nuisance, t, evaluate_predictions_for_samples, proportion_of_predictions_to_keep, 
-                            optimizationsettings, use_threads, channel))]
+                            optimizationsettings, false, channel))]
                 end
                 
                 for (i, row_ind, samples) in internal_samples
