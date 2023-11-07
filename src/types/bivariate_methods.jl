@@ -162,13 +162,20 @@ end
     RadialMLEMethod(ellipse_start_point_shift::Float64=rand(), 
         ellipse_sqrt_distortion::Float64=0.01)
 
-Method for finding the bivariate boundary of a confidence profile by bracketing between the MLE point and points on the provided bounds in directions given by points found on the boundary of a ellipse approximation of the log-likelihood function around the MLE, `e`, using [EllipseSampling.jl](https://joeltrent.github.io/EllipseSampling.jl/stable) (see [`PlaceholderLikelihood.findNpointpairs_radialMLE!`](@ref) and [`PlaceholderLikelihood.bivariate_confidenceprofile_vectorsearch`](@ref)).
+Method for finding the bivariate boundary of a confidence profile by bracketing between the MLE point and points on the provided bounds in directions given by points found on the boundary of a ellipse approximation of the log-likelihood function around the MLE, `e`, using [EllipseSampling.jl](https://joeltrent.github.io/EllipseSampling.jl/stable) (see [`PlaceholderLikelihood.findNpointpairs_radialMLE!`](@ref) and [`PlaceholderLikelihood.bivariate_confidenceprofile_vectorsearch`](@ref)). 
 
 # Arguments
 - `ellipse_start_point_shift`: a number ∈ [0.0,1.0]. Default is `rand()` (defined on [0.0,1.0]), meaning that by default a different set of points will be found each time.
 - `ellipse_sqrt_distortion`: a number ∈ [0.0,1.0]. Default is `0.01`. 
 
 # Details
+
+As for [`univariate_confidenceintervals!`](@ref) with keyword argument `use_ellipse_approx_analytical_start=true`, the profile log-likelihood function will be evaluated at each ellipse point prior to creating the point pair bracket. If:
+
+1. the ellipse point is outside of the provided bounds, the MLE point and the point on the provided bounds in the direction of the ellipse point from the MLE is the point pair for bracketing.
+2. the ellipse point is between the desired boundary and the provided bounds, the MLE point and the ellipse point is the point pair for bracketing.
+3. the ellipse point is between the MLE point and the desired boundary, the ellipse point and the point on the provided bounds is the point pair for bracketing.
+4. the ellipse point is exactly on the desired boundary (profile log-likelihood function evaluates to exactly the confidence level threshold), the ellipse point is the boundary point and the method will (wrongfully) state there's a point on the bounds. From a numerical perspective this is incredibly unlikely so this is regarded as not a big deal. 
 
 For additional information on arguments see the keyword arguments for [`generate_N_clustered_points`](https://joeltrent.github.io/EllipseSampling.jl/stable/user_interface/#EllipseSampling.generate_N_clustered_points) in [EllipseSampling.jl](https://joeltrent.github.io/EllipseSampling.jl/stable).
 
@@ -178,7 +185,7 @@ Recommended for use with the [`EllipseApprox`](@ref) profile type. Will produce 
 
 # Boundary finding method
 
-Uses a 1D bracketing algorithm between the MLE point and the point on the user-provided bounds in the search directions to find the boundary at the desired confidence level.  
+Uses a 1D bracketing algorithm between the MLE point and the point on the user-provided bounds in the search directions to find the boundary at the desired confidence level. Will replace one of these sides with the ellipse point depending on which side of the boundary the ellipse point is on, subject to it being between the two points. 
 
 This method is unlikely to find boundaries that do not contain the MLE point (if they exist).
 
