@@ -16,6 +16,8 @@ Performs a simulation to estimate the prediction coverage of univariate confiden
 4. Evaluating predictions from the points in the profile and finding the prediction extrema.
 5. Checking whether the prediction extrema contain the true prediction value(s), in a pointwise and simultaneous fashion. The estimated simultaneous coverage is returned with a default 95% confidence interval within a DataFrame. 
 
+The prediction coverage from combining the prediction sets of multiple confidence profiles, choosing 1 to `length(θs)` random combinations of `θs`, is also evaluated (i.e. the final result is the union over all profiles in `θs`). 
+
 # Arguments
 - `data_generator`: a function with two arguments which generates data for fixed time points and true model parameters corresponding to the log-likelihood function contained in `model`. The two arguments must be the vector of true model parameters, `θtrue`, and a Tuple or NamedTuple, `generator_args`. Outputs a `data` Tuple or NamedTuple that corresponds to the log-likelihood function contained in `model`.
 - `generator_args`: a Tuple or NamedTuple containing any additional information required by both the log-likelihood function and `data_generator`, such as the time points to be evaluated at. If evaluating the log-likelihood function requires more than just the simulated data, arguments for the `data` output of `data_generator` should be passed in via `generator_args`. 
@@ -98,8 +100,8 @@ function check_univariate_prediction_coverage(data_generator::Function,
     len_θs = length(θs)
     # θs_to_θi = Dict{Int,Int}(θindex => θi for (θi, θindex) in enumerate(θs))
 
-    successes = zeros(Int, len_θs+1)
-    successes_pointwise = [zeros(size(y_true)) for _ in 1:(len_θs+1)]
+    successes = zeros(Int, len_θs*2)
+    successes_pointwise = [zeros(size(y_true)) for _ in 1:(len_θs*2)]
     iteration_is_included = falses(N) 
 
     data = [data_generator(θtrue, generator_args) for _ in 1:N]
@@ -129,10 +131,10 @@ function check_univariate_prediction_coverage(data_generator::Function,
 
             indiv_cov, union_cov, iteration_is_included[i] = evaluate_coverage(m_new, y_true, :univariate, multiple_outputs, len_θs)
             successes[1:len_θs] .+= first.(indiv_cov)
-            successes[end] += first(union_cov)
+            successes[len_θs+1:end] .+= first.(union_cov)
 
             successes_pointwise[1:len_θs] .+= last.(indiv_cov)
-            successes_pointwise[end] += last(union_cov)
+            successes_pointwise[len_θs+1:end] .+= last.(union_cov)
 
             # for row_ind in 1:m_new.num_uni_profiles
             #     θindex = m_new.uni_profiles_df[row_ind, :θindex]
@@ -147,7 +149,7 @@ function check_univariate_prediction_coverage(data_generator::Function,
             next!(p)
         end
     else
-        successes_bool = SharedArray{Bool}(len_θs+1, N)
+        successes_bool = SharedArray{Bool}(len_θs*2, N)
         successes_bool .= false
         iteration_is_included_shared = SharedArray{Bool}(N)
         iteration_is_included_shared .= false
@@ -177,10 +179,10 @@ function check_univariate_prediction_coverage(data_generator::Function,
 
                     indiv_cov, union_cov, iteration_is_included_shared[i] = evaluate_coverage(m_new, y_true, :univariate, multiple_outputs, len_θs)
                     successes_bool[1:len_θs, i] .= first.(indiv_cov)
-                    successes_bool[end, i] = first(union_cov)
+                    successes_bool[len_θs+1:end, i] .= first.(union_cov)
 
                     put!(channel, true)
-                    (vcat(last.(indiv_cov), [last(union_cov)]),)
+                    (vcat(last.(indiv_cov), last.(union_cov)),)
                 end
                 put!(channel, false)
                 iteration_is_included .= iteration_is_included_shared
@@ -194,18 +196,19 @@ function check_univariate_prediction_coverage(data_generator::Function,
 
     N_counted = sum(iteration_is_included)
     coverage = successes ./ N_counted
-    conf_ints = zeros(len_θs+1, 2)
-    for i in 1:(len_θs+1)
+    conf_ints = zeros(len_θs*2, 2)
+    for i in 1:(len_θs*2)
         conf_ints[i, :] .= HypothesisTests.confint(HypothesisTests.BinomialTest(successes[i], N_counted),
             level=coverage_estimate_confidence_level) 
         successes_pointwise[i] = successes_pointwise[i] ./ N_counted
     end
 
-    points_in_interval = zeros(Int, len_θs+1)
+    points_in_interval = zeros(Int, len_θs*2)
     points_in_interval[1:len_θs] .= num_points_in_interval
-    points_in_interval[end] = num_points_in_interval*len_θs
+    points_in_interval[len_θs+1:end] .= num_points_in_interval .* collect(1:len_θs)
 
-    return DataFrame(θname=[model.core.θnames[θs]..., :union], θindex=[θs..., θs], 
+    return DataFrame(θname=[model.core.θnames[θs]..., fill("", len_θs)...], θindex=[θs..., fill(0, len_θs)...],
+        n_random_combinations=[fill(0, len_θs)..., collect(1:len_θs)...],
         simultaneous_coverage=coverage, coverage_lb=conf_ints[:,1], coverage_ub=conf_ints[:,2],
         pointwise_coverage=successes_pointwise,
         num_points_in_interval=points_in_interval)
@@ -234,6 +237,8 @@ Performs a simulation to estimate the prediction reference set and realisation c
 8. Checking whether the prediction extrema (reference tolerance set) contains the prediction reference set from Step 1, in a pointwise and simultaneous fashion. 
 9. Checking whether the prediction extrema contain the observed testing data, in a pointwise and simultaneous fashion. 
 10. The estimated simultaneous coverage of the reference set and the prediction realisations (observed testing data) is returned with a default 95% confidence interval, alongside pointwise coverage, within a DataFrame.  
+
+The coverage from combining the prediction reference sets of multiple confidence profiles, choosing 1 to `length(θs)` random combinations of `θs`, is also evaluated (i.e. the final result is the union over all profiles in `θs`). 
 
 # Arguments
 - `data_generator`: a function with two arguments which generates data for fixed time points and true model parameters corresponding to the log-likelihood function contained in `model`. The two arguments must be the vector of true model parameters, `θtrue`, and a Tuple or NamedTuple, `generator_args`. When used with `training_generator_args`, it outputs a `data` Tuple or NamedTuple that corresponds to the log-likelihood function contained in `model`. When used with `testing_generator_args`, it outputs an array containing the observed data to use as the test data set.
@@ -324,10 +329,10 @@ function check_univariate_prediction_realisations_coverage(data_generator::Funct
     len_θs = length(θs)
     # θs_to_θi = Dict{Int,Int}(θindex => θi for (θi, θindex) in enumerate(θs))
 
-    successes_reference = zeros(Int, len_θs + 1)
-    successes_reference_pointwise = [zeros(size(y_true)) for _ in 1:(len_θs+1)]
-    successes = zeros(Int, len_θs + 1)
-    successes_pointwise = [zeros(size(y_true)) for _ in 1:(len_θs+1)]
+    successes_reference = zeros(Int, len_θs*2)
+    successes_reference_pointwise = [zeros(size(y_true)) for _ in 1:(len_θs*2)]
+    successes = zeros(Int, len_θs*2)
+    successes_pointwise = [zeros(size(y_true)) for _ in 1:(len_θs*2)]
     iteration_is_included = falses(N)
 
     data_training = [data_generator(θtrue, training_generator_args) for _ in 1:N]
@@ -360,24 +365,24 @@ function check_univariate_prediction_realisations_coverage(data_generator::Funct
 
             indiv_cov, union_cov, iteration_is_included[i] = evaluate_coverage_realisations(m_new, data_testing[i], :univariate, multiple_outputs, len_θs)
             successes[1:len_θs] .+= first.(indiv_cov)
-            successes[end] += first(union_cov)
+            successes[len_θs+1:end] .+= first.(union_cov)
 
             successes_pointwise[1:len_θs] .+= last.(indiv_cov)
-            successes_pointwise[end] += last(union_cov)
+            successes_pointwise[len_θs+1:end] .+= last.(union_cov)
 
             indiv_cov, union_cov = evaluate_coverage_reference_sets(m_new, reference_set_testing, :univariate, multiple_outputs, len_θs, iteration_is_included[i])
             successes_reference[1:len_θs] .+= first.(indiv_cov)
-            successes_reference[end] += first(union_cov)
+            successes_reference[len_θs+1:end] .+= first.(union_cov)
 
             successes_reference_pointwise[1:len_θs] .+= last.(indiv_cov)
-            successes_reference_pointwise[end] += last(union_cov)
+            successes_reference_pointwise[len_θs+1:end] .+= last.(union_cov)
 
             next!(p)
         end
     else
-        successes_reference_bool = SharedArray{Bool}(len_θs + 1, N)
+        successes_reference_bool = SharedArray{Bool}(len_θs*2, N)
         successes_reference_bool .= false
-        successes_bool = SharedArray{Bool}(len_θs + 1, N)
+        successes_bool = SharedArray{Bool}(len_θs*2, N)
         successes_bool .= false
         iteration_is_included_shared = SharedArray{Bool}(N)
         iteration_is_included_shared .= false
@@ -412,10 +417,10 @@ function check_univariate_prediction_realisations_coverage(data_generator::Funct
 
                     indiv_cov_ref, union_cov_ref = evaluate_coverage_reference_sets(m_new, reference_set_testing, :univariate, multiple_outputs, len_θs, iteration_is_included_shared[i])
                     successes_reference_bool[1:len_θs, i] .= first.(indiv_cov_ref)
-                    successes_reference_bool[end, i] = first(union_cov_ref)
+                    successes_reference_bool[len_θs+1:end, i] .= first.(union_cov_ref)
 
                     put!(channel, true)
-                    (vcat(last.(indiv_cov), [last(union_cov)]), vcat(last.(indiv_cov_ref), [last(union_cov_ref)]))
+                    (vcat(last.(indiv_cov), last.(union_cov)), vcat(last.(indiv_cov_ref), last.(union_cov_ref)))
                 end
                 put!(channel, false)
                 iteration_is_included .= iteration_is_included_shared
@@ -432,9 +437,9 @@ function check_univariate_prediction_realisations_coverage(data_generator::Funct
     N_counted = sum(iteration_is_included)
     coverage_realisations = successes ./ N_counted
     coverage_reference_sets = successes_reference ./ N_counted
-    conf_ints_realisations = zeros(len_θs + 1, 2)
-    conf_ints_reference_sets = zeros(len_θs + 1, 2)
-    for i in 1:(len_θs+1)
+    conf_ints_realisations = zeros(len_θs*2, 2)
+    conf_ints_reference_sets = zeros(len_θs*2, 2)
+    for i in 1:(len_θs*2)
         conf_ints_realisations[i, :] .= HypothesisTests.confint(HypothesisTests.BinomialTest(successes[i], N_counted),
             level=coverage_estimate_confidence_level)
         conf_ints_reference_sets[i, :] .= HypothesisTests.confint(HypothesisTests.BinomialTest(successes_reference[i], N_counted),
@@ -443,12 +448,13 @@ function check_univariate_prediction_realisations_coverage(data_generator::Funct
         successes_reference_pointwise[i] = successes_reference_pointwise[i] ./ N_counted
     end
 
-    points_in_interval = zeros(Int, len_θs + 1)
+    points_in_interval = zeros(Int, len_θs*2)
     points_in_interval[1:len_θs] .= num_points_in_interval
-    points_in_interval[end] = num_points_in_interval * len_θs
+    points_in_interval[len_θs+1:end] .= num_points_in_interval .* collect(1:len_θs)
 
 
-    return DataFrame(θname=[model.core.θnames[θs]..., :union], θindex=[θs..., θs],
+    return DataFrame(θname=[model.core.θnames[θs]..., fill("", len_θs)...], θindex=[θs..., fill(0, len_θs)...],
+        n_random_combinations=[fill(0, len_θs)..., collect(1:len_θs)...],
         simultaneous_coverage_reference_sets=coverage_reference_sets, coverage_reference_sets_lb=conf_ints_reference_sets[:, 1], coverage_reference_sets_ub=conf_ints_reference_sets[:, 2],
         pointwise_coverage_reference_sets=successes_reference_pointwise,
         simultaneous_coverage_realisations=coverage_realisations, coverage_realisations_lb=conf_ints_realisations[:, 1], coverage_realisations_ub=conf_ints_realisations[:, 2],

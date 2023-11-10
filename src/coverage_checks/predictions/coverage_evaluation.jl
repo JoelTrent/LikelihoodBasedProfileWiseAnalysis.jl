@@ -3,7 +3,7 @@
 
 Compute the extrema union of the extrema of the predictions of each profile in the rows of `df`, with extrema stored in `dict`.
 """
-function union_of_prediction_extrema(df::DataFrame, dict::Dict, multiple_outputs::Bool)
+function union_of_prediction_extrema(df::Union{DataFrame, SubDataFrame}, dict::Dict, multiple_outputs::Bool)
     extrema_union = zeros(size(dict[df.row_ind[1]].extrema))
 
     for (i, row_ind) in enumerate(df.row_ind)
@@ -28,7 +28,7 @@ end
 
 Compute the extrema union of the extrema of the prediction realisations of each profile in the rows of `df`, with extrema stored in `dict`.
 """
-function union_of_prediction_realisations_extrema(df::DataFrame, dict::Dict, multiple_outputs::Bool)
+function union_of_prediction_realisations_extrema(df::Union{DataFrame, SubDataFrame}, dict::Dict, multiple_outputs::Bool)
     extrema_union = zeros(size(dict[df.row_ind[1]].extrema))
 
     for (i, row_ind) in enumerate(df.row_ind)
@@ -100,13 +100,19 @@ function evaluate_coverage(model::LikelihoodModel, y_true::Array, profile_kind::
     if missing_profiles
         @error string(num_missing, " out of ", len_θs, " profiles failed to run. This iteration will not count towards the coverage statistic")
         individual_coverage = [evaluate_coverage(y_true, missing, multiple_outputs) for _ in 1:len_θs]
-        union_coverage = evaluate_coverage(y_true, missing, multiple_outputs)
+        union_coverage = [evaluate_coverage(y_true, missing, multiple_outputs) for _ in 1:len_θs]
+
         return individual_coverage, union_coverage, false
     end
     
     individual_coverage = [evaluate_coverage(y_true, dict[row_ind].extrema, multiple_outputs) for row_ind in df.row_ind]
-    extrema_union = union_of_prediction_extrema(df, dict, multiple_outputs)
-    union_coverage = evaluate_coverage(y_true, extrema_union, multiple_outputs)
+    
+    union_coverage = []
+    for i in 1:len_θs
+        sub_df = @view df[sample(1:len_θs, i, replace=false, ordered=true), :]
+        extrema_union = union_of_prediction_extrema(sub_df, dict, multiple_outputs)
+        push!(union_coverage, evaluate_coverage(y_true, extrema_union, multiple_outputs))
+    end
 
     return individual_coverage, union_coverage, true
 end
@@ -138,13 +144,19 @@ function evaluate_coverage_realisations(model::LikelihoodModel, testing_data::Ar
     if missing_profiles
         @error string(num_missing, " out of ", len_θs, " profiles failed to run. This iteration will not count towards the coverage statistic")
         individual_coverage = [evaluate_coverage(testing_data, missing, multiple_outputs) for _ in 1:len_θs]
-        union_coverage = evaluate_coverage(testing_data, missing, multiple_outputs)
+        union_coverage = [evaluate_coverage(testing_data, missing, multiple_outputs) for _ in 1:len_θs]
+
         return individual_coverage, union_coverage, false
     end
 
     individual_coverage = [evaluate_coverage(testing_data, dict[row_ind].realisations.extrema, multiple_outputs) for row_ind in df.row_ind]
-    extrema_union = union_of_prediction_realisations_extrema(df, dict, multiple_outputs)
-    union_coverage = evaluate_coverage(testing_data, extrema_union, multiple_outputs)
+
+    union_coverage = []
+    for i in 1:len_θs
+        sub_df = @view df[sample(1:len_θs, i, replace=false, ordered=true), :]
+        extrema_union = union_of_prediction_realisations_extrema(sub_df, dict, multiple_outputs)
+        push!(union_coverage, evaluate_coverage(testing_data, extrema_union, multiple_outputs))
+    end
 
     return individual_coverage, union_coverage, true
 end
@@ -204,13 +216,18 @@ function evaluate_coverage_reference_sets(model::LikelihoodModel,
 
     if !not_missing_profiles
         individual_coverage = [evaluate_coverage_reference_sets(reference_set_data, missing, multiple_outputs) for _ in 1:len_θs]
-        union_coverage = evaluate_coverage_reference_sets(reference_set_data, missing, multiple_outputs)
+        union_coverage = [evaluate_coverage_reference_sets(reference_set_data, missing, multiple_outputs) for _ in 1:len_θs]
         return individual_coverage, union_coverage
     end
 
     individual_coverage = [evaluate_coverage_reference_sets(reference_set_data, dict[row_ind].realisations.extrema, multiple_outputs) for row_ind in df.row_ind]
-    extrema_union = union_of_prediction_realisations_extrema(df, dict, multiple_outputs)
-    union_coverage = evaluate_coverage_reference_sets(reference_set_data, extrema_union, multiple_outputs)
 
+    union_coverage = []
+    for i in 1:len_θs
+        sub_df = @view df[sample(1:len_θs, i, replace=false, ordered=true), :]
+        extrema_union = union_of_prediction_realisations_extrema(sub_df, dict, multiple_outputs)
+        push!(union_coverage, evaluate_coverage_reference_sets(reference_set_data, extrema_union, multiple_outputs))
+    end
+    
     return individual_coverage, union_coverage
 end
