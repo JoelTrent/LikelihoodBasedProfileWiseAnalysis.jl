@@ -473,6 +473,7 @@ function check_dimensional_prediction_realisations_coverage(data_generator::Func
     coverage_realisations_alternate = successes_alternate ./ N_counted
     coverage_reference_sets = successes_reference ./ N_counted
     conf_ints_realisations = zeros(len_θs*2, 2)
+    conf_ints_realisations_alternate = zeros(len_θs*2, 2)
     conf_ints_reference_sets = zeros(len_θs*2, 2)
     for i in 1:(len_θs*2)
         conf_ints_realisations[i, :] .= HypothesisTests.confint(HypothesisTests.BinomialTest(successes[i], N_counted),
