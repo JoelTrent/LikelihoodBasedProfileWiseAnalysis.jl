@@ -11,6 +11,7 @@ using ForwardDiff, LinearAlgebra
 using EllipseSampling
 using LatinHypercubeSampling
 using Random, StatsBase, Combinatorics, Distributions
+using UnivariateUnimodalHighestDensityRegion
 using Distances, TravelingSalesmanHeuristics
 using Clustering, Meshes, ConcaveHull, PolygonInbounds
 using AngleBetweenVectors

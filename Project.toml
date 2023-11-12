@@ -40,6 +40,7 @@ StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 TimerOutputs = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
 TrackingHeaps = "d94bfb22-46ad-56c3-87d0-f6c298cb800e"
 TravelingSalesmanHeuristics = "8c8f4381-2cdd-507c-846c-be2bcff6f45f"
+UnivariateUnimodalHighestDensityRegion = "accfcff7-0a28-4262-8a91-e6d956268142"
 
 [compat]
 EllipseSampling = "0.1.2"
