@@ -97,13 +97,11 @@ end
 ```
 """
 function lognormal_error_σ_known(predictions::AbstractArray, θ::AbstractVector, confidence_level::Float64, σ::Real)
-    THalpha = 1.0 - confidence_level
     lq, uq = zeros(size(predictions)), zeros(size(predictions))
 
     for i in eachindex(predictions)
         dist = LogNormal(log(predictions[i]), σ)
-        lq[i] = quantile(dist, THalpha / 2.0)
-        uq[i] = quantile(dist, 1 - (THalpha / 2.0))
+        lq[i], uq[i] = univariate_unimodal_HDR(dist, confidence_level, NLopt.LN_BOBYQA())
     end
     return lq, uq
 end
@@ -128,13 +126,69 @@ end
 ```
 """
 function lognormal_error_σ_estimated(predictions::AbstractArray, θ::AbstractVector, confidence_level::Float64, σ_θindex::Int)
-    THalpha = 1.0 - confidence_level
     lq, uq = zeros(size(predictions)), zeros(size(predictions))
 
     for i in eachindex(predictions)
         dist = LogNormal(log(predictions[i]), θ[σ_θindex])
-        lq[i] = quantile(dist, THalpha / 2.0)
-        uq[i] = quantile(dist, 1 - (THalpha / 2.0))
+        lq[i], uq[i] = univariate_unimodal_HDR(dist, confidence_level, NLopt.LN_BOBYQA())
+    end
+    return lq, uq
+end
+
+"""
+    logitnormal_error_σ_known(predictions::AbstractArray, 
+        θ::AbstractVector, 
+        confidence_level::Float64, 
+        σ::Real)
+
+Use a logit-normal error model to quantify the uncertainty in the predictions of realisations, with known value of `σ`. Predictions are required to be defined ∈ (0,1).
+
+To use this function as the error model you must create a new function with only the first three arguments, which calls this function with a set value of `σ`.
+
+Two equivalent examples of this specification with `σ` set to 1.3:
+```julia
+errorfunction(predictions, θ, confidence_level) = logitnormal_error_σ_known(predictions, θ, confidence_level, 1.3)
+
+function errorfunction(predictions, θ, confidence_level) 
+    logitnormal_error_σ_known(predictions, θ, confidence_level, 1.3)
+end
+```
+"""
+function logitnormal_error_σ_known(predictions::AbstractArray, θ::AbstractVector, confidence_level::Float64, σ::Real)
+    lq, uq = zeros(size(predictions)), zeros(size(predictions))
+
+    for i in eachindex(predictions)
+        dist = LogitNormal(logit(predictions[i]), σ)
+        lq[i], uq[i] = univariate_unimodal_HDR(dist, confidence_level, NLopt.LN_BOBYQA())
+    end
+    return lq, uq
+end
+
+"""
+    logitnormal_error_σ_estimated(predictions::AbstractArray, 
+        θ::AbstractVector, 
+        confidence_level::Float64, 
+        σ_θindex::Int)
+
+Use a logit-normal error model to quantify the uncertainty in the predictions of realisations, where `σ` is an estimated model parameter in `θ`. Predictions are required to be defined ∈ (0,1).
+
+To use this function as the error model you must create a new function with only the first three arguments, which calls this function with the index, `σ_θindex`, of `σ` in `θ`.
+
+Two equivalent examples of this specification with `σ` stored at the end of the `θ` parameter vector, which has 4 elements (length 4):
+```julia
+errorfunction(predictions, θ, confidence_level) = logitnormal_error_σ_estimated(predictions, θ, confidence_level, 4)
+
+function errorfunction(predictions, θ, confidence_level) 
+    logitnormal_error_σ_estimated(predictions, θ, confidence_level, 4)
+end
+```
+"""
+function logitnormal_error_σ_estimated(predictions::AbstractArray, θ::AbstractVector, confidence_level::Float64, σ_θindex::Int)
+    lq, uq = zeros(size(predictions)), zeros(size(predictions))
+
+    for i in eachindex(predictions)
+        dist = LogitNormal(logit(predictions[i]), θ[σ_θindex])
+        lq[i], uq[i] = univariate_unimodal_HDR(dist, confidence_level, NLopt.LN_BOBYQA())
     end
     return lq, uq
 end
@@ -149,13 +203,11 @@ Use a poisson error model to quantify the uncertainty in the predictions of real
 To use this function as the error model you don't need to create a new function, just specify this function directly.
 """
 function poisson_error(predictions::AbstractArray, θ::AbstractVector, confidence_level::Float64)
-    THalpha = 1.0-confidence_level
     lq, uq = zeros(size(predictions)), zeros(size(predictions))
 
     for i in eachindex(predictions)
         dist = Poisson(predictions[i])
-        lq[i] = quantile(dist, THalpha/2.0)
-        uq[i] = quantile(dist, 1 - (THalpha/2.0))
+        lq[i], uq[i] = univariate_unimodal_HDR(dist, confidence_level, NLopt.LN_BOBYQA())
     end
     return lq, uq
 end

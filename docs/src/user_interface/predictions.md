@@ -21,6 +21,8 @@ normal_error_σ_known
 normal_error_σ_estimated
 lognormal_error_σ_known
 lognormal_error_σ_estimated
+logitnormal_error_σ_known
+logitnormal_error_σ_estimated
 poisson_error
 ```
 
