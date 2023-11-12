@@ -49,9 +49,20 @@ function union_of_prediction_realisations_extrema(df::Union{DataFrame, SubDataFr
 end
 
 """
+    evaluate_conf_simultaneous_coverage(pointwise::BitArray, 
+        confidence_level::Float64)
+
+Evaluate whether at least `confidence_level` proportion of entries in `pointwise` are `true`. This is simultaneous coverage with a differenmt goal; i.e. `confidence_level` proportion of points are contained simultaneously.
+"""
+function evaluate_conf_simultaneous_coverage(pointwise::BitArray, confidence_level::Float64)
+    return (sum(pointwise)/length(pointwise)) ≥ confidence_level
+end
+
+"""
     evaluate_coverage(y_true::Array, 
         y_pred_extrema::Union{Array,Missing}, 
         multiple_outputs::Bool)
+
 simultaneous coverage requires y_true to be inside y_pred for every row and column in y_true (every observed variable)
 
 pointwise coverage is on a row and column basis; whether y_true is inside y_pred at each individual row and column 

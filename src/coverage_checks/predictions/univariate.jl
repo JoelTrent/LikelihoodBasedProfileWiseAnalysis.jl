@@ -236,7 +236,7 @@ Performs a simulation to estimate the prediction reference set and realisation c
 7. Drawing new observed testing data using `data_generator` and `training_generator_args` for fixed true parameter values, `θtrue`, and fixed true prediction value. 
 8. Checking whether the prediction extrema (reference tolerance set) contains the prediction reference set from Step 1, in a pointwise and simultaneous fashion. 
 9. Checking whether the prediction extrema contain the observed testing data, in a pointwise and simultaneous fashion. 
-10. The estimated simultaneous coverage of the reference set and the prediction realisations (observed testing data) is returned with a default 95% confidence interval, alongside pointwise coverage, within a DataFrame.  
+10. The estimated simultaneous coverage of the reference set and the prediction realisations (observed testing data) is returned with a default 95% confidence interval, alongside pointwise coverage, within a DataFrame. We also provided an alternate 'simultaneous' statistic for prediction realisation coverage; rather than testing whether 100% of prediction realisations are covered we test whether `confidence_level` proportion of prediction realisations are covered. 
 
 The coverage from combining the prediction reference sets of multiple confidence profiles, choosing 1 to `length(θs)` random combinations of `θs`, is also evaluated (i.e. the final result is the union over all profiles in `θs`). 
 
@@ -332,6 +332,7 @@ function check_univariate_prediction_realisations_coverage(data_generator::Funct
     successes_reference = zeros(Int, len_θs*2)
     successes_reference_pointwise = [zeros(size(y_true)) for _ in 1:(len_θs*2)]
     successes = zeros(Int, len_θs*2)
+    successes_alternate = zeros(Int, len_θs*2)
     successes_pointwise = [zeros(size(y_true)) for _ in 1:(len_θs*2)]
     iteration_is_included = falses(N)
 
@@ -370,6 +371,9 @@ function check_univariate_prediction_realisations_coverage(data_generator::Funct
             successes_pointwise[1:len_θs] .+= last.(indiv_cov)
             successes_pointwise[len_θs+1:end] .+= last.(union_cov)
 
+            successes_alternate[1:len_θs] .+= evaluate_conf_simultaneous_coverage.(last.(indiv_cov), Ref(confidence_level)) 
+            successes_alternate[len_θs+1:end] .+= evaluate_conf_simultaneous_coverage.(last.(union_cov), Ref(confidence_level))
+
             indiv_cov, union_cov = evaluate_coverage_reference_sets(m_new, reference_set_testing, :univariate, multiple_outputs, len_θs, iteration_is_included[i])
             successes_reference[1:len_θs] .+= first.(indiv_cov)
             successes_reference[len_θs+1:end] .+= first.(union_cov)
@@ -382,6 +386,8 @@ function check_univariate_prediction_realisations_coverage(data_generator::Funct
     else
         successes_reference_bool = SharedArray{Bool}(len_θs*2, N)
         successes_reference_bool .= false
+        successes_alternate_bool = SharedArray{Bool}(len_θs*2, N)
+        successes_alternate_bool .= false
         successes_bool = SharedArray{Bool}(len_θs*2, N)
         successes_bool .= false
         iteration_is_included_shared = SharedArray{Bool}(N)
@@ -413,7 +419,10 @@ function check_univariate_prediction_realisations_coverage(data_generator::Funct
 
                     indiv_cov, union_cov, iteration_is_included_shared[i] = evaluate_coverage_realisations(m_new, data_testing[i], :univariate, multiple_outputs, len_θs)
                     successes_bool[1:len_θs, i] .= first.(indiv_cov)
-                    successes_bool[end, i] = first(union_cov)
+                    successes_bool[len_θs+1:end, i] .= first.(union_cov)
+
+                    successes_alternate_bool[1:len_θs, i] .= evaluate_conf_simultaneous_coverage.(last.(indiv_cov), Ref(confidence_level))
+                    successes_alternate_bool[len_θs+1:end, i] .= evaluate_conf_simultaneous_coverage.(last.(union_cov), Ref(confidence_level))
 
                     indiv_cov_ref, union_cov_ref = evaluate_coverage_reference_sets(m_new, reference_set_testing, :univariate, multiple_outputs, len_θs, iteration_is_included_shared[i])
                     successes_reference_bool[1:len_θs, i] .= first.(indiv_cov_ref)
@@ -431,16 +440,20 @@ function check_univariate_prediction_realisations_coverage(data_generator::Funct
             end
         end
         successes .= sum(successes_bool, dims=2)
+        successes_alternate .= sum(successes_alternate_bool, dims=2)
         successes_reference .= sum(successes_reference_bool, dims=2)
     end
 
     N_counted = sum(iteration_is_included)
     coverage_realisations = successes ./ N_counted
+    coverage_realisations_alternate = successes_alternate ./ N_counted
     coverage_reference_sets = successes_reference ./ N_counted
     conf_ints_realisations = zeros(len_θs*2, 2)
     conf_ints_reference_sets = zeros(len_θs*2, 2)
     for i in 1:(len_θs*2)
         conf_ints_realisations[i, :] .= HypothesisTests.confint(HypothesisTests.BinomialTest(successes[i], N_counted),
+            level=coverage_estimate_confidence_level)
+        conf_ints_realisations_alternate[i, :] .= HypothesisTests.confint(HypothesisTests.BinomialTest(successes_alternate[i], N_counted),
             level=coverage_estimate_confidence_level)
         conf_ints_reference_sets[i, :] .= HypothesisTests.confint(HypothesisTests.BinomialTest(successes_reference[i], N_counted),
             level=coverage_estimate_confidence_level)
@@ -452,12 +465,13 @@ function check_univariate_prediction_realisations_coverage(data_generator::Funct
     points_in_interval[1:len_θs] .= num_points_in_interval
     points_in_interval[len_θs+1:end] .= num_points_in_interval .* collect(1:len_θs)
 
-
     return DataFrame(θname=[model.core.θnames[θs]..., fill("", len_θs)...], θindex=[θs..., fill(0, len_θs)...],
         n_random_combinations=[fill(0, len_θs)..., collect(1:len_θs)...],
         simultaneous_coverage_reference_sets=coverage_reference_sets, coverage_reference_sets_lb=conf_ints_reference_sets[:, 1], coverage_reference_sets_ub=conf_ints_reference_sets[:, 2],
         pointwise_coverage_reference_sets=successes_reference_pointwise,
         simultaneous_coverage_realisations=coverage_realisations, coverage_realisations_lb=conf_ints_realisations[:, 1], coverage_realisations_ub=conf_ints_realisations[:, 2],
+        simultaneous_coverage_realisations_alternate=coverage_realisations_alternate, coverage_realisations_alternate_lb=conf_ints_realisations_alternate[:, 1], 
+        coverage_realisations_alternate_ub=conf_ints_realisations_alternate[:, 2],
         pointwise_coverage_realisations=successes_pointwise,
         num_points_in_interval=points_in_interval)
 end
