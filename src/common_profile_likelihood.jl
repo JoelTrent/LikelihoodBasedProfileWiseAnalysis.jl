@@ -130,6 +130,15 @@ function get_target_loglikelihood(model::LikelihoodModel,
 end
 
 """
+    get_equivalent_confidence_level_chisq(confidence_level::Float64, high_dof::Int, low_dof::Int)
+
+Returns the confidence level of the `Chisq` distribution with `low_dof` that gives the same quantile value as a `Chisq` distribution with `high_dof` at `confidence_level`. 
+"""
+function get_equivalent_confidence_level_chisq(confidence_level::Float64, high_dof::Int, low_dof::Int)
+    return cdf(Chisq(low_dof), quantile(Chisq(high_dof), confidence_level))
+end
+
+"""
     get_consistent_tuple(model::LikelihoodModel, 
         confidence_level::Float64, 
         profile_type::AbstractProfileType, 

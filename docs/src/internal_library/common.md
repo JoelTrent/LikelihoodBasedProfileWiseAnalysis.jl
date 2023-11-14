@@ -10,6 +10,7 @@ Pages = ["common.md"]
 PlaceholderLikelihood.convertθnames_toindices
 PlaceholderLikelihood.ll_correction
 PlaceholderLikelihood.get_target_loglikelihood
+PlaceholderLikelihood.get_equivalent_confidence_level_chisq
 PlaceholderLikelihood.get_consistent_tuple
 ```
 
