@@ -13,6 +13,8 @@ Adds an error function, `errorfunction`, to `model`. Modifies `model` in place. 
 - [`normal_error_σ_estimated`](@ref)
 - [`lognormal_error_σ_known`](@ref)
 - [`lognormal_error_σ_estimated`](@ref)
+- [`logitnormal_error_σ_known`](@ref)
+- [`logitnormal_error_σ_estimated`](@ref)
 - [`poisson_error`](@ref)
 """
 function add_error_function!(model::LikelihoodModel,
@@ -143,14 +145,16 @@ end
 
 Use a logit-normal error model to quantify the uncertainty in the predictions of realisations, with known value of `σ`. Predictions are required to be defined ∈ (0,1).
 
+Output is the correct highest density region for around `σ < 1.43` (at all values of `predictions`). If `predictions` are closer to `0` or `1.0` than `0.5`, then higher values of `σ` (closer to `2`) will be acceptable as the distribution will still be unimodal. Otherwise, the distribution will not be unimodal and won't identify the correct high density regions.
+
 To use this function as the error model you must create a new function with only the first three arguments, which calls this function with a set value of `σ`.
 
-Two equivalent examples of this specification with `σ` set to 1.3:
+Two equivalent examples of this specification with `σ` set to 0.9:
 ```julia
-errorfunction(predictions, θ, confidence_level) = logitnormal_error_σ_known(predictions, θ, confidence_level, 1.3)
+errorfunction(predictions, θ, confidence_level) = logitnormal_error_σ_known(predictions, θ, confidence_level, 0.9)
 
 function errorfunction(predictions, θ, confidence_level) 
-    logitnormal_error_σ_known(predictions, θ, confidence_level, 1.3)
+    logitnormal_error_σ_known(predictions, θ, confidence_level, 0.9)
 end
 ```
 """
@@ -171,6 +175,8 @@ end
         σ_θindex::Int)
 
 Use a logit-normal error model to quantify the uncertainty in the predictions of realisations, where `σ` is an estimated model parameter in `θ`. Predictions are required to be defined ∈ (0,1).
+
+Output is the correct highest density region for around `σ < 1.43` (at all values of `predictions`). If `predictions` are closer to `0` or `1.0` than `0.5`, then higher values of `σ` (closer to `2`) will be acceptable as the distribution will still be unimodal. Otherwise, the distribution will not be unimodal and won't identify the correct high density regions.
 
 To use this function as the error model you must create a new function with only the first three arguments, which calls this function with the index, `σ_θindex`, of `σ` in `θ`.
 

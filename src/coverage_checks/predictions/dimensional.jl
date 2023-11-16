@@ -39,7 +39,7 @@ The prediction coverage from combining the prediction sets of multiple confidenc
 - `coverage_estimate_confidence_level`: a number ∈ (0.0, 1.0) for the level of a confidence interval of the estimated coverage. Default is `0.95` (95%).
 - `optimizationsettings`: a [`OptimizationSettings`](@ref) containing the optimisation settings used to find optimal values of nuisance parameters for a given interest parameter value. Default is `missing` (will use `default_OptimizationSettings()` (see [`default_OptimizationSettings`](@ref)).
 - `show_progress`: boolean variable specifying whether to display progress bars on the percentage of simulation iterations completed and estimated time of completion. Default is `model.show_progress`.
-- `distributed_over_parameters`: boolean variable specifying whether to distribute the workload of the simulation across simulation iterations (false) or across the individual confidence interval calculations within each iteration (true). Default is `false`.
+- `distributed_over_parameters`: boolean variable specifying whether to distribute the workload of the simulation across simulation iterations (false) or across the individual confidence profile calculations within each iteration (true). Default is `false`.
 
 # Details
 
@@ -68,7 +68,8 @@ function check_dimensional_prediction_coverage(data_generator::Function,
     coverage_estimate_confidence_level::Float64=0.95,
     optimizationsettings::Union{OptimizationSettings,Missing}=missing,
     show_progress::Bool=model.show_progress,
-    distributed_over_parameters::Bool=false)
+    distributed_over_parameters::Bool=false,
+    use_threads::Bool=false)
 
     function argument_handling!()
         length(θtrue) == model.core.num_pars || throw(ArgumentError("θtrue must have the same length as the number of model parameters"))
@@ -143,7 +144,7 @@ function check_dimensional_prediction_coverage(data_generator::Function,
 
             dimensional_likelihood_samples!(m_new, deepcopy(θindices), num_points_to_sample,
                 confidence_level=confidence_level, sample_type=sample_type,
-                θlb_nuisance=lb, θub_nuisance=ub, use_threads=false,
+                θlb_nuisance=lb, θub_nuisance=ub, use_distributed=!use_threads, use_threads=use_threads,
                 optimizationsettings=optimizationsettings)
 
             generate_predictions_dim_samples!(m_new, t, 0.0)
@@ -266,7 +267,7 @@ The prediction coverage from combining the prediction sets of multiple confidenc
 - `coverage_estimate_confidence_level`: a number ∈ (0.0, 1.0) for the level of a confidence interval of the estimated coverage. Default is `0.95` (95%).
 - `optimizationsettings`: a [`OptimizationSettings`](@ref) containing the optimisation settings used to find optimal values of nuisance parameters for a given interest parameter value. Default is `missing` (will use `default_OptimizationSettings()` (see [`default_OptimizationSettings`](@ref)).
 - `show_progress`: boolean variable specifying whether to display progress bars on the percentage of simulation iterations completed and estimated time of completion. Default is `model.show_progress`.
-- `distributed_over_parameters`: boolean variable specifying whether to distribute the workload of the simulation across simulation iterations (false) or across the individual confidence interval calculations within each iteration (true). Default is `false`.
+- `distributed_over_parameters`: boolean variable specifying whether to distribute the workload of the simulation across simulation iterations (false) or across the individual confidence profile calculations within each iteration (true). Default is `false`.
 
 # Details
 
@@ -297,7 +298,8 @@ function check_dimensional_prediction_realisations_coverage(data_generator::Func
     coverage_estimate_confidence_level::Float64=0.95,
     optimizationsettings::Union{OptimizationSettings,Missing}=missing,
     show_progress::Bool=model.show_progress,
-    distributed_over_parameters::Bool=false)
+    distributed_over_parameters::Bool=false,
+    use_threads::Bool=false)
 
     function argument_handling!()
         length(θtrue) == model.core.num_pars || throw(ArgumentError("θtrue must have the same length as the number of model parameters"))
@@ -383,7 +385,7 @@ function check_dimensional_prediction_realisations_coverage(data_generator::Func
 
             dimensional_likelihood_samples!(m_new, deepcopy(θindices), num_points_to_sample,
                 confidence_level=confidence_level, sample_type=sample_type,
-                θlb_nuisance=lb, θub_nuisance=ub, use_threads=false,
+                θlb_nuisance=lb, θub_nuisance=ub, use_distributed=!use_threads, use_threads=use_threads,
                 optimizationsettings=optimizationsettings)
 
             generate_predictions_dim_samples!(m_new, t, 0.0)
