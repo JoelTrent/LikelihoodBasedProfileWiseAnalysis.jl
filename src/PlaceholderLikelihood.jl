@@ -7,7 +7,6 @@ using Reexport
 @reexport using OptimizationNLopt, ADTypes
 
 using Roots
-using ForwardDiff, LinearAlgebra
 using ForwardDiff, LinearAlgebra, LogExpFunctions
 using EllipseSampling
 using LatinHypercubeSampling

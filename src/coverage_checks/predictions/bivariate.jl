@@ -43,6 +43,7 @@ The prediction coverage from combining the prediction sets of multiple confidenc
 - `coverage_estimate_confidence_level`: a number ∈ (0.0, 1.0) for the level of a confidence interval of the estimated coverage. Default is `0.95` (95%).
 - `show_progress`: boolean variable specifying whether to display progress bars on the percentage of simulation iterations completed and estimated time of completion. Default is `model.show_progress`.
 - `distributed_over_parameters`: boolean variable specifying whether to distribute the workload of the simulation across simulation iterations (false) or across the individual confidence interval calculations within each iteration (true). Default is `false`.
+- `manual_GC_calls`: boolean variable specifying whether to manually call garbage collection, `GC.gc()`, after every 10 iterations (`distributed_over_parameters=true`) or after every iteration on that worker (`distributed_over_parameters=false`). May be important to correctly free up memory for coverage simulations that use distributed or threaded workloads for Julia versions prior to v1.10.0.  Default is `false`.
 
 # Details
 
@@ -78,7 +79,8 @@ function check_bivariate_prediction_coverage(data_generator::Function,
     coverage_estimate_confidence_level::Float64=0.95,
     optimizationsettings::Union{OptimizationSettings,Missing}=missing,
     show_progress::Bool=model.show_progress,
-    distributed_over_parameters::Bool=false)
+    distributed_over_parameters::Bool=false,
+    manual_GC_calls::Bool=false)
 
     function argument_handling!()
         length(θtrue) == model.core.num_pars || throw(ArgumentError("θtrue must have the same length as the number of model parameters"))
@@ -179,6 +181,9 @@ function check_bivariate_prediction_coverage(data_generator::Function,
             successes_pointwise[len_θs+1:end] .+= last.(union_cov)
 
             next!(p)
+            if manual_GC_calls && rem(i, 10) == 0
+                @everywhere GC.gc()
+            end
         end
     else
         successes_bool = SharedArray{Bool}(len_θs*2, N)
@@ -261,6 +266,10 @@ function check_bivariate_prediction_coverage(data_generator::Function,
     num_internal_points_all[1:len_θs] .= num_internal_points
     num_internal_points_all[len_θs+1:end] .= num_internal_points .* collect(1:len_θs)
 
+    if manual_GC_calls
+        GC.gc()
+    end
+
     return DataFrame(θname=[[model.core.θnames[[combo...]] for combo in θcombinations]..., fill("", len_θs)...], θindices=[θcombinations..., fill([0], len_θs)...],
         n_random_combinations=[fill(0, len_θs)..., collect(1:len_θs)...],
         simultaneous_coverage=coverage, coverage_lb=conf_ints[:,1], coverage_ub=conf_ints[:,2],
@@ -323,6 +332,7 @@ The prediction coverage from combining the prediction reference sets of multiple
 - `optimizationsettings`: a [`OptimizationSettings`](@ref) containing the optimisation settings used to find optimal values of nuisance parameters for a given interest parameter value. Default is `missing` (will use `default_OptimizationSettings()` (see [`default_OptimizationSettings`](@ref)).
 - `show_progress`: boolean variable specifying whether to display progress bars on the percentage of simulation iterations completed and estimated time of completion. Default is `model.show_progress`.
 - `distributed_over_parameters`: boolean variable specifying whether to distribute the workload of the simulation across simulation iterations (false) or across the individual confidence interval calculations within each iteration (true). Default is `false`.
+- `manual_GC_calls`: boolean variable specifying whether to manually call garbage collection, `GC.gc()`, after every 10 iterations (`distributed_over_parameters=true`) or after every iteration on that worker (`distributed_over_parameters=false`). May be important to correctly free up memory for coverage simulations that use distributed or threaded workloads for Julia versions prior to v1.10.0.  Default is `false`.
 
 # Details
 
@@ -360,7 +370,8 @@ function check_bivariate_prediction_realisations_coverage(data_generator::Functi
     coverage_estimate_confidence_level::Float64=0.95,
     optimizationsettings::Union{OptimizationSettings,Missing}=missing,
     show_progress::Bool=model.show_progress,
-    distributed_over_parameters::Bool=false)
+    distributed_over_parameters::Bool=false,
+    manual_GC_calls::Bool=false)
 
     function argument_handling!()
         length(θtrue) == model.core.num_pars || throw(ArgumentError("θtrue must have the same length as the number of model parameters"))
@@ -480,6 +491,9 @@ function check_bivariate_prediction_realisations_coverage(data_generator::Functi
             successes_reference_pointwise[1:len_θs] .+= last.(indiv_cov)
             successes_reference_pointwise[len_θs+1:end] .+= last.(union_cov)
             next!(p)
+            if manual_GC_calls && rem(i, 10) == 0
+                @everywhere GC.gc()
+            end
         end
     else
         successes_reference_bool = SharedArray{Bool}(len_θs*2, N)
@@ -546,6 +560,9 @@ function check_bivariate_prediction_realisations_coverage(data_generator::Functi
                     successes_reference_bool[1:len_θs, i] .= first.(indiv_cov_ref)
                     successes_reference_bool[len_θs+1:end, i] .= first.(union_cov_ref)
 
+                    if manual_GC_calls
+                        GC.gc()
+                    end
                     put!(channel, true)
                     (vcat(last.(indiv_cov), last.(union_cov)), vcat(last.(indiv_cov_ref), last.(union_cov_ref)))
                 end
@@ -586,6 +603,10 @@ function check_bivariate_prediction_realisations_coverage(data_generator::Functi
     num_internal_points_all = zeros(Int, len_θs*2)
     num_internal_points_all[1:len_θs] .= num_internal_points
     num_internal_points_all[len_θs+1:end] .= num_internal_points .* collect(1:len_θs)
+
+    if manual_GC_calls
+        GC.gc()
+    end
 
     return DataFrame(θname=[[model.core.θnames[[combo...]] for combo in θcombinations]..., fill("", len_θs)...], θindices=[θcombinations..., fill([0], len_θs)...],
         n_random_combinations=[fill(0, len_θs)..., collect(1:len_θs)...],

@@ -40,6 +40,7 @@ The prediction coverage from combining the prediction sets of multiple confidenc
 - `optimizationsettings`: a [`OptimizationSettings`](@ref) containing the optimisation settings used to find optimal values of nuisance parameters for a given interest parameter value. Default is `missing` (will use `default_OptimizationSettings()` (see [`default_OptimizationSettings`](@ref)).
 - `show_progress`: boolean variable specifying whether to display progress bars on the percentage of simulation iterations completed and estimated time of completion. Default is `model.show_progress`.
 - `distributed_over_parameters`: boolean variable specifying whether to distribute the workload of the simulation across simulation iterations (false) or across the individual confidence profile calculations within each iteration (true). Default is `false`.
+- `manual_GC_calls`: boolean variable specifying whether to manually call garbage collection, `GC.gc()`, after every 10 iterations (`distributed_over_parameters=true`) or after every iteration on that worker (`distributed_over_parameters=false`). May be important to correctly free up memory for coverage simulations that use distributed or threaded workloads for Julia versions prior to v1.10.0. Default is `false`.
 
 # Details
 
@@ -69,7 +70,8 @@ function check_dimensional_prediction_coverage(data_generator::Function,
     optimizationsettings::Union{OptimizationSettings,Missing}=missing,
     show_progress::Bool=model.show_progress,
     distributed_over_parameters::Bool=false,
-    use_threads::Bool=false)
+    use_threads::Bool=false,
+    manual_GC_calls::Bool=false)
 
     function argument_handling!()
         length(θtrue) == model.core.num_pars || throw(ArgumentError("θtrue must have the same length as the number of model parameters"))
@@ -157,6 +159,9 @@ function check_dimensional_prediction_coverage(data_generator::Function,
             successes_pointwise[len_θs+1:end] .+= last.(union_cov)
 
             next!(p)
+            if manual_GC_calls && rem(i, 10) == 0
+                @everywhere GC.gc()
+            end
         end
     else
         successes_bool = SharedArray{Bool}(len_θs*2, N)
@@ -190,6 +195,9 @@ function check_dimensional_prediction_coverage(data_generator::Function,
                     successes_bool[1:len_θs, i] .= first.(indiv_cov)
                     successes_bool[len_θs+1:end, i] .= first.(union_cov)
 
+                    if manual_GC_calls
+                        GC.gc()
+                    end
                     put!(channel, true)
                     (vcat(last.(indiv_cov), last.(union_cov)),)
                 end
@@ -268,6 +276,7 @@ The prediction coverage from combining the prediction sets of multiple confidenc
 - `optimizationsettings`: a [`OptimizationSettings`](@ref) containing the optimisation settings used to find optimal values of nuisance parameters for a given interest parameter value. Default is `missing` (will use `default_OptimizationSettings()` (see [`default_OptimizationSettings`](@ref)).
 - `show_progress`: boolean variable specifying whether to display progress bars on the percentage of simulation iterations completed and estimated time of completion. Default is `model.show_progress`.
 - `distributed_over_parameters`: boolean variable specifying whether to distribute the workload of the simulation across simulation iterations (false) or across the individual confidence profile calculations within each iteration (true). Default is `false`.
+- `manual_GC_calls`: boolean variable specifying whether to manually call garbage collection, `GC.gc()`, after every 10 iterations (`distributed_over_parameters=true`) or after every iteration on that worker (`distributed_over_parameters=false`). May be important to correctly free up memory for coverage simulations that use distributed or threaded workloads for Julia versions prior to v1.10.0. Default is `false`.
 
 # Details
 
@@ -299,7 +308,8 @@ function check_dimensional_prediction_realisations_coverage(data_generator::Func
     optimizationsettings::Union{OptimizationSettings,Missing}=missing,
     show_progress::Bool=model.show_progress,
     distributed_over_parameters::Bool=false,
-    use_threads::Bool=false)
+    use_threads::Bool=false,
+    manual_GC_calls::Bool=false)
 
     function argument_handling!()
         length(θtrue) == model.core.num_pars || throw(ArgumentError("θtrue must have the same length as the number of model parameters"))
@@ -407,6 +417,9 @@ function check_dimensional_prediction_realisations_coverage(data_generator::Func
             successes_reference_pointwise[1:len_θs] .+= last.(indiv_cov_ref)
             successes_reference_pointwise[len_θs+1:end] .+= last.(union_cov_ref)
 
+            if manual_GC_calls && rem(i, 10) == 0
+                @everywhere GC.gc()
+            end
             next!(p)
         end
     else
@@ -454,6 +467,9 @@ function check_dimensional_prediction_realisations_coverage(data_generator::Func
                     successes_reference_bool[1:len_θs, i] .= first.(indiv_cov_ref)
                     successes_reference_bool[len_θs+1:end, i] .= first.(union_cov_ref)
 
+                    if manual_GC_calls
+                        GC.gc()
+                    end
                     put!(channel, true)
                     (vcat(last.(indiv_cov), last.(union_cov)), vcat(last.(indiv_cov_ref), last.(union_cov_ref)))
                 end
@@ -486,6 +502,10 @@ function check_dimensional_prediction_realisations_coverage(data_generator::Func
             level=coverage_estimate_confidence_level)
         successes_pointwise[i] = successes_pointwise[i] ./ N_counted
         successes_reference_pointwise[i] = successes_reference_pointwise[i] ./ N_counted
+    end
+
+    if manual_GC_calls
+        @everywhere GC.gc()
     end
 
     return DataFrame(θname=[[model.core.θnames[[combo...]] for combo in θindices]..., fill("", len_θs)...], θindices=[θindices..., fill([0], len_θs)...],
