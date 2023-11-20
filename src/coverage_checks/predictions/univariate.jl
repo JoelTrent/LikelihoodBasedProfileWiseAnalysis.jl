@@ -149,7 +149,7 @@ function check_univariate_prediction_coverage(data_generator::Function,
             # end
 
             next!(p)
-            if manual_GC_calls && rem(i, 10) == 0
+            if manual_GC_calls && rem(i, 5) == 0
                 @everywhere GC.gc()
             end
         end
@@ -396,7 +396,7 @@ function check_univariate_prediction_realisations_coverage(data_generator::Funct
             successes_reference_pointwise[len_θs+1:end] .+= last.(union_cov)
 
             next!(p)
-            if manual_GC_calls && rem(i, 10) == 0
+            if manual_GC_calls && rem(i, 5) == 0
                 @everywhere GC.gc()
             end
         end
