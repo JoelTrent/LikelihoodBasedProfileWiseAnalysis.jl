@@ -237,6 +237,9 @@ function check_bivariate_prediction_coverage(data_generator::Function,
                     successes_bool[1:len_θs, i] .= first.(indiv_cov)
                     successes_bool[len_θs+1:end, i] .= first.(union_cov)
 
+                    if manual_GC_calls
+                        GC.gc()
+                    end
                     put!(channel, true)
                     (vcat(last.(indiv_cov), last.(union_cov)),)
                 end
