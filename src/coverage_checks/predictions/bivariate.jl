@@ -306,7 +306,7 @@ Performs a simulation to estimate the prediction reference set and realisation c
 7. Drawing new observed testing data using `data_generator` and `training_generator_args` for fixed true parameter values, `θtrue`, and fixed true prediction value. 
 8. Checking whether the prediction extrema (reference tolerance set) contains the prediction reference set from Step 1, in a pointwise and simultaneous fashion. 
 9. Checking whether the prediction extrema contain the observed testing data, in a pointwise and simultaneous fashion. 
-10. The estimated simultaneous coverage of the reference set and the prediction realisations (observed testing data) is returned with a default 95% confidence interval, alongside pointwise coverage, within a DataFrame. We also provided an alternate 'simultaneous' statistic for prediction realisation coverage; rather than testing whether 100% of prediction realisations are covered we test whether `confidence_level` proportion of prediction realisations are covered. 
+10. The estimated simultaneous coverage of the reference set and the prediction realisations (observed testing data) is returned with a default 95% confidence interval, alongside pointwise coverage, within a DataFrame. We also provided an alternate 'simultaneous' statistic for prediction realisation coverage; rather than testing whether 100% of prediction realisations are covered we test whether `simultaneous_alternate_proportion` proportion of prediction realisations are covered. 
 
 The prediction coverage from combining the prediction reference sets of multiple confidence profiles, choosing 1 to `length(θcombinations)` random combinations of `θcombinations`, is also evaluated (i.e. the final result is the union over all profiles in `θcombinations`). 
 
@@ -332,6 +332,7 @@ The prediction coverage from combining the prediction reference sets of multiple
 - `θlb_nuisance`: a vector of lower bounds on nuisance parameters, require `θlb_nuisance .≤ model.core.θmle`. Default is `model.core.θlb`. 
 - `θub_nuisance`: a vector of upper bounds on nuisance parameters, require `θub_nuisance .≥ model.core.θmle`. Default is `model.core.θub`.
 - `coverage_estimate_confidence_level`: a number ∈ (0.0, 1.0) for the level of a confidence interval of the estimated coverage. Default is `0.95` (95%).
+- `simultaneous_alternate_proportion`: a number ∈ (0.0, 1.0) for the alternate 'simultaneous' coverage statistic, testing whether at least this proportion of prediction realisations are covered. Default is `0.95` (95%). 
 - `optimizationsettings`: a [`OptimizationSettings`](@ref) containing the optimisation settings used to find optimal values of nuisance parameters for a given interest parameter value. Default is `missing` (will use `default_OptimizationSettings()` (see [`default_OptimizationSettings`](@ref)).
 - `show_progress`: boolean variable specifying whether to display progress bars on the percentage of simulation iterations completed and estimated time of completion. Default is `model.show_progress`.
 - `distributed_over_parameters`: boolean variable specifying whether to distribute the workload of the simulation across simulation iterations (false) or across the individual confidence interval calculations within each iteration (true). Default is `false`.
@@ -371,6 +372,7 @@ function check_bivariate_prediction_realisations_coverage(data_generator::Functi
     θlb_nuisance::AbstractVector{<:Real}=model.core.θlb,
     θub_nuisance::AbstractVector{<:Real}=model.core.θub,
     coverage_estimate_confidence_level::Float64=0.95,
+    simultaneous_alternate_proportion::Float64=0.95,
     optimizationsettings::Union{OptimizationSettings,Missing}=missing,
     show_progress::Bool=model.show_progress,
     distributed_over_parameters::Bool=false,
@@ -484,8 +486,8 @@ function check_bivariate_prediction_realisations_coverage(data_generator::Functi
             successes_pointwise[1:len_θs] .+= last.(indiv_cov)
             successes_pointwise[len_θs+1:end] .+= last.(union_cov)
 
-            successes_alternate[1:len_θs] .+= evaluate_conf_simultaneous_coverage.(last.(indiv_cov), Ref(confidence_level))
-            successes_alternate[len_θs+1:end] .+= evaluate_conf_simultaneous_coverage.(last.(union_cov), Ref(confidence_level))
+            successes_alternate[1:len_θs] .+= evaluate_conf_simultaneous_coverage.(last.(indiv_cov), Ref(simultaneous_alternate_proportion))
+            successes_alternate[len_θs+1:end] .+= evaluate_conf_simultaneous_coverage.(last.(union_cov), Ref(simultaneous_alternate_proportion))
 
             indiv_cov, union_cov = evaluate_coverage_reference_sets(m_new, reference_set_testing, :bivariate, multiple_outputs, len_θs, iteration_is_included[i])
             successes_reference[1:len_θs] .+= first.(indiv_cov)
@@ -556,8 +558,8 @@ function check_bivariate_prediction_realisations_coverage(data_generator::Functi
                     successes_bool[1:len_θs, i] .= first.(indiv_cov)
                     successes_bool[len_θs+1:end, i] .= first.(union_cov)
 
-                    successes_alternate_bool[1:len_θs, i] .= evaluate_conf_simultaneous_coverage.(last.(indiv_cov), Ref(confidence_level))
-                    successes_alternate_bool[len_θs+1:end, i] .= evaluate_conf_simultaneous_coverage.(last.(union_cov), Ref(confidence_level))
+                    successes_alternate_bool[1:len_θs, i] .= evaluate_conf_simultaneous_coverage.(last.(indiv_cov), Ref(simultaneous_alternate_proportion))
+                    successes_alternate_bool[len_θs+1:end, i] .= evaluate_conf_simultaneous_coverage.(last.(union_cov), Ref(simultaneous_alternate_proportion))
 
                     indiv_cov_ref, union_cov_ref = evaluate_coverage_reference_sets(m_new, reference_set_testing, :bivariate, multiple_outputs, len_θs, iteration_is_included_shared[i])
                     successes_reference_bool[1:len_θs, i] .= first.(indiv_cov_ref)
