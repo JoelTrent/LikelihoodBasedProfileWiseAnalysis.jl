@@ -298,7 +298,7 @@ Finds `num_points` `profile_type` boundary points at a specified `confidence_lev
 # Keyword Arguments
 - `confidence_level`: a number ∈ (0.0, 1.0) for the confidence level on which to find the `profile_type` boundary. Default is `0.95` (95%).
 - `profile_type`: whether to use the true log-likelihood function or an ellipse approximation of the log-likelihood function centred at the MLE (with optional use of parameter bounds). Available profile types are [`LogLikelihood`](@ref), [`EllipseApprox`](@ref) and [`EllipseApproxAnalytical`](@ref). Default is `LogLikelihood()` ([`LogLikelihood`](@ref)).
-- `method`: a method of type [`AbstractBivariateMethod`](@ref). For a list of available methods use `bivariate_methods()` ([`bivariate_methods`](@ref)). Default is `RadialRandomMethod(3)` ([`RadialRandomMethod`](@ref)).
+- `method`: a method of type [`AbstractBivariateMethod`](@ref). For a list of available methods use `bivariate_methods()` ([`bivariate_methods`](@ref)). Default is `RadialRandomMethod(5)` ([`RadialRandomMethod`](@ref)).
 - `θlb_nuisance`: a vector of lower bounds on nuisance parameters, require `θlb_nuisance .≤ model.core.θmle`. Default is `model.core.θlb`. 
 - `θub_nuisance`: a vector of upper bounds on nuisance parameters, require `θub_nuisance .≥ model.core.θmle`. Default is `model.core.θub`.
 - `save_internal_points`: boolean variable specifying whether to save points found inside the boundary during boundary computation. Internal points can be plotted in bivariate profile plots and will be used to generate predictions from a given bivariate profile. Default is `true`.
@@ -346,7 +346,7 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
                                         num_points::Int; 
                                         confidence_level::Float64=0.95, 
                                         profile_type::AbstractProfileType=LogLikelihood(),
-                                        method::AbstractBivariateMethod=RadialRandomMethod(3),
+                                        method::AbstractBivariateMethod=RadialRandomMethod(5),
                                         θlb_nuisance::AbstractVector{<:Real}=model.core.θlb,
                                         θub_nuisance::AbstractVector{<:Real}=model.core.θub,
                                         save_internal_points::Bool=true,
@@ -556,7 +556,7 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
                                         num_points::Int;
                                         confidence_level::Float64=0.95, 
                                         profile_type::AbstractProfileType=LogLikelihood(),
-                                        method::AbstractBivariateMethod=RadialRandomMethod(3),
+                                        method::AbstractBivariateMethod=RadialRandomMethod(5),
                                         θlb_nuisance::AbstractVector{<:Real}=model.core.θlb,
                                         θub_nuisance::AbstractVector{<:Real}=model.core.θub,
                                         save_internal_points::Bool=true,
@@ -596,7 +596,7 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
                                         num_points::Int;
                                         confidence_level::Float64=0.95, 
                                         profile_type::AbstractProfileType=LogLikelihood(),
-                                        method::AbstractBivariateMethod=RadialRandomMethod(3),
+                                        method::AbstractBivariateMethod=RadialRandomMethod(5),
                                         θlb_nuisance::AbstractVector{<:Real}=model.core.θlb,
                                         θub_nuisance::AbstractVector{<:Real}=model.core.θub,
                                         save_internal_points::Bool=true,
@@ -638,7 +638,7 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
                                         num_points::Int; 
                                         confidence_level::Float64=0.95, 
                                         profile_type::AbstractProfileType=LogLikelihood(),
-                                        method::AbstractBivariateMethod=RadialRandomMethod(3),
+                                        method::AbstractBivariateMethod=RadialRandomMethod(5),
                                         θlb_nuisance::AbstractVector{<:Real}=model.core.θlb,
                                         θub_nuisance::AbstractVector{<:Real}=model.core.θub,
                                         save_internal_points::Bool=true,
