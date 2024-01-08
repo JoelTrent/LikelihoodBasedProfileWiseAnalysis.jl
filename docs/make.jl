@@ -1,8 +1,14 @@
+using Revise
 using PlaceholderLikelihood
 using Plots
-using Documenter
+using Documenter, DocumenterCitations
 
 DocMeta.setdocmeta!(PlaceholderLikelihood, :DocTestSetup, :(using PlaceholderLikelihood); recursive=true)
+
+bib = CitationBibliography(
+    joinpath(@__DIR__, "src", "refs.bib");
+    style=:numeric
+)
 
 makedocs(;
     modules=[PlaceholderLikelihood],
@@ -32,6 +38,8 @@ makedocs(;
                 ["Parameter Confidence Intervals" => "user_interface/coverage/univariate_intervals.md",
                 "Bivariate Parameter Confidence Boundaries" => "user_interface/coverage/bivariate_boundaries.md",
                 "Predictions and Realisations" => "user_interface/coverage/predictions_and_realisations.md"]],
+        "Examples" => ["Initial Setup" => "examples/index.md",
+                        "Logistic Model"=> "examples/logistic.md"],
         "Internal Library" => 
             ["Common Functions" => "internal_library/common.md",
             "Initialisation" => "internal_library/initialisation.md",
@@ -40,8 +48,10 @@ makedocs(;
             "Bivariate Functions" => "internal_library/bivariate.md",
             "Dimensional Functions" => "internal_library/dimensional.md",
             "Prediction Functions" => "internal_library/predictions.md",
-            "Plotting Functions" => "internal_library/plots.md"]
+            "Plotting Functions" => "internal_library/plots.md"],
+        "References" => "references.md"
     ],
+    plugins=[bib],
     warnonly=true
 )
 
