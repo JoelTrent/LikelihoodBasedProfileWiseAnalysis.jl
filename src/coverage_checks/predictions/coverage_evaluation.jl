@@ -50,12 +50,12 @@ end
 
 """
     evaluate_conf_simultaneous_coverage(pointwise::BitArray, 
-        confidence_level::Float64)
+        region::Float64)
 
-Evaluate whether at least `confidence_level` proportion of entries in `pointwise` are `true`. This is simultaneous coverage with a differenmt goal; i.e. `confidence_level` proportion of points are contained simultaneously.
+Evaluate whether at least `region` proportion of entries in `pointwise` are `true`. This is simultaneous coverage with a different goal; i.e. `region` proportion of points are contained simultaneously.
 """
-function evaluate_conf_simultaneous_coverage(pointwise::BitArray, confidence_level::Float64)
-    return (sum(pointwise)/length(pointwise)) ≥ confidence_level
+function evaluate_conf_simultaneous_coverage(pointwise::BitArray, region::Float64)
+    return (sum(pointwise)/length(pointwise)) ≥ region
 end
 
 """

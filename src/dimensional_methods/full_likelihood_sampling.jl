@@ -30,7 +30,7 @@ function set_dim_samples_row!(model::LikelihoodModel,
                                 confidence_level::Float64,
                                 sample_type::AbstractSampleType,
                                 num_points::Int)
-    model.dim_samples_df[row_ind, 2:end] .= θindices,
+    model.dim_samples_df[row_ind, 2:end-1] .= θindices,
                                             length(θindices),
                                             not_evaluated_predictions,
                                             confidence_level,

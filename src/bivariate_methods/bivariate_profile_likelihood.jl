@@ -35,7 +35,7 @@ function set_biv_profiles_row!(model::LikelihoodModel,
                                     profile_type::AbstractProfileType,
                                     method::AbstractBivariateMethod,
                                     num_points::Int)
-    model.biv_profiles_df[row_ind, 2:end] .= θcombination, 
+    model.biv_profiles_df[row_ind, 2:end-1] .= θcombination, 
                                                 not_evaluated_internal_points,
                                                 not_evaluated_predictions,
                                                 boundary_not_ordered,

@@ -184,9 +184,9 @@ To generate profile-wise predictions for each of the evaluated profiles we first
 ```julia
 t_pred=0:5:1000
 
-generate_predictions_univariate!(model, t_pred)
-generate_predictions_bivariate!(model, t_pred)
-generate_predictions_dim_samples!(model, t_pred) # for the full likelihood sample
+generate_predictions_univariate!(model, t_pred, 1.0)
+generate_predictions_bivariate!(model, t_pred, 1.0)
+generate_predictions_dim_samples!(model, t_pred, 1.0) # for the full likelihood sample
 ```
 
 ### Plotting Predictions
@@ -215,8 +215,8 @@ plot_predictions_union(model, t_pred, 2, compare_to_full_sample_type=LatinHyperc
     return data
 end
 
-@everywhere function reference_set_generator(θtrue, generator_args::NamedTuple, confidence_level::Float64)
-    lq, uq = errorFunc(generator_args.y_true, θtrue, confidence_level)
+@everywhere function reference_set_generator(θtrue, generator_args::NamedTuple, region::Float64)
+    lq, uq = errorFunc(generator_args.y_true, θtrue, region)
     return (lq, uq)
 end
 

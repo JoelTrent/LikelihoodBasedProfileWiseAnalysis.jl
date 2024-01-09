@@ -269,11 +269,12 @@ The prediction coverage from combining the prediction sets of multiple confidenc
 
 # Keyword Arguments
 - `confidence_level`: a number ∈ (0.0, 1.0) for the confidence level to find samples within and evaluate coverage at. Default is `0.95` (95%).
+- `region`: a `Real` number ∈ [0, 1] specifying the proportion of the density of the error model from which to evaluate the highest density region. Default is `0.95`.
 - `sample_type`: the sampling method used to sample parameter space. Available sample types are [`UniformGridSamples`](@ref), [`UniformRandomSamples`](@ref) and [`LatinHypercubeSamples`](@ref). Default is `LatinHypercubeSamples()` ([`LatinHypercubeSamples`](@ref)).
 - `θlb_nuisance`: a vector of lower bounds on nuisance parameters, require `θlb_nuisance .≤ model.core.θmle`. Default is `model.core.θlb`. 
 - `θub_nuisance`: a vector of upper bounds on nuisance parameters, require `θub_nuisance .≥ model.core.θmle`. Default is `model.core.θub`.
 - `coverage_estimate_confidence_level`: a number ∈ (0.0, 1.0) for the level of a confidence interval of the estimated coverage. Default is `0.95` (95%).
-- `simultaneous_alternate_proportion`: a number ∈ (0.0, 1.0) for the alternate 'simultaneous' coverage statistic, testing whether at least this proportion of prediction realisations are covered. Default is `0.95` (95%). 
+- `simultaneous_alternate_proportion`: a number ∈ (0.0, 1.0) for the alternate 'simultaneous' coverage statistic, testing whether at least this proportion of prediction realisations are covered. Recommended to be equal to `region`. Default is `0.95` (95%). 
 - `optimizationsettings`: a [`OptimizationSettings`](@ref) containing the optimisation settings used to find optimal values of nuisance parameters for a given interest parameter value. Default is `missing` (will use `default_OptimizationSettings()` (see [`default_OptimizationSettings`](@ref)).
 - `show_progress`: boolean variable specifying whether to display progress bars on the percentage of simulation iterations completed and estimated time of completion. Default is `model.show_progress`.
 - `distributed_over_parameters`: boolean variable specifying whether to distribute the workload of the simulation across simulation iterations (false) or across the individual confidence profile calculations within each iteration (true). Default is `false`.
@@ -302,6 +303,7 @@ function check_dimensional_prediction_realisations_coverage(data_generator::Func
     θindices::Union{Vector{Vector{Int}},Vector{Vector{Symbol}}},
     θinitialguess::AbstractVector{<:Real}=θtrue;
     confidence_level::Float64=0.95,
+    region::Float64=0.95,
     sample_type::AbstractSampleType=LatinHypercubeSamples(),
     θlb_nuisance::AbstractVector{<:Real}=model.core.θlb,
     θub_nuisance::AbstractVector{<:Real}=model.core.θub,
@@ -332,6 +334,8 @@ function check_dimensional_prediction_realisations_coverage(data_generator::Func
 
         (0.0 < coverage_estimate_confidence_level && coverage_estimate_confidence_level < 1.0) || throw(DomainError("coverage_estimate_confidence_level must be in the open interval (0,1)"))
         get_target_loglikelihood(model, confidence_level, LogLikelihood(), 1)
+
+        (0.0 <= region <= 1.0) || throw(DomainError("region must be in the closed interval [0.0, 1.0]"))
 
         N > 0 || throw(DomainError("N must be greater than 0"))
 
@@ -376,7 +380,7 @@ function check_dimensional_prediction_realisations_coverage(data_generator::Func
 
     data_training = [data_generator(θtrue, training_generator_args) for _ in 1:N]
     data_testing = [data_generator(θtrue, testing_generator_args) for _ in 1:N]
-    reference_set_testing = reference_set_generator(θtrue, testing_generator_args, confidence_level)
+    reference_set_testing = reference_set_generator(θtrue, testing_generator_args, region)
 
     channel = RemoteChannel(() -> Channel{Bool}(1))
     p = Progress(N; desc="Computing dimensional samples prediction realisation coverage: ",
@@ -400,7 +404,7 @@ function check_dimensional_prediction_realisations_coverage(data_generator::Func
                 θlb_nuisance=lb, θub_nuisance=ub, use_distributed=!use_threads, use_threads=use_threads,
                 optimizationsettings=optimizationsettings)
 
-            generate_predictions_dim_samples!(m_new, t, 0.0)
+            generate_predictions_dim_samples!(m_new, t, 0.0, region=region)
 
             indiv_cov, union_cov, iteration_is_included[i] = evaluate_coverage_realisations(m_new, data_testing[i], :dimensional, multiple_outputs, len_θs)
             successes[1:len_θs] .+= first.(indiv_cov)
@@ -456,7 +460,7 @@ function check_dimensional_prediction_realisations_coverage(data_generator::Func
                         use_distributed=false, use_threads=false,
                         optimizationsettings=optimizationsettings)
 
-                    generate_predictions_dim_samples!(m_new, t, 0.0, use_distributed=false)
+                    generate_predictions_dim_samples!(m_new, t, 0.0, region=region, use_distributed=false)
 
                     indiv_cov, union_cov, iteration_is_included_shared[i] = evaluate_coverage_realisations(m_new, data_testing[i], :dimensional, multiple_outputs, len_θs)
                     successes_bool[1:len_θs, i] .= first.(indiv_cov)

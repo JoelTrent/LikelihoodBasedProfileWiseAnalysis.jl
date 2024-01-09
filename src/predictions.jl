@@ -50,10 +50,10 @@ end
         data_ymle::AbstractArray{<:Real},
         parameter_points::Matrix{Float64},
         proportion_to_keep::Real,
-        confidence_level::Real,
+        region::Real,
         channel::Union{RemoteChannel,Missing}=missing)
 
-Generates the predictions for response variables from a `predictfunction` which meets the requirements specified in [`add_prediction_function!`](@ref), given `data`, at time points `t` for each parameter combination in the columns of `parameter_points`. The extrema of all predictions is computed and `proportion_to_keep` of the individual predictions are kept. `errorfunction` is used to predicts the lower and upper quartiles of realisations at each prediction point.
+Generates the predictions for response variables from a `predictfunction` which meets the requirements specified in [`add_prediction_function!`](@ref), given `data`, at time points `t` for each parameter combination in the columns of `parameter_points`. The extrema of all predictions is computed and `proportion_to_keep` of the individual predictions are kept. `errorfunction` is used to predict the lower and upper quartiles of realisations at each prediction point; the highest density `region` is returned.
     
 Returns a [`PredictionStruct`] containing the kept predictions, prediction extrema, lower and upper quartiles of realisations from the error model at `confidence_level` at each predicted point and the realisation extrema. 
 
@@ -66,7 +66,7 @@ function generate_prediction(predictfunction::Function,
                                 data_ymle::AbstractArray{<:Real},
                                 parameter_points::Matrix{Float64},
                                 proportion_to_keep::Real,
-                                confidence_level::Real,
+                                region::Real,
                                 channel::RemoteChannel=RemoteChannel(() -> Channel{Bool}(Inf)))
     try
         num_points = size(parameter_points, 2)
@@ -85,7 +85,7 @@ function generate_prediction(predictfunction::Function,
 
             lq, uq = zeros(length(t), num_points, size(data_ymle, 2)), zeros(length(t), num_points, size(data_ymle, 2))
             for i in 1:num_points
-                lq[:,i,:], uq[:,i,:] = predict_realisations(errorfunction, predictions[:,i,:], parameter_points[:,i], confidence_level)
+                lq[:,i,:], uq[:,i,:] = predict_realisations(errorfunction, predictions[:,i,:], parameter_points[:,i], region)
             end
 
         else
@@ -98,7 +98,7 @@ function generate_prediction(predictfunction::Function,
 
             lq, uq = zeros(length(t), num_points), zeros(length(t), num_points)
             for i in 1:num_points
-                lq[:,i], uq[:,i] = predict_realisations(errorfunction, predictions[:,i], parameter_points[:,i], confidence_level)
+                lq[:,i], uq[:,i] = predict_realisations(errorfunction, predictions[:,i], parameter_points[:,i], region)
             end
         end
         
@@ -146,7 +146,7 @@ end
         data_ymle::AbstractArray{<:Real},
         parameter_points::Matrix{Float64},
         proportion_to_keep::Real,
-        confidence_level::Real,
+        region::Real,
         channel::Union{RemoteChannel,Missing}=missing)
 
 Generates the predictions for response variables from a `predictfunction` which meets the requirements specified in [`add_prediction_function!`](@ref), given `data`, at time points `t` for each parameter combination in the columns of `parameter_points`. The extrema of all predictions is computed and `proportion_to_keep` of the individual predictions are kept.
@@ -162,7 +162,7 @@ function generate_prediction(predictfunction::Function,
                                 data_ymle::AbstractArray{<:Real},
                                 parameter_points::Matrix{Float64},
                                 proportion_to_keep::Real,
-                                confidence_level::Real,
+                                region::Real,
                                 channel::RemoteChannel=RemoteChannel(() -> Channel{Bool}(Inf)))
     try
         num_points = size(parameter_points, 2)
@@ -246,7 +246,7 @@ function generate_prediction_univariate(model::LikelihoodModel,
                 model.core.errorfunction,
                 model.core.data, t, model.core.ymle,
                 interval_points.points[:, boundary_and_internal], proportion_to_keep, 
-                sub_df[row_i, :conf_level], channel)
+                sub_df[row_i, :region], channel)
 end
 
 """
@@ -274,14 +274,14 @@ function generate_prediction_bivariate(model::LikelihoodModel,
                                     model.core.data, t, model.core.ymle,
                                     hcat(conf_struct.confidence_boundary, conf_struct.internal_points.points), 
                                     proportion_to_keep, 
-                                    sub_df[row_i, :conf_level], channel)
+                                    sub_df[row_i, :region], channel)
     end
     return generate_prediction(model.core.predictfunction,
                                 model.core.errorfunction,
                                 model.core.data, t, model.core.ymle,
                                 conf_struct.confidence_boundary, 
                                 proportion_to_keep, 
-                                sub_df[row_i, :conf_level], channel)
+                                sub_df[row_i, :region], channel)
 end
 
 """
@@ -295,9 +295,10 @@ Evalute and save `proportion_to_keep` individual predictions and their extrema f
 # Arguments
 - `model`: a [`LikelihoodModel`](@ref) containing model information, saved profiles and predictions.
 - `t`: a vector of time points to compute predictions at.
-- `proportion_to_keep`: a `Real` number ∈ (0.0,1.0) of the proportion of individual predictions to save. 
+- `proportion_to_keep`: a `Real` number ∈ [0.0,1.0] of the proportion of individual predictions to save. 
 
 # Keyword Arguments
+- `region`: a `Real` number ∈ [0, 1] specifying the proportion of the density of the error model from which to evaluate the highest density region. Default is `0.95`.
 - `confidence_levels`: a vector of confidence levels. If empty, all confidence levels of univariate profiles will be considered for evaluating predictions from. Otherwise, only confidence levels in `confidence_levels` will be considered. Default is `Float64[]` (any confidence level).
 - `profile_types`: a vector of `AbstractProfileType` structs. If empty, all profile types of univariate profiles are considered. Otherwise, only profiles with matching profile types will be considered. Default is `AbstractProfileType[]` (any profile type).
 - `overwrite_predictions`: boolean variable specifying whether to re-evaluate and overwrite predictions for univariate profiles that have already had predictions evaluated. Set to `true` if predictions need to be evaluated for a new vector of time points. Default is `false`.
@@ -319,6 +320,7 @@ The time/it value is the time it takes for a prediction to be evaluated from a s
 function generate_predictions_univariate!(model::LikelihoodModel,
                                             t::AbstractVector,
                                             proportion_to_keep::Real;
+                                            region::Real=0.95,
                                             confidence_levels::Vector{<:Float64}=Float64[],
                                             profile_types::Vector{<:AbstractProfileType}=AbstractProfileType[],
                                             overwrite_predictions::Bool=false,
@@ -327,13 +329,16 @@ function generate_predictions_univariate!(model::LikelihoodModel,
 
     check_prediction_function_exists(model) || return nothing
 
-    (0.0 <= proportion_to_keep <= 1.0) || throw(DomainError("proportion_to_keep must be in the interval (0.0,1.0)"))
+    (0.0 <= proportion_to_keep <= 1.0) || throw(DomainError("proportion_to_keep must be in the closed interval [0.0, 1.0]"))
+    (0.0 <= region <= 1.0) || throw(DomainError("region must be in the closed interval [0.0, 1.0]"))
     sub_df = desired_df_subset(model.uni_profiles_df, model.num_uni_profiles, Int[], confidence_levels, profile_types, 
                                 for_prediction_generation=!overwrite_predictions)
 
     if nrow(sub_df) < 1
         return nothing
     end
+
+    sub_df[:, :region] .= region*1.
 
     totaltasks = sum(sub_df.num_points)
     channel_buffer_size = min(ceil(Int, totaltasks * 0.05), 50)
@@ -385,9 +390,10 @@ Evalute and save `proportion_to_keep` individual predictions and their extrema f
 # Arguments
 - `model`: a [`LikelihoodModel`](@ref) containing model information, saved profiles and predictions.
 - `t`: a vector of time points to compute predictions at.
-- `proportion_to_keep`: a `Real` number ∈ (0.0,1.0) of the proportion of individual predictions to save. 
+- `proportion_to_keep`: a `Real` number ∈ [0.0,1.0] of the proportion of individual predictions to save. 
 
 # Keyword Arguments
+- `region`: a `Real` number ∈ [0, 1] specifying the proportion of the density of the error model from which to evaluate the highest density region. Default is `0.95`.
 - `confidence_levels`: a vector of confidence levels. If empty, all confidence levels of bivariate profiles will be considered for evaluating predictions from. Otherwise, only confidence levels in `confidence_levels` will be considered. Default is `Float64[]` (any confidence level).
 - `profile_types`: a vector of `AbstractProfileType` structs. If empty, all profile types of bivariate profiles are considered. Otherwise, only profiles with matching profile types will be considered. Default is `AbstractProfileType[]` (any profile type).
 - `methods`: a vector of `AbstractBivariateMethod` structs. If empty all methods used to find bivariate profiles are considered. Otherwise, only profiles with matching method types will be considered (struct arguments do not need to be the same). Default is `AbstractBivariateMethod[]` (any bivariate method).
@@ -410,6 +416,7 @@ The time/it value is the time it takes for a prediction to be evaluated from a s
 function generate_predictions_bivariate!(model::LikelihoodModel,
                                             t::AbstractVector,
                                             proportion_to_keep::Real;
+                                            region::Real=0.95,
                                             confidence_levels::Vector{<:Float64}=Float64[],
                                             profile_types::Vector{<:AbstractProfileType}=AbstractProfileType[],
                                             methods::Vector{<:AbstractBivariateMethod}=AbstractBivariateMethod[],
@@ -419,13 +426,16 @@ function generate_predictions_bivariate!(model::LikelihoodModel,
 
     check_prediction_function_exists(model) || return nothing
     
-    (0.0 <= proportion_to_keep <= 1.0) || throw(DomainError("proportion_to_keep must be in the interval (0.0,1.0)"))
+    (0.0 <= proportion_to_keep <= 1.0) || throw(DomainError("proportion_to_keep must be in the closed interval [0.0, 1.0]"))
+    (0.0 <= region <= 1.0) || throw(DomainError("region must be in the closed interval [0.0, 1.0]"))
     sub_df = desired_df_subset(model.biv_profiles_df, model.num_biv_profiles, Tuple{Int, Int}[], 
                                 confidence_levels, profile_types, methods, for_prediction_generation=!overwrite_predictions)
 
     if nrow(sub_df) < 1
         return nothing
     end
+
+    sub_df[:, :region] .= region * 1.0
 
     totaltasks = sum(sub_df.num_points) + 
         sum([length(model.biv_profiles_dict[row_ind].internal_points.ll) for row_ind in sub_df.row_ind])
@@ -479,9 +489,10 @@ Evalute and save `proportion_to_keep` individual predictions and their extrema f
 # Arguments
 - `model`: a [`LikelihoodModel`](@ref) containing model information, saved profiles and predictions.
 - `t`: a vector of time points to compute predictions at.
-- `proportion_to_keep`: a `Real` number ∈ (0.0,1.0) of the proportion of individual predictions to save. 
+- `proportion_to_keep`: a `Real` number ∈ [0.0,1.0] of the proportion of individual predictions to save. 
 
 # Keyword Arguments
+- `region`: a `Real` number ∈ [0, 1] specifying the proportion of the density of the error model from which to evaluate the highest density region. Default is `0.95`.
 - `confidence_levels`: a vector of confidence levels. If empty, all confidence levels of dimensional samples will be considered for evaluating predictions from. Otherwise, only confidence levels in `confidence_levels` will be considered. Default is `Float64[]` (any confidence level).
 - `sample_types`: a vector of [`AbstractSampleType`](@ref) structs. If empty, all sample types used to find dimensional samples are considered. Otherwise, only samples with matching sample types will be considered. Default is `AbstractSampleType[]` (any sample type).
 - `overwrite_predictions`: boolean variable specifying whether to re-evaluate and overwrite predictions for dimensional samples that have already had predictions evaluated. Set to `true` if predictions need to be evaluated for a new vector of time points. Default is `false`.
@@ -503,6 +514,7 @@ The time/it value is the time it takes for a prediction to be evaluated from a s
 function generate_predictions_dim_samples!(model::LikelihoodModel,
                                             t::AbstractVector,
                                             proportion_to_keep::Real;
+                                            region::Real=0.95,
                                             confidence_levels::Vector{<:Float64}=Float64[],
                                             sample_types::Vector{<:AbstractSampleType}=AbstractSampleType[],
                                             overwrite_predictions::Bool=false,
@@ -511,13 +523,16 @@ function generate_predictions_dim_samples!(model::LikelihoodModel,
 
     check_prediction_function_exists(model) || return nothing
     
-    (0.0 <= proportion_to_keep <= 1.0) || throw(DomainError("proportion_to_keep must be in the interval (0.0,1.0)"))
+    (0.0 <= proportion_to_keep <= 1.0) || throw(DomainError("proportion_to_keep must be in the closed interval [0.0, 1.0]"))
+    (0.0 <= region <= 1.0) || throw(DomainError("region must be in the closed interval [0.0, 1.0]"))
     sub_df = desired_df_subset(model.dim_samples_df, model.num_dim_samples, confidence_levels, sample_types, 
                                 for_prediction_generation=!overwrite_predictions)
 
     if nrow(sub_df) < 1
         return nothing
     end
+
+    sub_df[:, :region] .= region * 1.0
 
     totaltasks = sum(sub_df.num_points)
     channel_buffer_size = min(ceil(Int, totaltasks * 0.05), 400)

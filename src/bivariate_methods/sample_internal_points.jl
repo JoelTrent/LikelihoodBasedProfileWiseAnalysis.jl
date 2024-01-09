@@ -298,7 +298,7 @@ function sample_internal_points_single_row(model::LikelihoodModel,
                 model.core.errorfunction,
                 model.core.data, t, model.core.ymle,
                 internal_points.points[:, (end-num_points+1):end],
-                proportion_of_predictions_to_keep, sub_df[i, :conf_level])
+                proportion_of_predictions_to_keep, sub_df[i, :region])
 
             merged_predict_struct = merge(predict_struct, new_predict_struct)
         else

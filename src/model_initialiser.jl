@@ -84,6 +84,7 @@ function init_uni_profiles_df(num_rows::Int; existing_largest_row::Int=0)
     uni_profiles_df.profile_type = Vector{AbstractProfileType}(undef, num_rows)
     uni_profiles_df.num_points = zeros(Int, num_rows)
     uni_profiles_df.additional_width = zeros(num_rows)
+    uni_profiles_df.region = zeros(num_rows)
 
     return uni_profiles_df
 end
@@ -105,6 +106,7 @@ function init_biv_profiles_df(num_rows::Int; existing_largest_row::Int=0)
     biv_profiles_df.profile_type = Vector{AbstractProfileType}(undef, num_rows)
     biv_profiles_df.method = Vector{AbstractBivariateMethod}(undef, num_rows)
     biv_profiles_df.num_points = zeros(Int, num_rows)
+    biv_profiles_df.region = zeros(num_rows)
 
     return biv_profiles_df
 end
@@ -124,6 +126,7 @@ function init_dim_samples_df(num_rows::Int; existing_largest_row::Int=0)
     dim_samples_df.conf_level = zeros(num_rows)
     dim_samples_df.sample_type = Vector{AbstractSampleType}(undef, num_rows)
     dim_samples_df.num_points = zeros(Int, num_rows)
+    dim_samples_df.region = zeros(num_rows)
 
     return dim_samples_df
 end

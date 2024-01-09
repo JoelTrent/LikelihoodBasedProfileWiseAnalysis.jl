@@ -85,5 +85,9 @@ function Base.merge(a::PredictionRealisationsStruct, b::PredictionRealisationsSt
     if isempty(a.lq)
         return b
     end
-    return a
+    if isempty(b.lq)
+        return a
+    end
+    return PredictionRealisationsStruct(hcat(a.lq, b.lq), hcat(a.uq, b.uq),
+        hcat(min.(a.extrema[:, 1], b.extrema[:, 1]), max.(a.extrema[:, 2], b.extrema[:, 2])))
 end

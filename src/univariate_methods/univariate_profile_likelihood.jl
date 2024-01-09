@@ -90,7 +90,7 @@ function set_uni_profiles_row!(model::LikelihoodModel,
                                     profile_type::AbstractProfileType,
                                     num_points::Int,
                                     additional_width::Real)
-    model.uni_profiles_df[row_ind, 2:end] .= θi*1, 
+    model.uni_profiles_df[row_ind, 2:end-1] .= θi*1, 
                                             not_evaluated_internal_points,
                                             not_evaluated_predictions,
                                             confidence_level,
