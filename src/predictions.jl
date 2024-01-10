@@ -295,7 +295,7 @@ Evalute and save `proportion_to_keep` individual predictions and their extrema f
 # Arguments
 - `model`: a [`LikelihoodModel`](@ref) containing model information, saved profiles and predictions.
 - `t`: a vector of time points to compute predictions at.
-- `proportion_to_keep`: a `Real` number ∈ [0.0,1.0] of the proportion of individual predictions to save. 
+- `proportion_to_keep`: a `Real` number ∈ [0.0,1.0] of the proportion of individual predictions to save. Default is 1.0.
 
 # Keyword Arguments
 - `region`: a `Real` number ∈ [0, 1] specifying the proportion of the density of the error model from which to evaluate the highest density region. Default is `0.95`.
@@ -319,7 +319,7 @@ The time/it value is the time it takes for a prediction to be evaluated from a s
 """
 function generate_predictions_univariate!(model::LikelihoodModel,
                                             t::AbstractVector,
-                                            proportion_to_keep::Real;
+                                            proportion_to_keep::Real=1.0;
                                             region::Real=0.95,
                                             confidence_levels::Vector{<:Float64}=Float64[],
                                             profile_types::Vector{<:AbstractProfileType}=AbstractProfileType[],
@@ -390,7 +390,7 @@ Evalute and save `proportion_to_keep` individual predictions and their extrema f
 # Arguments
 - `model`: a [`LikelihoodModel`](@ref) containing model information, saved profiles and predictions.
 - `t`: a vector of time points to compute predictions at.
-- `proportion_to_keep`: a `Real` number ∈ [0.0,1.0] of the proportion of individual predictions to save. 
+- `proportion_to_keep`: a `Real` number ∈ [0.0,1.0] of the proportion of individual predictions to save. Default is 1.0.
 
 # Keyword Arguments
 - `region`: a `Real` number ∈ [0, 1] specifying the proportion of the density of the error model from which to evaluate the highest density region. Default is `0.95`.
@@ -415,7 +415,7 @@ The time/it value is the time it takes for a prediction to be evaluated from a s
 """
 function generate_predictions_bivariate!(model::LikelihoodModel,
                                             t::AbstractVector,
-                                            proportion_to_keep::Real;
+                                            proportion_to_keep::Real=1.0;
                                             region::Real=0.95,
                                             confidence_levels::Vector{<:Float64}=Float64[],
                                             profile_types::Vector{<:AbstractProfileType}=AbstractProfileType[],
@@ -489,7 +489,7 @@ Evalute and save `proportion_to_keep` individual predictions and their extrema f
 # Arguments
 - `model`: a [`LikelihoodModel`](@ref) containing model information, saved profiles and predictions.
 - `t`: a vector of time points to compute predictions at.
-- `proportion_to_keep`: a `Real` number ∈ [0.0,1.0] of the proportion of individual predictions to save. 
+- `proportion_to_keep`: a `Real` number ∈ [0.0,1.0] of the proportion of individual predictions to save. Default is 1.0.
 
 # Keyword Arguments
 - `region`: a `Real` number ∈ [0, 1] specifying the proportion of the density of the error model from which to evaluate the highest density region. Default is `0.95`.
@@ -513,7 +513,7 @@ The time/it value is the time it takes for a prediction to be evaluated from a s
 """
 function generate_predictions_dim_samples!(model::LikelihoodModel,
                                             t::AbstractVector,
-                                            proportion_to_keep::Real;
+                                            proportion_to_keep::Real=1.0;
                                             region::Real=0.95,
                                             confidence_levels::Vector{<:Float64}=Float64[],
                                             sample_types::Vector{<:AbstractSampleType}=AbstractSampleType[],
