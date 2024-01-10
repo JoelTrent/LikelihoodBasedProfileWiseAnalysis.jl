@@ -39,7 +39,10 @@ makedocs(;
                 "Bivariate Parameter Confidence Boundaries" => "user_interface/coverage/bivariate_boundaries.md",
                 "Predictions and Realisations" => "user_interface/coverage/predictions_and_realisations.md"]],
         "Examples" => ["Initial Setup" => "examples/index.md",
-                        "Logistic Model"=> "examples/logistic.md"],
+                        "Logistic Model" => "examples/logistic.md",
+                        "Lotka-Volterra Model" => "examples/lotka-Volterra.md",
+                        "Two-Species Logistic Model"=> "examples/two-species_logistic.md",
+                        "Function Evaluation Timing - Logistic Model" => "examples/logistic_timing_estimates.md"],
         "Internal Library" => 
             ["Common Functions" => "internal_library/common.md",
             "Initialisation" => "internal_library/initialisation.md",
