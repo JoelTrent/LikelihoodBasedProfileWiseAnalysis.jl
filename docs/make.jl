@@ -40,7 +40,7 @@ makedocs(;
                 "Predictions and Realisations" => "user_interface/coverage/predictions_and_realisations.md"]],
         "Examples" => ["Initial Setup" => "examples/index.md",
                         "Logistic Model" => "examples/logistic.md",
-                        "Lotka-Volterra Model" => "examples/lotka-Volterra.md",
+                        "Lotka-Volterra Model" => "examples/lotka-volterra.md",
                         "Two-Species Logistic Model"=> "examples/two-species_logistic.md",
                         "Function Evaluation Timing - Logistic Model" => "examples/logistic_timing_estimates.md"],
         "Internal Library" => 
