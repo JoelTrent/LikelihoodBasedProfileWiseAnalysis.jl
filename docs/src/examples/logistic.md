@@ -180,14 +180,14 @@ display(plt)
 
 ## Predictions
 
-To make predictions for the model trajectory and the ``1-\delta`` population reference set we define the following functions, which then need to be added to our [`LikelihoodModel`](@ref). The `region` variable in `errorFunc` should be set equal to ``1-\delta`` when generating predictions. These could also be added in [`initialise_LikelihoodModel`](@ref).
+To make predictions for the model trajectory and the ``1-\delta`` population reference set we define the following functions, which then need to be added to our [`LikelihoodModel`](@ref). The `region` variable in `errorfunction` should be set equal to ``1-\delta`` when generating predictions. These could also be added in [`initialise_LikelihoodModel`](@ref).
 
 ```julia
-@everywhere function predictFunc(θ, data, t=data.t); solvedmodel(t, θ) end
-@everywhere function errorFunc(predictions, θ, region); normal_error_σ_known(predictions, θ, region, σ) end
+@everywhere function predictfunction(θ, data, t=data.t); solvedmodel(t, θ) end
+@everywhere function errorfunction(predictions, θ, region); normal_error_σ_known(predictions, θ, region, σ) end
 
-add_prediction_function!(model, predictFunc)
-add_error_function!(model, errorFunc)
+add_prediction_function!(model, predictfunction)
+add_error_function!(model, errorfunction)
 ```
 
 To generate profile-wise predictions for each of the evaluated profiles we first define the desired time points for prediction and then evaluate the approximate model trajectory confidence sets and ``(1-\delta, 1-\alpha)`` population reference tolerance sets. By default, the population reference tolerance set evaluates reference interval regions at the same level as the default confidence level (``1-\delta = 1-\alpha = 0.95``); however, this is not required.
@@ -249,7 +249,7 @@ First we define functions and arguments which we use to simulate new training an
 end
 
 @everywhere function reference_set_generator(θ_true, generator_args::NamedTuple, region::Float64)
-    lq, uq = errorFunc(generator_args.y_true, θ_true, region)
+    lq, uq = errorfunction(generator_args.y_true, θ_true, region)
     return (lq, uq)
 end
 
