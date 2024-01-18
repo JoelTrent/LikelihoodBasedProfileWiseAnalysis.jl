@@ -99,6 +99,35 @@ You can also print the timer results, which can be useful for identifying the st
 print_timer(PlaceholderLikelihood.timer)
 ```
 
+Similarly, if we wish to use asymptotic confidence intervals as the starting guess for the parameter confidence intervals we can first evaluate them using the [`EllipseApproxAnalytical`](@ref) profile type and set the keyword argument `use_ellipse_approx_analytical_start` to true.
+
+```julia
+TO.enable_debug_timings(PlaceholderLikelihood)
+TO.reset_timer!(PlaceholderLikelihood.timer)
+timer_df = DataFrame(parameter=zeros(Int, model.core.num_pars), 
+                        optimisation_calls=zeros(Int, model.core.num_pars),
+                        likelihood_calls=zeros(Int, model.core.num_pars))
+
+
+opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
+
+univariate_confidenceintervals!(model, profile_type=EllipseApproxAnalytical())
+for i in 1:model.core.num_pars
+    TO.reset_timer!(PlaceholderLikelihood.timer)
+
+    univariate_confidenceintervals!(model, [i], num_points_in_interval=20, 
+        use_ellipse_approx_analytical_start=true, optimizationsettings=opt_settings)
+    timer_df[i, :] .= i, TO.ncalls(
+                PlaceholderLikelihood.timer["Univariate confidence interval"]["Likelihood nuisance parameter optimisation"]),
+            TO.ncalls(
+                PlaceholderLikelihood.timer["Univariate confidence interval"]["Likelihood nuisance parameter optimisation"]["Likelihood evaluation"])
+
+    TO.reset_timer!(PlaceholderLikelihood.timer)
+end
+
+TO.disable_debug_timings(PlaceholderLikelihood)
+```
+
 If we wish to evaluate the average (mean) number of function evaluations required during a simulation (such as our coverage simulations) we need to define additional functions. For comparison to coverage simulations it is recommended that a random seed is set prior to training data generation here and prior to calling e.g. [`check_univariate_parameter_coverage`](@ref). This ensures that the training data used is consistent between the two simulations. 
 
 The previous procedure could also just be used for each parameter in turn with [`check_univariate_parameter_coverage`](@ref), with the mean figure obtained by dividing through by the number of simulations. However, this would prevent using Distributed with the simulation which could make it infeasible. We are less concerned with the exact accuracy of the number of function evaluations in a coverage simulation and more concerned with the general magnitude so here we only evaluate the average number of function evaluations across 100 iterations. Note, we need to use [`initialise_LikelihoodModel`](@ref) for each new data set.
