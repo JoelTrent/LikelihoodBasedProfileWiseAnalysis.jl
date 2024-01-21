@@ -31,6 +31,7 @@ The prediction coverage from combining the prediction sets of multiple confidenc
 # Keyword Arguments
 - `num_points_in_interval`: an integer number of points to optionally evaluate within the confidence interval for each interest parameter using [`get_points_in_intervals!`](@ref). Points are linearly spaced in the interval. Useful for predictions from univariate profiles. Default is `0`. 
 - `confidence_level`: a number ∈ (0.0, 1.0) for the confidence level to evaluate the confidence interval coverage at. Default is `0.95` (95%).
+- `dof`: an integer ∈ [1, `model.core.num_pars`] for the degrees of freedom used to define the asymptotic threshold ([`PlaceholderLikelihood.get_target_loglikelihood`](@ref)) which defines the extremities of the univariate profile, i.e. the confidence interval. For parameter confidence intervals that are considered individually, it should be set to `1`. For intervals that are considered simultaneously, it should be set to the number of intervals that are being calculated, i.e. `model.core.num_pars` when we wish the confidence interval for every parameter to hold simultaneously. Default is `1`. Setting it to `model.core.num_pars` should be reasonable when making predictions for well-identified models with `<10` parameters. Note: values other than `1` and `model.core.num_pars` may not have a clear statistical interpretation.
 - `profile_type`: whether to use the true log-likelihood function or an ellipse approximation of the log-likelihood function centred at the MLE (with optional use of parameter bounds). Available profile types are [`LogLikelihood`](@ref), [`EllipseApprox`](@ref) and [`EllipseApproxAnalytical`](@ref). Default is `LogLikelihood()` ([`LogLikelihood`](@ref)).
 - `θlb_nuisance`: a vector of lower bounds on nuisance parameters, require `θlb_nuisance .≤ model.core.θmle`. Default is `model.core.θlb`. 
 - `θub_nuisance`: a vector of upper bounds on nuisance parameters, require `θub_nuisance .≥ model.core.θmle`. Default is `model.core.θub`.
@@ -63,7 +64,8 @@ function check_univariate_prediction_coverage(data_generator::Function,
     θs::AbstractVector{<:Int64},
     θinitialguess::AbstractVector{<:Real}=θtrue;
     num_points_in_interval::Int=0,
-    confidence_level::Float64=0.95, 
+    confidence_level::Float64=0.95,
+    dof::Int=1,
     profile_type::AbstractProfileType=LogLikelihood(),
     θlb_nuisance::AbstractVector{<:Real}=model.core.θlb,
     θub_nuisance::AbstractVector{<:Real}=model.core.θub,
@@ -125,6 +127,7 @@ function check_univariate_prediction_coverage(data_generator::Function,
 
             univariate_confidenceintervals!(m_new, deepcopy(θs);
                 num_points_in_interval=num_points_in_interval, confidence_level=confidence_level, 
+                dof=dof,
                 profile_type=profile_type, use_threads=false,
                 θlb_nuisance=lb, θub_nuisance=ub,
                 optimizationsettings=optimizationsettings)
@@ -176,6 +179,7 @@ function check_univariate_prediction_coverage(data_generator::Function,
 
                     univariate_confidenceintervals!(m_new, deepcopy(θs); 
                         num_points_in_interval=num_points_in_interval, confidence_level=confidence_level, 
+                        dof=dof,
                         profile_type=profile_type, use_distributed=false, use_threads=false,
                         θlb_nuisance=lb, θub_nuisance=ub,
                         optimizationsettings=optimizationsettings)
@@ -267,6 +271,7 @@ The coverage from combining the prediction reference sets of multiple confidence
 # Keyword Arguments
 - `num_points_in_interval`: an integer number of points to optionally evaluate within the confidence interval for each interest parameter using [`get_points_in_intervals!`](@ref). Points are linearly spaced in the interval. Useful for predictions from univariate profiles. Default is `0`. 
 - `confidence_level`: a number ∈ (0.0, 1.0) for the confidence level to evaluate the confidence interval coverage at. Default is `0.95` (95%).
+- `dof`: an integer ∈ [1, `model.core.num_pars`] for the degrees of freedom used to define the asymptotic threshold ([`PlaceholderLikelihood.get_target_loglikelihood`](@ref)) which defines the extremities of the univariate profile, i.e. the confidence interval. For parameter confidence intervals that are considered individually, it should be set to `1`. For intervals that are considered simultaneously, it should be set to the number of intervals that are being calculated, i.e. `model.core.num_pars` when we wish the confidence interval for every parameter to hold simultaneously. Default is `1`. Setting it to `model.core.num_pars` should be reasonable when making predictions for well-identified models with `<10` parameters. Note: values other than `1` and `model.core.num_pars` may not have a clear statistical interpretation.
 - `region`: a `Real` number ∈ [0, 1] specifying the proportion of the density of the error model from which to evaluate the highest density region. Default is `0.95`.
 - `profile_type`: whether to use the true log-likelihood function or an ellipse approximation of the log-likelihood function centred at the MLE (with optional use of parameter bounds). Available profile types are [`LogLikelihood`](@ref), [`EllipseApprox`](@ref) and [`EllipseApproxAnalytical`](@ref). Default is `LogLikelihood()` ([`LogLikelihood`](@ref)).
 - `θlb_nuisance`: a vector of lower bounds on nuisance parameters, require `θlb_nuisance .≤ model.core.θmle`. Default is `model.core.θlb`. 
@@ -304,6 +309,7 @@ function check_univariate_prediction_realisations_coverage(data_generator::Funct
     θinitialguess::AbstractVector{<:Real}=θtrue;
     num_points_in_interval::Int=0,
     confidence_level::Float64=0.95,
+    dof::Int=1,
     region::Float64=0.95,
     profile_type::AbstractProfileType=LogLikelihood(),
     θlb_nuisance::AbstractVector{<:Real}=model.core.θlb,
@@ -378,6 +384,7 @@ function check_univariate_prediction_realisations_coverage(data_generator::Funct
 
             univariate_confidenceintervals!(m_new, deepcopy(θs);
                 num_points_in_interval=num_points_in_interval, confidence_level=confidence_level,
+                dof=dof,
                 θlb_nuisance=lb, θub_nuisance=ub,
                 profile_type=profile_type, use_threads=false,
                 optimizationsettings=optimizationsettings)
@@ -434,6 +441,7 @@ function check_univariate_prediction_realisations_coverage(data_generator::Funct
 
                     univariate_confidenceintervals!(m_new, deepcopy(θs);
                         num_points_in_interval=num_points_in_interval, confidence_level=confidence_level,
+                        dof=dof,
                         profile_type=profile_type, use_distributed=false,
                         θlb_nuisance=lb, θub_nuisance=ub, use_threads=false,
                         optimizationsettings=optimizationsettings)

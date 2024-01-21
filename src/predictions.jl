@@ -238,7 +238,7 @@ function generate_prediction_univariate(model::LikelihoodModel,
 
     interval_points = get_uni_confidence_interval_points(model, sub_df[row_i, :row_ind])
     boundary_col_indices = interval_points.boundary_col_indices
-    actual_internal = interval_points.ll .≥ get_target_loglikelihood(model, sub_df[row_i, :conf_level], EllipseApproxAnalytical(), 1)
+    actual_internal = interval_points.ll .≥ get_target_loglikelihood(model, sub_df[row_i, :conf_level], EllipseApproxAnalytical(), sub_df[row_i, :dof])
     internal_indices = collect(1:length(interval_points.ll))[actual_internal]
     boundary_and_internal = union(boundary_col_indices, internal_indices)
     
@@ -300,6 +300,7 @@ Evalute and save `proportion_to_keep` individual predictions and their extrema f
 # Keyword Arguments
 - `region`: a `Real` number ∈ [0, 1] specifying the proportion of the density of the error model from which to evaluate the highest density region. Default is `0.95`.
 - `confidence_levels`: a vector of confidence levels. If empty, all confidence levels of univariate profiles will be considered for evaluating predictions from. Otherwise, only confidence levels in `confidence_levels` will be considered. Default is `Float64[]` (any confidence level).
+- `dofs`: a vector of integer degrees of freedom used to define the asymptotic threshold for the extremities of a univariate profile. If empty, all degrees of freedom for univariate profiles will be considered for evaluating predictions from. Otherwise, only degrees of freedom in `dofs` will be considered. Default is `Int[]` (any degree of freedom).
 - `profile_types`: a vector of `AbstractProfileType` structs. If empty, all profile types of univariate profiles are considered. Otherwise, only profiles with matching profile types will be considered. Default is `AbstractProfileType[]` (any profile type).
 - `overwrite_predictions`: boolean variable specifying whether to re-evaluate and overwrite predictions for univariate profiles that have already had predictions evaluated. Set to `true` if predictions need to be evaluated for a new vector of time points. Default is `false`.
 - `show_progress`: boolean variable specifying whether to display progress bars on the percentage of predictions evaluated and estimated time of completion. Default is `model.show_progress`.
@@ -322,6 +323,7 @@ function generate_predictions_univariate!(model::LikelihoodModel,
                                             proportion_to_keep::Real=1.0;
                                             region::Real=0.95,
                                             confidence_levels::Vector{<:Float64}=Float64[],
+                                            dofs::Vector{<:Int}=Int[],
                                             profile_types::Vector{<:AbstractProfileType}=AbstractProfileType[],
                                             overwrite_predictions::Bool=false,
                                             show_progress::Bool=model.show_progress,
@@ -331,7 +333,7 @@ function generate_predictions_univariate!(model::LikelihoodModel,
 
     (0.0 <= proportion_to_keep <= 1.0) || throw(DomainError("proportion_to_keep must be in the closed interval [0.0, 1.0]"))
     (0.0 <= region <= 1.0) || throw(DomainError("region must be in the closed interval [0.0, 1.0]"))
-    sub_df = desired_df_subset(model.uni_profiles_df, model.num_uni_profiles, Int[], confidence_levels, profile_types, 
+    sub_df = desired_df_subset(model.uni_profiles_df, model.num_uni_profiles, Int[], confidence_levels, dofs, profile_types, 
                                 for_prediction_generation=!overwrite_predictions)
 
     if nrow(sub_df) < 1

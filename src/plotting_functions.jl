@@ -145,6 +145,7 @@ end
         ylim_scaler::Real=0.2;
         θs_to_plot::Vector=Int[],
         confidence_levels::Vector{<:Float64}=Float64[],
+        dofs::Vector{<:Int}=Int[],
         profile_types::Vector{<:AbstractProfileType}=AbstractProfileType[], 
         num_points_in_interval::Int=0,
         palette_to_use::Symbol=:Paired_6, 
@@ -156,6 +157,7 @@ function plot_univariate_profiles(model::LikelihoodModel,
                                     ylim_scaler::Real=0.2;
                                     θs_to_plot::Vector=Int[],
                                     confidence_levels::Vector{<:Float64}=Float64[],
+                                    dofs::Vector{<:Int}=Int[],
                                     profile_types::Vector{<:AbstractProfileType}=AbstractProfileType[], 
                                     num_points_in_interval::Int=0,
                                     palette_to_use::Symbol=:Paired_6, 
@@ -164,12 +166,13 @@ function plot_univariate_profiles(model::LikelihoodModel,
     if num_points_in_interval > 0
         get_points_in_interval!(model, num_points_in_interval, 
                                 confidence_levels=confidence_levels, 
+                                dofs=dofs,
                                 profile_types=profile_types)
     end
     
     θs_to_plot = θs_to_plot_typeconversion(model, θs_to_plot)
 
-    sub_df = desired_df_subset(model.uni_profiles_df, model.num_uni_profiles, θs_to_plot, confidence_levels, profile_types)
+    sub_df = desired_df_subset(model.uni_profiles_df, model.num_uni_profiles, θs_to_plot, confidence_levels, dofs, profile_types)
 
     if nrow(sub_df) < 1
         return nothing
@@ -184,7 +187,7 @@ function plot_univariate_profiles(model::LikelihoodModel,
         interval = get_uni_confidence_interval_points(model, row.row_ind)
         boundary_col_indices = interval.boundary_col_indices
 
-        llstar = get_target_loglikelihood(model, row.conf_level, EllipseApprox(), 1)
+        llstar = get_target_loglikelihood(model, row.conf_level, EllipseApprox(), row.dof)
         parMLE = model.core.θmle[row.θindex]
         θname = model.core.θnames[row.θindex]
         
@@ -199,7 +202,7 @@ function plot_univariate_profiles(model::LikelihoodModel,
                         xlabel=string(θname), ylabel=L"\hat{\ell}_{p}", 
                         ylims=[llstar + llstar*ylim_scaler, 0.1],
                         title=string("Profile type: ", row.profile_type, 
-                                        "\nConfidence level: ", row.conf_level),
+                                        "\nConfidence level: ", row.conf_level, ", dof: ", row.dof),
                         titlefontsize=10, kwargs...)
         
     end
@@ -212,6 +215,7 @@ function plot_univariate_profiles_comparison(model::LikelihoodModel,
                                     ylim_scaler::Real=0.2;
                                     θs_to_plot::Vector=Int[],
                                     confidence_levels::Vector{<:Float64}=Float64[],
+                                    dofs::Vector{<:Int}=Int[],
                                     profile_types::Vector{<:AbstractProfileType}=AbstractProfileType[], 
                                     num_points_in_interval::Int=0,
                                     palette_to_use::Symbol=:Paired_6,
@@ -226,7 +230,7 @@ function plot_univariate_profiles_comparison(model::LikelihoodModel,
 
     θs_to_plot = θs_to_plot_typeconversion(model, θs_to_plot)
 
-    sub_df = desired_df_subset(model.uni_profiles_df, model.num_uni_profiles, θs_to_plot, confidence_levels, profile_types)
+    sub_df = desired_df_subset(model.uni_profiles_df, model.num_uni_profiles, θs_to_plot, confidence_levels, dofs, profile_types)
 
     if nrow(sub_df) < 1
         return nothing
@@ -234,6 +238,9 @@ function plot_univariate_profiles_comparison(model::LikelihoodModel,
 
     if isempty(confidence_levels)
         confidence_levels = unique(sub_df.conf_level)
+    end
+    if isempty(dofs)
+        dofs = unique(sub_df.dof)
     end
 
     color_palette = palette(palette_to_use)
@@ -243,51 +250,53 @@ function plot_univariate_profiles_comparison(model::LikelihoodModel,
     row_subset = trues(nrow(sub_df))
 
     for θi in 1:model.core.num_pars
-        for confidence_level in confidence_levels
+        for dof in dofs
+            for confidence_level in confidence_levels
 
-            row_subset .= (sub_df.θindex .== θi) .& (sub_df.conf_level .== confidence_level)
-            conf_df = @view(sub_df[row_subset, :])
+                row_subset .= (sub_df.θindex .== θi) .& (sub_df.dof .== dof) .& (sub_df.conf_level .== confidence_level)
+                conf_df = @view(sub_df[row_subset, :])
 
-            if nrow(conf_df) > 1
-                if plot_i > 1
-                    append!(profile_plots, [plot()])
-                end
-                llstar = get_target_loglikelihood(model, confidence_level, EllipseApprox(), 1)
-                parMLE = model.core.θmle[θi]
-                θname = model.core.θnames[θi]
-
-                xlims = zeros(2)
-
-                for i in 1:nrow(conf_df)
-
-                    row = @view(conf_df[i,:])
-                    interval = get_uni_confidence_interval_points(model, row.row_ind)
-                    boundary_col_indices = interval.boundary_col_indices
-                    
-                    x_range = interval.points[row.θindex, boundary_col_indices[2]] - interval.points[row.θindex, boundary_col_indices[1]]
-
-                    if i == 1
-                        xlims .= [interval.points[row.θindex, boundary_col_indices[1]] - x_range*xlim_scaler, 
-                            interval.points[row.θindex, boundary_col_indices[2]] + x_range*xlim_scaler]
-                    else
-                        xlims[1] = min(xlims[1], interval.points[row.θindex, boundary_col_indices[1]] - x_range*xlim_scaler) 
-                        xlims[2] = max(xlims[2], interval.points[row.θindex, boundary_col_indices[2]] + x_range*xlim_scaler)
+                if nrow(conf_df) > 1
+                    if plot_i > 1
+                        append!(profile_plots, [plot()])
                     end
-                    
-                    plot1Dprofile!(profile_plots[plot_i], interval.points[row.θindex, :], interval.ll; 
-                                    label = label_only_lines ? "" : string(row.profile_type),
-                                    linestyle=profile1Dlinestyle(row.profile_type),
-                                    color=color_palette[profilecolor(row.profile_type)])
+                    llstar = get_target_loglikelihood(model, confidence_level, EllipseApprox(), dof)
+                    parMLE = model.core.θmle[θi]
+                    θname = model.core.θnames[θi]
+
+                    xlims = zeros(2)
+
+                    for i in 1:nrow(conf_df)
+
+                        row = @view(conf_df[i,:])
+                        interval = get_uni_confidence_interval_points(model, row.row_ind)
+                        boundary_col_indices = interval.boundary_col_indices
+                        
+                        x_range = interval.points[row.θindex, boundary_col_indices[2]] - interval.points[row.θindex, boundary_col_indices[1]]
+
+                        if i == 1
+                            xlims .= [interval.points[row.θindex, boundary_col_indices[1]] - x_range*xlim_scaler, 
+                                interval.points[row.θindex, boundary_col_indices[2]] + x_range*xlim_scaler]
+                        else
+                            xlims[1] = min(xlims[1], interval.points[row.θindex, boundary_col_indices[1]] - x_range*xlim_scaler) 
+                            xlims[2] = max(xlims[2], interval.points[row.θindex, boundary_col_indices[2]] + x_range*xlim_scaler)
+                        end
+                        
+                        plot1Dprofile!(profile_plots[plot_i], interval.points[row.θindex, :], interval.ll; 
+                                        label = label_only_lines ? "" : string(row.profile_type),
+                                        linestyle=profile1Dlinestyle(row.profile_type),
+                                        color=color_palette[profilecolor(row.profile_type)])
+                    end
+
+                    addMLEandLLstar!(profile_plots[plot_i], llstar, parMLE, color_palette[end-1], color_palette[end]; 
+                                    xlabel=string(θname), ylabel=L"\hat{\ell}_{p}", 
+                                    xlims=xlims,
+                                    ylims=[llstar + llstar*ylim_scaler, 0.1],
+                                    title=string("Confidence level: ", confidence_level, ", dof: ", dof),
+                                    titlefontsize=10, kwargs...)
+
+                    plot_i+=1
                 end
-
-                addMLEandLLstar!(profile_plots[plot_i], llstar, parMLE, color_palette[end-1], color_palette[end]; 
-                                xlabel=string(θname), ylabel=L"\hat{\ell}_{p}", 
-                                xlims=xlims,
-                                ylims=[llstar + llstar*ylim_scaler, 0.1],
-                                title=string("Confidence level: ", confidence_level),
-                                titlefontsize=10, kwargs...)
-
-                plot_i+=1
             end
         end
     end
@@ -763,6 +772,7 @@ function plot_predictions_individual(model::LikelihoodModel,
                             θcombinations_to_plot::Vector=Tuple{Int,Int}[],
                             θindices_to_plot::Vector=Vector{Int}[],
                             confidence_levels::Vector{<:Float64}=Float64[],
+                            dofs::Vector{<:Int}=Int[],
                             profile_types::Vector{<:AbstractProfileType}=[LogLikelihood()],
                             methods::Vector{<:AbstractBivariateMethod}=AbstractBivariateMethod[],
                             sample_types::Vector{<:AbstractSampleType}=AbstractSampleType[],
@@ -788,7 +798,7 @@ function plot_predictions_individual(model::LikelihoodModel,
         if profile_dimension == 1
             θs_to_plot = θs_to_plot_typeconversion(model, θs_to_plot)
             sub_df = desired_df_subset(model.uni_profiles_df, model.num_uni_profiles, θs_to_plot, confidence_levels,
-                                        profile_types; for_prediction_plots=true)
+                                        dofs, profile_types; for_prediction_plots=true)
             predictions_dict = model.uni_predictions_dict
         elseif profile_dimension == 2
             θcombinations_to_plot = θcombinations_to_plot_typeconversion(model, θcombinations_to_plot)
@@ -820,7 +830,7 @@ function plot_predictions_individual(model::LikelihoodModel,
         else
             if profile_dimension == 1
                 title=string("Profile type: ", row.profile_type, 
-                            "\nConfidence level: ", row.conf_level,
+                            "\nConfidence level: ", row.conf_level, ", dof: ", row.dof,
                             "\nTarget parameter: ", model.core.θnames[row.θindex])
                 title_vspan = 0.15
             else
@@ -878,6 +888,7 @@ function plot_predictions_union(model::LikelihoodModel,
                             t::AbstractVector,
                             profile_dimension::Int=1,
                             confidence_level::Float64=0.95;
+                            dof::Int=profile_dimension,
                             xlabel::String="t",
                             ylabel::Union{Nothing,String,Vector{String}}=nothing,
                             for_dim_samples::Bool=false,
@@ -909,12 +920,12 @@ function plot_predictions_union(model::LikelihoodModel,
         predictions_dict = model.dim_predictions_dict
         title = string("Parameter dimension: " , profile_dimension,
                         "\nMethod: sampled",
-                        "\nConfidence level: ", confidence_level)
+                        "\nConfidence level: ", confidence_level, ", dof: ", dof)
     else
         profile_dimension in [1,2] || throw(DomainError("profile_dimension must be 1 or 2"))
         if profile_dimension == 1
             θs_to_plot = θs_to_plot_typeconversion(model, θs_to_plot)
-            sub_df = desired_df_subset(model.uni_profiles_df, model.num_uni_profiles, θs_to_plot, confidence_level, profile_types; for_prediction_plots=true)
+            sub_df = desired_df_subset(model.uni_profiles_df, model.num_uni_profiles, θs_to_plot, confidence_level, dof, profile_types; for_prediction_plots=true)
             predictions_dict = model.uni_predictions_dict
         elseif profile_dimension == 2
             θcombinations_to_plot = θcombinations_to_plot_typeconversion(model, θcombinations_to_plot)
@@ -924,7 +935,7 @@ function plot_predictions_union(model::LikelihoodModel,
 
         title = string("Parameter dimension: " , profile_dimension,
                         "\nMethod: boundary",
-                        "\nConfidence level: ", confidence_level)
+                        "\nConfidence level: ", confidence_level, ", dof: ", dof)
     end
 
     if nrow(sub_df) < 1
@@ -1030,6 +1041,7 @@ function plot_realisations_individual(model::LikelihoodModel,
                             θcombinations_to_plot::Vector=Tuple{Int,Int}[],
                             θindices_to_plot::Vector=Vector{Int}[],
                             confidence_levels::Vector{<:Float64}=Float64[],
+                            dofs::Vector{<:Int}=Int[]
                             profile_types::Vector{<:AbstractProfileType}=[LogLikelihood()],
                             methods::Vector{<:AbstractBivariateMethod}=AbstractBivariateMethod[],
                             sample_types::Vector{<:AbstractSampleType}=AbstractSampleType[],
@@ -1055,7 +1067,7 @@ function plot_realisations_individual(model::LikelihoodModel,
         if profile_dimension == 1
             θs_to_plot = θs_to_plot_typeconversion(model, θs_to_plot)
             sub_df = desired_df_subset(model.uni_profiles_df, model.num_uni_profiles, θs_to_plot, confidence_levels,
-                                        profile_types; for_prediction_plots=true)
+                                        dofs, profile_types; for_prediction_plots=true)
             predictions_dict = model.uni_predictions_dict
         elseif profile_dimension == 2
             θcombinations_to_plot = θcombinations_to_plot_typeconversion(model, θcombinations_to_plot)
@@ -1091,7 +1103,7 @@ function plot_realisations_individual(model::LikelihoodModel,
         else
             if profile_dimension == 1
                 title=string("Profile type: ", row.profile_type, 
-                            "\nConfidence level: ", row.conf_level,
+                            "\nConfidence level: ", confidence_level, ", dof: ", dof,
                             "\nTarget parameter: ", model.core.θnames[row.θindex])
                 title_vspan = 0.15
             else
@@ -1149,6 +1161,7 @@ function plot_realisations_union(model::LikelihoodModel,
                             t::AbstractVector,
                             profile_dimension::Int=1,
                             confidence_level::Float64=0.95;
+                            dof::Int=profile_dimension,
                             xlabel::String="t",
                             ylabel::Union{Nothing,String,Vector{String}}=nothing,
                             for_dim_samples::Bool=false,
@@ -1185,7 +1198,7 @@ function plot_realisations_union(model::LikelihoodModel,
         profile_dimension in [1,2] || throw(DomainError("profile_dimension must be 1 or 2"))
         if profile_dimension == 1
             θs_to_plot = θs_to_plot_typeconversion(model, θs_to_plot)
-            sub_df = desired_df_subset(model.uni_profiles_df, model.num_uni_profiles, θs_to_plot, confidence_level, profile_types; for_prediction_plots=true)
+            sub_df = desired_df_subset(model.uni_profiles_df, model.num_uni_profiles, θs_to_plot, confidence_level, dof, profile_types; for_prediction_plots=true)
             predictions_dict = model.uni_predictions_dict
         elseif profile_dimension == 2
             θcombinations_to_plot = θcombinations_to_plot_typeconversion(model, θcombinations_to_plot)
@@ -1195,7 +1208,7 @@ function plot_realisations_union(model::LikelihoodModel,
 
         title = string("Parameter dimension: " , profile_dimension,
                         "\nMethod: boundary",
-                        "\nConfidence level: ", confidence_level)
+                        "\nConfidence level: ", confidence_level, ", dof: ", dof)
     end
 
     if nrow(sub_df) < 1

@@ -115,7 +115,7 @@ end
         profile_type::AbstractProfileType, 
         dof::Int)
 
-Returns the target log-likelihood / threshold at a confidence level and degrees of freedom, `dof` (the number of interest parameters), required for a particular `profile_type` to be in the confidence set. Uses [`PlaceholderLikelihood.ll_correction`](@ref).
+Returns the target log-likelihood / threshold at a confidence level and degrees of freedom, `dof` (typically the number of interest parameters OR the number of model parameters), required for a particular `profile_type` to be in the confidence set. Uses [`PlaceholderLikelihood.ll_correction`](@ref).
 """
 function get_target_loglikelihood(model::LikelihoodModel, 
                                     confidence_level::Float64,
@@ -123,6 +123,7 @@ function get_target_loglikelihood(model::LikelihoodModel,
                                     dof::Int)
 
     (0.0 ≤ confidence_level && confidence_level < 1.0) || throw(DomainError("confidence_level must be in the interval [0,1)"))
+    (dof ≤ model.core.num_pars) || throw(DomainError("dof must be less than or equal to the number of model parameters"))
 
     llstar = -quantile(Chisq(dof), confidence_level) / 2.0
 
@@ -240,7 +241,8 @@ Returns a view of `df` that includes only valid rows ∈ `1:num_used_rows`, and 
 # Arguments
 - `df`: a DataFrame - `model.uni_profiles_df`.
 - `num_used_rows`: the number of valid rows in `df` - `model.num_uni_profiles`.
-- `confidence_levels`: a vector of confidence levels or a `Float64` of a single confidence level. If empty, all confidence levels in `df` are allowed. Otherwise, if `include_higher_confidence_levels == true` and `confidence_levels` is a `Float64`, all confidence levels greater than or equal to `confidence_levels` are allowed. Else, only matching confidence levels in `df` are allowed.
+- `confidence_levels`: a vector of confidence levels or a `Float64` of a single confidence level. If empty, all confidence levels in `df` are allowed. Otherwise, only matching confidence levels in `df` are allowed.
+- `dofs`: a vector of integer degrees of freedom or a `Int` of a single degree of freedom. If empty, all degrees of freedom for univariate profiles are allowed. Otherwise, only matching degrees of freedom in `df` are allowed.
 - `profile_types`: a vector of `AbstractProfileType` structs. If empty, all profile types in `df` are allowed. Otherwise, only matching profile types in `df` are allowed.
 
 # Keyword Arguments
@@ -252,6 +254,7 @@ function desired_df_subset(df::DataFrame,
                             num_used_rows::Int,
                             θs_of_interest::Vector{<:Int},
                             confidence_levels::Union{Float64, Vector{<:Float64}},
+                            dofs::Union{Int, Vector{<:Int}},
                             profile_types::Vector{<:AbstractProfileType};
                             for_points_in_interval::Tuple{Bool,Int,Real}=(false,0,0),
                             for_prediction_generation::Bool=false,
@@ -279,6 +282,9 @@ function desired_df_subset(df::DataFrame,
     if !isempty(confidence_levels)
         row_subset .= row_subset .& (df_sub.conf_level .∈ Ref(confidence_levels))
     end
+    if !isempty(dofs)
+        row_subset .= row_subset .& (df_sub.dof .∈ Ref(dofs))
+    end
     if !isempty(profile_types)
         row_subset .= row_subset .& (df_sub.profile_type .∈ Ref(profile_types))
     end
@@ -303,7 +309,7 @@ Returns a view of `df` that includes only valid rows ∈ `1:num_used_rows`, and 
 # Arguments
 - `df`: a DataFrame - `model.biv_profiles_df`.
 - `num_used_rows`: the number of valid rows in `df` - `model.num_biv_profiles`.
-- `confidence_levels`: a vector of confidence levels or a `Float64` of a single confidence level. If empty, all confidence levels in `df` are allowed. Otherwise, if `include_higher_confidence_levels == true` and `confidence_levels` is a `Float64`, all confidence levels greater than or equal to `confidence_levels` are allowed. Else, only matching confidence levels in `df` are allowed.
+- `confidence_levels`: a vector of confidence levels or a `Float64` of a single confidence level. If empty, all confidence levels in `df` are allowed. Otherwise, if `include_lower_confidence_levels == true` and `confidence_levels` is a `Float64`, all confidence levels less than or equal to `confidence_levels` are allowed. Else, only matching confidence levels in `df` are allowed.
 - `profile_types`: a vector of `AbstractProfileType` structs. If empty, all profile types in `df` are allowed. Otherwise, only matching profile types in `df` are allowed.
 - `methods`: a vector of `AbstractBivariateMethod` structs. If empty, all methods in `df` are allowed. Otherwise, only methods of the same type in `df` are allowed.
 
@@ -311,7 +317,7 @@ Returns a view of `df` that includes only valid rows ∈ `1:num_used_rows`, and 
 - `for_prediction_generation`: a boolean specifying whether only rows which have not had predictions evaluated are allowed. As predictions do not need to be generated for rows which already have them evaluated. 
 - `for_prediction_plots`: a boolean specifying whether only rows which have had predictions evaluated are allowed. As prediction plots can only include rows which have evaluated predictions. 
 - `remove_combined_method`: a boolean specifiying whether rows with `method` of type [`CombinedBivariateMethod`](@ref) should be removed. Needed by [`combine_bivariate_boundaries!`](@ref) to ensure that combined boundaries are not removed from `df`.
-- `include_lower_confidence_levels`: a boolean specifying whether all confidence levels less than or equal to `confidence_levels` are allowed. Useful for prediction plots if a given set of bivariate profiles has few internal points evaluated, meaning some information about predictions may be missing. Bivariate profiles at lower confidence levels are by definition inside the desired confidence interval and may provide additional information on predictions.
+- `include_lower_confidence_levels`: a boolean specifying whether all confidence levels less than or equal to `confidence_levels` are allowed. Useful for prediction plots if a given set of bivariate profiles has few internal points evaluated, meaning some information about predictions may be missing. Bivariate profiles at lower confidence levels are by definition inside the desired confidence profile and may provide additional information on predictions.
 """
 function desired_df_subset(df::DataFrame, 
                             num_used_rows::Int,

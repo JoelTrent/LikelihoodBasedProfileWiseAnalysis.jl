@@ -195,6 +195,7 @@ Evaluate and save `num_points_in_interval` linearly spaced points between the co
 # Keyword Arguments
 - `additional_width`: a `Real` number greater than or equal to zero. Specifies the additional width to optionally evaluate outside the confidence interval's width. Half of this additional width will be placed on either side of the confidence interval. If the additional width goes outside a bound on the parameter, only up to the bound will be considered. The spacing of points in the additional width will try to match the spacing of points evaluated inside the interval. Useful for plots that visualise the confidence interval as it shows the trend of the log-likelihood profile outside the interval range. Default is `0.0`.
 - `confidence_levels`: a vector of confidence levels. If empty, all confidence levels of univariate profiles will be considered for finding interval points. Otherwise, only confidence levels in `confidence_levels` will be considered. Default is `Float64[]` (any confidence level).
+- `dofs`: a vector of integer degrees of freedom used to define the asymptotic threshold for the extremities of a univariate profile. If empty, all degrees of freedom for univariate profiles will be considered for evaluating predictions from. Otherwise, only degrees of freedom in `dofs` will be considered. Default is `Int[]` (any degree of freedom).
 - `profile_types`: a vector of `AbstractProfileType` structs. If empty, all profile types of univariate profiles are considered. Otherwise, only profiles with matching profile types will be considered. Default is `AbstractProfileType[]` (any profile type).
 - `θlb_nuisance`: a vector of lower bounds on nuisance parameters, require `θlb_nuisance .≤ model.core.θmle`. Default is `model.core.θlb`. 
 - `θub_nuisance`: a vector of upper bounds on nuisance parameters, require `θub_nuisance .≥ model.core.θmle`. Default is `model.core.θub`.
@@ -221,6 +222,7 @@ function get_points_in_intervals!(model::LikelihoodModel,
                                     num_points_in_interval::Int;
                                     additional_width::Real=0.0,
                                     confidence_levels::Vector{<:Float64}=Float64[],
+                                    dofs::Vector{<:Int}=Int[],
                                     profile_types::Vector{<:AbstractProfileType}=AbstractProfileType[],
                                     θlb_nuisance::AbstractVector{<:Float64}=model.core.θlb,
                                     θub_nuisance::AbstractVector{<:Float64}=model.core.θub,
@@ -251,7 +253,7 @@ function get_points_in_intervals!(model::LikelihoodModel,
     optimizationsettings = ismissing(optimizationsettings) ? model.core.optimizationsettings : optimizationsettings
 
     sub_df = desired_df_subset(model.uni_profiles_df, model.num_uni_profiles, Int[], 
-                confidence_levels, profile_types, 
+                confidence_levels, dofs, profile_types, 
                 for_points_in_interval=(true, num_points_in_interval, additional_width),
                 for_prediction_generation=not_evaluated_predictions)
 

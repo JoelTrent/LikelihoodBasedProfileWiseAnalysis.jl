@@ -41,6 +41,9 @@ For a 95% confidence interval of a interest parameter `θi` it is expected that 
 
 The uncertainty in estimates of the coverage under the simulated model will decrease as the number of simulations, `N`, is increased. Confidence intervals for the coverage estimate are provided to quantify this uncertainty. The confidence interval for the estimated coverage is a Clopper-Pearson interval on a binomial test generated using [HypothesisTests.jl](https://juliastats.org/HypothesisTests.jl/stable/).
 
+!!! note "Simultaneous confidence intervals"
+    Calculating the coverage of simultaneous confidence intervals is not currently supported (i.e. for `dof ≠ 1`)
+
 !!! note "Recommended setting for distributed_over_parameters"
     - If the number of processes available to use is significantly greater than the number of model parameters or only a few model parameters are being checked for coverage, `false` is recommended.   
     - If system memory or model size in system memory is a concern, or the number of processes available is similar or less than the number of model parameters being checked, `true` will likely be more appropriate. 

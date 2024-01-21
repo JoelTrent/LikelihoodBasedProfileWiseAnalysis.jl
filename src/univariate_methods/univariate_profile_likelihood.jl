@@ -20,16 +20,18 @@ end
     get_interval_brackets(model::LikelihoodModel, 
         θi::Int, 
         confidence_level::Float64, 
+        dof::Int,
         profile_type::AbstractProfileType)
 
-Returns updated interval brackets (`Float64` vectors of length two) if smaller or larger confidence level profiles exist for θi, such that the region to bracket over for the left and right sides of the confidence interval is smallest. Otherwise, returns empty brackets (`Float64[]`).
+Returns updated interval brackets (`Float64` vectors of length two) if smaller or larger confidence level profiles exist for `θi` at degrees of freedom, `dof`, such that the region to bracket over for the left and right sides of the confidence interval is smallest. Otherwise, returns empty brackets (`Float64[]`).
 """
 function get_interval_brackets(model::LikelihoodModel, 
                                 θi::Int,
                                 confidence_level::Float64,
+                                dof::Int,
                                 profile_type::AbstractProfileType)
 
-    prof_keys = collect(keys(model.uni_profile_row_exists[(θi, profile_type)]))
+    prof_keys = collect(keys(model.uni_profile_row_exists[(θi, dof, profile_type)]))
     len_keys = length(prof_keys)
     if len_keys > 1
         sort!(prof_keys)
@@ -38,13 +40,13 @@ function get_interval_brackets(model::LikelihoodModel,
         bracket_l, bracket_r = [0.0, 0.0], [0.0, 0.0]
 
         if conf_ind>1
-            bracket_l[2], bracket_r[1] = get_uni_confidence_interval(model, model.uni_profile_row_exists[(θi, profile_type)][prof_keys[conf_ind-1]])
+            bracket_l[2], bracket_r[1] = get_uni_confidence_interval(model, model.uni_profile_row_exists[(θi, dof, profile_type)][prof_keys[conf_ind-1]])
         else
             bracket_l[2], bracket_r[1] = model.core.θmle[θi], model.core.θmle[θi]
         end
         
         if conf_ind<len_keys
-            bracket_l[1], bracket_r[2] = get_uni_confidence_interval(model, model.uni_profile_row_exists[(θi, profile_type)][prof_keys[conf_ind+1]])
+            bracket_l[1], bracket_r[2] = get_uni_confidence_interval(model, model.uni_profile_row_exists[(θi, dof, profile_type)][prof_keys[conf_ind+1]])
         else
             bracket_l[1], bracket_r[2] = model.core.θlb[θi], model.core.θub[θi]
         end
@@ -75,6 +77,7 @@ end
         not_evaluated_internal_points::Bool, 
         not_evaluated_predictions::Bool,
         confidence_level::Float64, 
+        dof::Int,
         profile_type::AbstractProfileType, 
         num_points::Int, 
         additional_width::Real)
@@ -87,6 +90,7 @@ function set_uni_profiles_row!(model::LikelihoodModel,
                                     not_evaluated_internal_points::Bool,
                                     not_evaluated_predictions::Bool,
                                     confidence_level::Float64,
+                                    dof::Int,
                                     profile_type::AbstractProfileType,
                                     num_points::Int,
                                     additional_width::Real)
@@ -94,6 +98,7 @@ function set_uni_profiles_row!(model::LikelihoodModel,
                                             not_evaluated_internal_points,
                                             not_evaluated_predictions,
                                             confidence_level,
+                                            dof,
                                             profile_type,
                                             num_points,
                                             additional_width
@@ -125,6 +130,7 @@ end
         consistent::NamedTuple, 
         θi::Int, 
         confidence_level::Float64,
+        dof::Int,
         profile_type::AbstractProfileType,
         θlb_nuisance::AbstractVector{<:Real},
         θub_nuisance::AbstractVector{<:Real},
@@ -149,6 +155,7 @@ function univariate_confidenceinterval(univariate_optimiser::Function,
                                         consistent::NamedTuple, 
                                         θi::Int, 
                                         confidence_level::Float64,
+                                        dof::Int,
                                         profile_type::AbstractProfileType,
                                         θlb_nuisance::AbstractVector{<:Real},
                                         θub_nuisance::AbstractVector{<:Real},
@@ -174,18 +181,18 @@ function univariate_confidenceinterval(univariate_optimiser::Function,
             p=(ω_opt=zeros(model.core.num_pars-1), q=q, options=optimizationsettings)
 
             if use_existing_profiles
-                bracket_l, bracket_r = get_interval_brackets(model, θi, confidence_level,
+                bracket_l, bracket_r = get_interval_brackets(model, θi, confidence_level, dof,
                                                                 profile_type)
             else
                 bracket_l, bracket_r = Float64[], Float64[]
             end
 
             if use_ellipse_approx_analytical_start && !(profile_type isa EllipseApproxAnalytical)
-                if haskey(model.uni_profile_row_exists, (θi, EllipseApproxAnalytical())) && 
-                        model.uni_profile_row_exists[(θi, EllipseApproxAnalytical())][confidence_level] != 0
+                if haskey(model.uni_profile_row_exists, (θi, dof, EllipseApproxAnalytical())) && 
+                        model.uni_profile_row_exists[(θi, dof, EllipseApproxAnalytical())][confidence_level] != 0
 
                     analytical_interval = get_uni_confidence_interval(model, 
-                        model.uni_profile_row_exists[(θi, EllipseApproxAnalytical())][confidence_level])
+                        model.uni_profile_row_exists[(θi, dof, EllipseApproxAnalytical())][confidence_level])
                 else
                     analytical_interval = [NaN, NaN]
                 end
@@ -354,10 +361,11 @@ Computes likelihood-based confidence interval profiles for the provided `θs_to_
 
 # Keyword Arguments
 - `confidence_level`: a number ∈ (0.0, 1.0) for the confidence level to evaluate the confidence interval. Default is `0.95` (95%).
+- `dof`: an integer ∈ [1, `model.core.num_pars`] for the degrees of freedom used to define the asymptotic threshold ([`PlaceholderLikelihood.get_target_loglikelihood`](@ref)) which defines the extremities of the univariate profile, i.e. the confidence interval. For parameter confidence intervals that are considered individually, it should be set to `1`. For intervals that are considered simultaneously, it should be set to the number of intervals that are being calculated, i.e. `model.core.num_pars` when we wish the confidence interval for every parameter to hold simultaneously. Default is `1`. Setting it to `model.core.num_pars` should be reasonable when making predictions for well-identified models with `<10` parameters. Note: values other than `1` and `model.core.num_pars` may not have a clear statistical interpretation.
 - `profile_type`: whether to use the true log-likelihood function or an ellipse approximation of the log-likelihood function centred at the MLE (with optional use of parameter bounds). Available profile types are [`LogLikelihood`](@ref), [`EllipseApprox`](@ref) and [`EllipseApproxAnalytical`](@ref). Default is `LogLikelihood()` ([`LogLikelihood`](@ref)).
 - `θlb_nuisance`: a vector of lower bounds on nuisance parameters, require `θlb_nuisance .≤ model.core.θmle`. Default is `model.core.θlb`. 
 - `θub_nuisance`: a vector of upper bounds on nuisance parameters, require `θub_nuisance .≥ model.core.θmle`. Default is `model.core.θub`.
-- `use_existing_profiles`: boolean variable specifying whether to use existing profiles of a parameter `θi` to decrease the width of the bracket used to search for the desired confidence interval using [`PlaceholderLikelihood.get_interval_brackets`](@ref). Default is `false`.
+- `use_existing_profiles`: boolean variable specifying whether to use existing profiles of a parameter `θi` to decrease the width of the bracket used to search for the desired confidence interval using [`PlaceholderLikelihood.get_interval_brackets`](@ref). Existing profiles must have been calculated using the same value of `dof`. Default is `false`.
 - `use_ellipse_approx_analytical_start`: boolean variable specifying whether to use existing profiles at `confidence_level` of type [`EllipseApproxAnalytical`](@ref) of a parameter `θi` to decrease the width of the bracket used to search for the desired confidence interval. Can decrease search times significantly for [`LogLikelihood`](@ref) profile types. Default is `false`.
 - `num_points_in_interval`: an integer number of points to optionally evaluate within the confidence interval for each interest parameter using [`get_points_in_intervals!`](@ref). Points are linearly spaced in the interval and have their optimised log-likelihood value recorded. Useful for plots that visualise the confidence interval or for predictions from univariate profiles. Default is `0`. 
 - `additional_width`: a `Real` number greater than or equal to zero. Specifies the additional width to optionally evaluate outside the confidence interval's width if `num_points_in_interval` is greater than 0 using [`get_points_in_intervals!`](@ref). Half of this additional width will be placed on either side of the confidence interval. If the additional width goes outside a bound on the parameter, only up to the bound will be considered. The spacing of points in the additional width will try to match the spacing of points evaluated inside the interval. Useful for plots that visualise the confidence interval as it shows the trend of the log-likelihood profile outside the interval range. Default is `0.0`.
@@ -392,7 +400,8 @@ An iteration within the progress meter is specified as one iteration per side of
 """
 function univariate_confidenceintervals!(model::LikelihoodModel, 
                                         θs_to_profile::Vector{<:Int64}=collect(1:model.core.num_pars); 
-                                        confidence_level::Float64=0.95, 
+                                        confidence_level::Float64=0.95,
+                                        dof::Int=1,
                                         profile_type::AbstractProfileType=LogLikelihood(),
                                         θlb_nuisance::AbstractVector{<:Real}=model.core.θlb,
                                         θub_nuisance::AbstractVector{<:Real}=model.core.θub,
@@ -422,6 +431,8 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
         all(θlb_nuisance .≤ model.core.θmle) || throw(DomainError("θlb_nuisance must be less than or equal to model.core.θmle"))
         all(θub_nuisance .≥ model.core.θmle) || throw(DomainError("θub_nuisance must be greater than or equal to model.core.θmle"))
 
+        (dof ≥ 0) || throw(DomainError("dof must be greater than or equal to 1. Setting to 1 is recommended"))
+
         (!use_distributed && use_threads && timeit_debug_enabled()) &&
             throw(ArgumentError("use_threads cannot be true when debug timings from TimerOutputs are enabled and use_distributed is false. Either set use_threads to false or disable debug timings using `PlaceholderLikelihood.TimerOutputs.disable_debug_timings(PlaceholderLikelihood)`"))
         return nothing
@@ -436,17 +447,17 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
     end
 
     univariate_optimiser = get_univariate_opt_func(profile_type)
-    consistent = get_consistent_tuple(model, confidence_level, profile_type, 1)
-    mle_targetll = get_target_loglikelihood(model, confidence_level, EllipseApproxAnalytical(), 1)
+    consistent = get_consistent_tuple(model, confidence_level, profile_type, dof)
+    mle_targetll = get_target_loglikelihood(model, confidence_level, EllipseApproxAnalytical(), dof)
 
-    init_uni_profile_row_exists!(model, θs_to_profile, profile_type)
+    init_uni_profile_row_exists!(model, θs_to_profile, dof, profile_type)
 
     θs_to_keep = trues(length(θs_to_profile))
     θs_to_overwrite = falses(length(θs_to_profile))
     num_to_overwrite = 0
 
     for (i, θi) in enumerate(θs_to_profile)
-        if model.uni_profile_row_exists[(θi, profile_type)][confidence_level] != 0
+        if model.uni_profile_row_exists[(θi, dof, profile_type)][confidence_level] != 0
             θs_to_keep[i] = false
             θs_to_overwrite[i] = true
             num_to_overwrite += 1
@@ -485,7 +496,7 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
                 profiles_to_add = @distributed (vcat) for θi in θs_to_profile
                     [(θi, univariate_confidenceinterval(univariate_optimiser, model,
                                                         consistent, θi, 
-                                                        confidence_level, profile_type,
+                                                        confidence_level, dof, profile_type,
                                                         θlb_nuisance, θub_nuisance,
                                                         mle_targetll,
                                                         use_existing_profiles,
@@ -500,24 +511,24 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
                     if isnothing(interval_struct); continue end
 
                     if θs_to_overwrite[i]
-                        row_ind = model.uni_profile_row_exists[(θi, profile_type)][confidence_level]
+                        row_ind = model.uni_profile_row_exists[(θi, dof, profile_type)][confidence_level]
                     else
                         model.num_uni_profiles += 1
                         row_ind = model.num_uni_profiles * 1
-                        model.uni_profile_row_exists[(θi, profile_type)][confidence_level] = row_ind
+                        model.uni_profile_row_exists[(θi, dof, profile_type)][confidence_level] = row_ind
                     end
 
                     model.uni_profiles_dict[row_ind] = interval_struct
 
                     set_uni_profiles_row!(model, row_ind, θi, not_evaluated_internal_points, true, confidence_level, 
-                                            profile_type, num_points_in_interval+2, additional_width)
+                                            dof, profile_type, num_points_in_interval+2, additional_width)
                 end
 
             else
                 for (i, θi) in enumerate(θs_to_profile)
                     interval_struct = univariate_confidenceinterval(univariate_optimiser, model,
                                                                     consistent, θi,
-                                                                    confidence_level, profile_type,
+                                                                    confidence_level, dof, profile_type,
                                                                     θlb_nuisance, θub_nuisance,
                                                                     mle_targetll,
                                                                     use_existing_profiles,
@@ -530,17 +541,17 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
                     if isnothing(interval_struct); continue end
 
                     if θs_to_overwrite[i]
-                        row_ind = model.uni_profile_row_exists[(θi, profile_type)][confidence_level]
+                        row_ind = model.uni_profile_row_exists[(θi, dof, profile_type)][confidence_level]
                     else
                         model.num_uni_profiles += 1
                         row_ind = model.num_uni_profiles * 1
-                        model.uni_profile_row_exists[(θi, profile_type)][confidence_level] = row_ind
+                        model.uni_profile_row_exists[(θi, dof, profile_type)][confidence_level] = row_ind
                     end
 
                     model.uni_profiles_dict[row_ind] = interval_struct
 
                     set_uni_profiles_row!(model, row_ind, θi, not_evaluated_internal_points, true, confidence_level,
-                        profile_type, num_points_in_interval + 2, additional_width)
+                        dof, profile_type, num_points_in_interval + 2, additional_width)
                 end
             end
             put!(channel, false)
@@ -560,6 +571,7 @@ Profiles only the provided `θs_to_profile` interest parameters, where `θs_to_p
 function univariate_confidenceintervals!(model::LikelihoodModel, 
                                         θs_to_profile::Vector{<:Symbol}; 
                                         confidence_level::Float64=0.95, 
+                                        dof::Int=1,
                                         profile_type::AbstractProfileType=LogLikelihood(),
                                         θlb_nuisance::AbstractVector{<:Real}=model.core.θlb,
                                         θub_nuisance::AbstractVector{<:Real}=model.core.θub,
@@ -576,6 +588,7 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
 
     indices_to_profile = convertθnames_toindices(model, θs_to_profile)
     univariate_confidenceintervals!(model, indices_to_profile, confidence_level=confidence_level,
+                                dof=dof,
                                 profile_type=profile_type,
                                 θlb_nuisance=θlb_nuisance,
                                 θub_nuisance=θub_nuisance,
@@ -602,6 +615,7 @@ Profiles m random interest parameters (sampling without replacement), where `0 <
 function univariate_confidenceintervals!(model::LikelihoodModel, 
                                         profile_m_random_parameters::Int; 
                                         confidence_level::Float64=0.95, 
+                                        dof::Int=1, 
                                         profile_type::AbstractProfileType=LogLikelihood(),
                                         θlb_nuisance::AbstractVector{<:Real}=model.core.θlb,
                                         θub_nuisance::AbstractVector{<:Real}=model.core.θub,
@@ -622,6 +636,7 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
     indices_to_profile = sample(1:model.core.num_pars, profile_m_random_parameters, replace=false)
 
     univariate_confidenceintervals!(model, indices_to_profile, confidence_level=confidence_level,
+                                dof=dof,
                                 profile_type=profile_type,
                                 θlb_nuisance=θlb_nuisance,
                                 θub_nuisance=θub_nuisance,

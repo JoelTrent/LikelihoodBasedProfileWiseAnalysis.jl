@@ -53,6 +53,9 @@ This check is useful for determining how to most efficiently sample internal poi
 
 The uncertainty in estimates of the coverage under the simulated model will become more accurate as the number of simulations, `N`, is increased. Simulation quantile intervals for the coverage estimate are provided to quantify this uncertainty. 
 
+!!! note "Simultaneous bivariate profiles"
+    Calculating the coverage for approximations of simultaneous bivariate profiles is not currently supported (i.e. for `dof ≠ 2`)
+
 !!! note "Recommended setting for distributed_over_parameters"
     - If the number of processes available to use is significantly greater than the number of model parameters or only a few pairs of model parameters are being checked for coverage, `false` is recommended.   
     - If system memory or model size in system memory is a concern, or the number of processes available is similar or less than the number of pairs of model parameters being checked, `true` will likely be more appropriate. 

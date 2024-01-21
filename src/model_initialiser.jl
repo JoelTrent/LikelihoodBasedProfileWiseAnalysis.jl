@@ -1,16 +1,18 @@
 """
     init_uni_profile_row_exists!(model::LikelihoodModel, 
         θs_to_profile::Vector{<:Int}, 
+        dof::Int,
         profile_type::AbstractProfileType)
 
-Initialises the dictionary entry in `model.uni_profile_row_exists` for the key `(θi, profile_type)`, where `θi` is an element of `θs_to_profile`, with a `DefaultDict` with key of type `Float64` (a confidence level) and default value of 0.
+Initialises the dictionary entry in `model.uni_profile_row_exists` for the key `(θi, dof, profile_type)`, where `θi` is an element of `θs_to_profile` and `dof` is the degrees of freedom used to define the asymptotic threshold, with a `DefaultDict` with key of type `Float64` (a confidence level) and default value of 0.
 """
 function init_uni_profile_row_exists!(model::LikelihoodModel, 
                                         θs_to_profile::Vector{<:Int},
+                                        dof::Int,
                                         profile_type::AbstractProfileType)
     for θi in θs_to_profile
-        if !haskey(model.uni_profile_row_exists, (θi, profile_type))
-            model.uni_profile_row_exists[(θi, profile_type)] = DefaultDict{Float64, Int}(0)
+        if !haskey(model.uni_profile_row_exists, (θi, dof, profile_type))
+            model.uni_profile_row_exists[(θi, dof, profile_type)] = DefaultDict{Float64, Int}(0)
         end
     end
     return nothing
@@ -81,6 +83,7 @@ function init_uni_profiles_df(num_rows::Int; existing_largest_row::Int=0)
     uni_profiles_df.not_evaluated_internal_points = trues(num_rows)
     uni_profiles_df.not_evaluated_predictions = trues(num_rows)
     uni_profiles_df.conf_level = zeros(num_rows)
+    uni_profiles_df.dof = zeros(Int, num_rows)
     uni_profiles_df.profile_type = Vector{AbstractProfileType}(undef, num_rows)
     uni_profiles_df.num_points = zeros(Int, num_rows)
     uni_profiles_df.additional_width = zeros(num_rows)
@@ -248,7 +251,7 @@ function initialise_LikelihoodModel(loglikefunction::Function,
 
     uni_profiles_df = ismissing(uni_row_prealloaction_size) ? init_uni_profiles_df(1) : init_uni_profiles_df(uni_row_prealloaction_size)
     # if zero, is invalid row
-    uni_profile_row_exists = Dict{Tuple{Int, AbstractProfileType}, DefaultDict{Float64, Int}}()    
+    uni_profile_row_exists = Dict{Tuple{Int, Int, AbstractProfileType}, DefaultDict{Float64, Int}}()    
     # uni_profile_row_exists = DefaultDict{Tuple{Int, Float64, AbstractProfileType}, Int}(0)
     uni_profiles_dict = Dict{Int, UnivariateConfidenceStruct}()
 

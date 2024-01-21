@@ -48,6 +48,9 @@ For estimates of how well the methods approximate the true 2D boundary after tur
 
 The uncertainty in estimates of the coverage under the simulated model will decrease as the number of simulations, `N`, is increased. Confidence intervals for the coverage estimate are provided to quantify this uncertainty. The confidence interval for the estimated coverage is a Clopper-Pearson interval on a binomial test generated using [HypothesisTests.jl](https://juliastats.org/HypothesisTests.jl/stable/).
 
+!!! note "Simultaneous bivariate profiles"
+    Calculating the coverage of simultaneous bivariate profiles is not currently supported (i.e. for `dof ≠ 2`)
+
 !!! note "Recommended setting for distributed_over_parameters"
     - If the number of processes available to use is significantly greater than the number of model parameters or only a few pairs of model parameters are being checked for coverage, `false` is recommended.   
     - If system memory or model size in system memory is a concern, or the number of processes available is similar or less than the number of pairs of model parameters being checked, `true` will likely be more appropriate. 
