@@ -21,18 +21,20 @@ end
 """
     init_biv_profile_row_exists!(model::LikelihoodModel, 
         θcombinations::Vector{Vector{Int}}, 
+        dof::Int,
         profile_type::AbstractProfileType, 
         method::AbstractBivariateMethod)
 
-Initialises the dictionary entry in `model.biv_profile_row_exists` for the key `((ind1, ind2), profile_type, method)`, where `(ind1, ind2)` is a combination in `θcombinations`, with a `DefaultDict` with key of type `Float64` (a confidence level) and default value of 0.
+Initialises the dictionary entry in `model.biv_profile_row_exists` for the key `((ind1, ind2), dof, profile_type, method)`, where `(ind1, ind2)` is a combination in `θcombinations` and `dof` is the degrees of freedom used to define the asymptotic threshold, with a `DefaultDict` with key of type `Float64` (a confidence level) and default value of 0.
 """
 function init_biv_profile_row_exists!(model::LikelihoodModel, 
                                         θcombinations::Union{Vector{Vector{Int}},Vector{Tuple{Int,Int}}},
+                                        dof::Int,
                                         profile_type::AbstractProfileType,
                                         method::AbstractBivariateMethod)
     for (ind1, ind2) in θcombinations
-        if !haskey(model.biv_profile_row_exists, ((ind1, ind2), profile_type, method))
-            model.biv_profile_row_exists[((ind1, ind2), profile_type, method)] = DefaultDict{Float64, Int}(0)
+        if !haskey(model.biv_profile_row_exists, ((ind1, ind2), dof, profile_type, method))
+            model.biv_profile_row_exists[((ind1, ind2), dof, profile_type, method)] = DefaultDict{Float64, Int}(0)
         end
     end
     return nothing
@@ -54,17 +56,17 @@ end
 
 """
     init_dim_samples_row_exists!(model::LikelihoodModel, 
-        θindices::Vector{Vector{Int}}, 
+        θindices::Vector{Vector{Int}},
         sample_type::AbstractSampleType)
 
-Initialises the dictionary entry in `model.dim_samples_row_exists` for the key `(θvec, sample_type)`, where `θvec` is a vector in `θindices`, with a `DefaultDict` with key of type `Float64` (a confidence level) and default value of 0. For a non-full likelihood sample (dimension less than the number of model parameters).
+Initialises the dictionary entry in `model.dim_samples_row_exists` for the key `(θvec, dof, sample_type)`, where `θvec` is a vector in `θindices` and `dof=length(θvec)` is the degrees of freedom used to define the asymptotic threshold, with a `DefaultDict` with key of type `Float64` (a confidence level) and default value of 0. For a non-full likelihood sample (dimension less than the number of model parameters).
 """
 function init_dim_samples_row_exists!(model::LikelihoodModel, 
                                         θindices::Vector{Vector{Int}},
                                         sample_type::AbstractSampleType)
     for θvec in θindices
-        if !haskey(model.dim_samples_row_exists, (θvec, sample_type))
-            model.dim_samples_row_exists[(θvec, sample_type)] = DefaultDict{Float64, Int}(0)
+        if !haskey(model.dim_samples_row_exists, (θvec, length(θvec), sample_type))
+            model.dim_samples_row_exists[(θvec, dof, sample_type)] = DefaultDict{Float64, Int}(0)
         end
     end
     return nothing
@@ -106,6 +108,7 @@ function init_biv_profiles_df(num_rows::Int; existing_largest_row::Int=0)
     biv_profiles_df.not_evaluated_predictions = trues(num_rows)
     biv_profiles_df.boundary_not_ordered = trues(num_rows)
     biv_profiles_df.conf_level = zeros(num_rows)
+    biv_profiles_df.dof = zeros(Int, num_rows)
     biv_profiles_df.profile_type = Vector{AbstractProfileType}(undef, num_rows)
     biv_profiles_df.method = Vector{AbstractBivariateMethod}(undef, num_rows)
     biv_profiles_df.num_points = zeros(Int, num_rows)
@@ -127,6 +130,7 @@ function init_dim_samples_df(num_rows::Int; existing_largest_row::Int=0)
     dim_samples_df.dimension = zeros(Int, num_rows)
     dim_samples_df.not_evaluated_predictions = trues(num_rows)
     dim_samples_df.conf_level = zeros(num_rows)
+    dim_samples_df.dof = zeros(Int, num_rows)
     dim_samples_df.sample_type = Vector{AbstractSampleType}(undef, num_rows)
     dim_samples_df.num_points = zeros(Int, num_rows)
     dim_samples_df.region = zeros(num_rows)
@@ -258,10 +262,10 @@ function initialise_LikelihoodModel(loglikefunction::Function,
     num_combinations = binomial(num_pars, 2)
     biv_profiles_df = ismissing(biv_row_preallocation_size) ? init_biv_profiles_df(1) : init_biv_profiles_df(biv_row_preallocation_size)
     # if zero, is invalid row
-    biv_profile_row_exists = Dict{Tuple{Tuple{Int, Int}, AbstractProfileType, AbstractBivariateMethod}, DefaultDict{Float64, Int}}()
+    biv_profile_row_exists = Dict{Tuple{Tuple{Int, Int}, Int, AbstractProfileType, AbstractBivariateMethod}, DefaultDict{Float64, Int}}()
     biv_profiles_dict = Dict{Int, BivariateConfidenceStruct}()
 
-    dim_samples_row_exists = Dict{Union{AbstractSampleType, Tuple{Vector{Int}, AbstractSampleType}}, DefaultDict{Float64, Int}}()
+    dim_samples_row_exists = Dict{Union{AbstractSampleType, Tuple{Vector{Int}, Int, AbstractSampleType}}, DefaultDict{Float64, Int}}()
     dim_samples_df = ismissing(dim_row_preallocation_size) ? init_dim_samples_df(1) : init_dim_samples_df(dim_row_preallocation_size)
     dim_samples_dict = Dict{Int, SampledConfidenceStruct}()
 

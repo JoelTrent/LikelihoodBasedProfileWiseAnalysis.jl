@@ -397,6 +397,7 @@ Evalute and save `proportion_to_keep` individual predictions and their extrema f
 # Keyword Arguments
 - `region`: a `Real` number ∈ [0, 1] specifying the proportion of the density of the error model from which to evaluate the highest density region. Default is `0.95`.
 - `confidence_levels`: a vector of confidence levels. If empty, all confidence levels of bivariate profiles will be considered for evaluating predictions from. Otherwise, only confidence levels in `confidence_levels` will be considered. Default is `Float64[]` (any confidence level).
+- `dofs`: a vector of integer degrees of freedom used to define the asymptotic threshold for the boundary of a bivariate profile. If empty, all degrees of freedom for bivariate profiles will be considered for evaluating predictions from. Otherwise, only degrees of freedom in `dofs` will be considered. Default is `Int[]` (any degree of freedom).
 - `profile_types`: a vector of `AbstractProfileType` structs. If empty, all profile types of bivariate profiles are considered. Otherwise, only profiles with matching profile types will be considered. Default is `AbstractProfileType[]` (any profile type).
 - `methods`: a vector of `AbstractBivariateMethod` structs. If empty all methods used to find bivariate profiles are considered. Otherwise, only profiles with matching method types will be considered (struct arguments do not need to be the same). Default is `AbstractBivariateMethod[]` (any bivariate method).
 - `overwrite_predictions`: boolean variable specifying whether to re-evaluate and overwrite predictions for bivariate profiles that have already had predictions evaluated. Set to `true` if predictions need to be evaluated for a new vector of time points. Default is `false`.
@@ -420,6 +421,7 @@ function generate_predictions_bivariate!(model::LikelihoodModel,
                                             proportion_to_keep::Real=1.0;
                                             region::Real=0.95,
                                             confidence_levels::Vector{<:Float64}=Float64[],
+                                            dofs::Vector{<:Int}=Int[],
                                             profile_types::Vector{<:AbstractProfileType}=AbstractProfileType[],
                                             methods::Vector{<:AbstractBivariateMethod}=AbstractBivariateMethod[],
                                             overwrite_predictions::Bool=false,
@@ -431,7 +433,7 @@ function generate_predictions_bivariate!(model::LikelihoodModel,
     (0.0 <= proportion_to_keep <= 1.0) || throw(DomainError("proportion_to_keep must be in the closed interval [0.0, 1.0]"))
     (0.0 <= region <= 1.0) || throw(DomainError("region must be in the closed interval [0.0, 1.0]"))
     sub_df = desired_df_subset(model.biv_profiles_df, model.num_biv_profiles, Tuple{Int, Int}[], 
-                                confidence_levels, profile_types, methods, for_prediction_generation=!overwrite_predictions)
+                                confidence_levels, dofs, profile_types, methods, for_prediction_generation=!overwrite_predictions)
 
     if nrow(sub_df) < 1
         return nothing
@@ -496,6 +498,7 @@ Evalute and save `proportion_to_keep` individual predictions and their extrema f
 # Keyword Arguments
 - `region`: a `Real` number ∈ [0, 1] specifying the proportion of the density of the error model from which to evaluate the highest density region. Default is `0.95`.
 - `confidence_levels`: a vector of confidence levels. If empty, all confidence levels of dimensional samples will be considered for evaluating predictions from. Otherwise, only confidence levels in `confidence_levels` will be considered. Default is `Float64[]` (any confidence level).
+- `dofs`: a vector of integer degrees of freedom used to define the asymptotic threshold for the boundary of a dimensional sample. If empty, all degrees of freedom for dimensional sample will be considered for evaluating predictions from. Otherwise, only degrees of freedom in `dofs` will be considered. Default is `Int[]` (any degree of freedom).
 - `sample_types`: a vector of [`AbstractSampleType`](@ref) structs. If empty, all sample types used to find dimensional samples are considered. Otherwise, only samples with matching sample types will be considered. Default is `AbstractSampleType[]` (any sample type).
 - `overwrite_predictions`: boolean variable specifying whether to re-evaluate and overwrite predictions for dimensional samples that have already had predictions evaluated. Set to `true` if predictions need to be evaluated for a new vector of time points. Default is `false`.
 - `show_progress`: boolean variable specifying whether to display progress bars on the percentage of predictions evaluated and estimated time of completion. Default is `model.show_progress`.
@@ -518,6 +521,7 @@ function generate_predictions_dim_samples!(model::LikelihoodModel,
                                             proportion_to_keep::Real=1.0;
                                             region::Real=0.95,
                                             confidence_levels::Vector{<:Float64}=Float64[],
+                                            dofs::Vector{<:Int}=Int[],
                                             sample_types::Vector{<:AbstractSampleType}=AbstractSampleType[],
                                             overwrite_predictions::Bool=false,
                                             show_progress::Bool=model.show_progress, 
@@ -527,7 +531,7 @@ function generate_predictions_dim_samples!(model::LikelihoodModel,
     
     (0.0 <= proportion_to_keep <= 1.0) || throw(DomainError("proportion_to_keep must be in the closed interval [0.0, 1.0]"))
     (0.0 <= region <= 1.0) || throw(DomainError("region must be in the closed interval [0.0, 1.0]"))
-    sub_df = desired_df_subset(model.dim_samples_df, model.num_dim_samples, confidence_levels, sample_types, 
+    sub_df = desired_df_subset(model.dim_samples_df, model.num_dim_samples, confidence_levels, dofs, sample_types, 
                                 for_prediction_generation=!overwrite_predictions)
 
     if nrow(sub_df) < 1

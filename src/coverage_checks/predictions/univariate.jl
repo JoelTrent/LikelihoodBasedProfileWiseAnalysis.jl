@@ -92,6 +92,8 @@ function check_univariate_prediction_coverage(data_generator::Function,
         all(θlb_nuisance .≤ model.core.θmle) || throw(DomainError("θlb_nuisance must be less than or equal to model.core.θmle"))
         all(θub_nuisance .≥ model.core.θmle) || throw(DomainError("θub_nuisance must be greater than or equal to model.core.θmle"))
 
+        (dof ≥ 1) || throw(DomainError("dof must be greater than or equal to 1. Setting to 1 is generally recommended"))
+
         (sort(θs); unique!(θs))
         1 ≤ θs[1] && θs[end] ≤ model.core.num_pars || throw(DomainError("θs can only contain parameter indexes between 1 and the number of model parameters"))
         return nothing

@@ -24,11 +24,12 @@ end
         θub_nuisance::AbstractVector{<:Real},
         conf_struct::BivariateConfidenceStruct, 
         confidence_level::Float64,
+        dof::Int,
         boundary_not_ordered::Bool,
         hullmethod::AbstractBivariateHullMethod,
         use_threads::Bool)
 
-Given a `hullmethod` of type [`AbstractBivariateHullMethod`](@ref) which creates a 2D polygon hull from a set of boundary and internal points (method dependent) in `conf_struct` as a representation of the true confidence boundary, sample points from the bounding box, with edges parallel to x and y axes, of a 2D polygon hull using a heuristically optimised Latin Hypercube sampling plan to find approximately `target_num_points` within the polygon, rejecting any that are not inside the log-likelihood threshold at that `confidence_level` and `profile_type`.   
+Given a `hullmethod` of type [`AbstractBivariateHullMethod`](@ref) which creates a 2D polygon hull from a set of boundary and internal points (method dependent) in `conf_struct` as a representation of the true confidence boundary, sample points from the bounding box, with edges parallel to x and y axes, of a 2D polygon hull using a heuristically optimised Latin Hypercube sampling plan to find approximately `target_num_points` within the polygon, rejecting any that are not inside the log-likelihood threshold at that `confidence_level`, `dof` and `profile_type`.   
 """
 function sample_internal_points_LHC(model::LikelihoodModel,
                                     target_num_points::Int,
@@ -38,6 +39,7 @@ function sample_internal_points_LHC(model::LikelihoodModel,
                                     θub_nuisance::AbstractVector{<:Real},
                                     conf_struct::BivariateConfidenceStruct,
                                     confidence_level::Float64,
+                                    dof::Int,
                                     boundary_not_ordered::Bool,
                                     hullmethod::AbstractBivariateHullMethod,
                                     optimizationsettings::OptimizationSettings,
@@ -45,7 +47,7 @@ function sample_internal_points_LHC(model::LikelihoodModel,
 
     bivariate_optimiser = get_bivariate_opt_func(profile_type, RadialMLEMethod())
     biv_opt_is_ellipse_analytical = bivariate_optimiser == bivariateψ_ellipse_analytical_vectorsearch
-    consistent = get_consistent_tuple(model, confidence_level, profile_type, 2)
+    consistent = get_consistent_tuple(model, confidence_level, profile_type, dof)
     
     ind1, ind2 = θindices
     newLb, newUb, initGuess, θranges, ωranges = init_nuisance_parameters(model, ind1, ind2, θlb_nuisance, θub_nuisance)
@@ -63,7 +65,7 @@ function sample_internal_points_LHC(model::LikelihoodModel,
         return abs(A/2)
     end
 
-    polygonhull = construct_polygon_hull(model, [ind1, ind2], conf_struct, confidence_level,
+    polygonhull = construct_polygon_hull(model, [ind1, ind2], conf_struct, confidence_level, dof,
         boundary_not_ordered, hullmethod, true)
 
     poly_area = polygon_area(polygonhull)
@@ -130,7 +132,7 @@ function sample_internal_points_LHC(model::LikelihoodModel,
     ll = _ll[is_internal]
     rejection_rate = (num_sample_points - sum(is_internal)) / num_sample_points
 
-    ll .= ll .+ get_target_loglikelihood(model, confidence_level, EllipseApproxAnalytical(), 2)
+    ll .= ll .+ get_target_loglikelihood(model, confidence_level, EllipseApproxAnalytical(), dof)
 
     if biv_opt_is_ellipse_analytical
         get_ωs_bivariate_ellipse_analytical!(@view(internal_points[[ind1, ind2], :]), size(internal_points, 2),
@@ -152,12 +154,13 @@ end
         θub_nuisance::AbstractVector{<:Real},
         conf_struct::BivariateConfidenceStruct, 
         confidence_level::Float64,
+        dof::Int,
         boundary_not_ordered::Bool,
         hullmethod::AbstractBivariateHullMethod,
         optimizationsettings::OptimizationSettings,
         use_threads::Bool)
 
-Given a `hullmethod` of type [`AbstractBivariateHullMethod`](@ref) which creates a 2D polygon hull from a set of boundary and internal points (method dependent) in `conf_struct` as a representation of the true confidence boundary, sample points from the polygon hull homogeneously until `num_points` are found, rejecting any that are not inside the log-likelihood threshold at that `confidence_level` and `profile_type`.   
+Given a `hullmethod` of type [`AbstractBivariateHullMethod`](@ref) which creates a 2D polygon hull from a set of boundary and internal points (method dependent) in `conf_struct` as a representation of the true confidence boundary, sample points from the polygon hull homogeneously until `num_points` are found, rejecting any that are not inside the log-likelihood threshold at that `confidence_level`, `dof` and `profile_type`.   
 """
 function sample_internal_points_uniform_random(model::LikelihoodModel,
                                                 num_points::Int, 
@@ -167,6 +170,7 @@ function sample_internal_points_uniform_random(model::LikelihoodModel,
                                                 θub_nuisance::AbstractVector{<:Real},
                                                 conf_struct::BivariateConfidenceStruct, 
                                                 confidence_level::Float64,
+                                                dof::Int,
                                                 boundary_not_ordered::Bool,
                                                 hullmethod::AbstractBivariateHullMethod,
                                                 optimizationsettings::OptimizationSettings,
@@ -174,7 +178,7 @@ function sample_internal_points_uniform_random(model::LikelihoodModel,
 
     bivariate_optimiser = get_bivariate_opt_func(profile_type, RadialMLEMethod())
     biv_opt_is_ellipse_analytical = bivariate_optimiser == bivariateψ_ellipse_analytical_vectorsearch
-    consistent = get_consistent_tuple(model, confidence_level, profile_type, 2)
+    consistent = get_consistent_tuple(model, confidence_level, profile_type, dof)
 
     ind1, ind2 = θindices
     newLb, newUb, initGuess, θranges, ωranges = init_nuisance_parameters(model, ind1, ind2, θlb_nuisance, θub_nuisance)
@@ -182,7 +186,7 @@ function sample_internal_points_uniform_random(model::LikelihoodModel,
     q=(ind1=ind1, ind2=ind2, newLb=newLb, newUb=newUb, initGuess=initGuess, 
         θranges=θranges, ωranges=ωranges, consistent=consistent)
 
-    mesh = construct_polygon_hull(model, [ind1, ind2], conf_struct, confidence_level,
+    mesh = construct_polygon_hull(model, [ind1, ind2], conf_struct, confidence_level, dof,
                                     boundary_not_ordered, hullmethod, false)
     
     internal_points = zeros(model.core.num_pars, num_points)
@@ -225,7 +229,7 @@ function sample_internal_points_uniform_random(model::LikelihoodModel,
     end
 
     rejection_rate = num_rejected / (num_rejected+i-1)
-    ll .= ll .+ get_target_loglikelihood(model, confidence_level, EllipseApproxAnalytical(), 2)
+    ll .= ll .+ get_target_loglikelihood(model, confidence_level, EllipseApproxAnalytical(), dof)
 
     if biv_opt_is_ellipse_analytical
         get_ωs_bivariate_ellipse_analytical!(@view(internal_points[[ind1, ind2], :]), num_points,
@@ -278,16 +282,17 @@ function sample_internal_points_single_row(model::LikelihoodModel,
         profile_type = model.biv_profiles_df.profile_type[biv_row_number]
         conf_struct = model.biv_profiles_dict[biv_row_number]
         confidence_level = model.biv_profiles_df[biv_row_number, :conf_level]
+        dof = model.biv_profiles_df[biv_row_number, :dof]
         boundary_not_ordered = model.biv_profiles_df.boundary_not_ordered[biv_row_number]
 
         @timeit_debug timer "Sample bivariate internal points" begin
             if sample_type isa LatinHypercubeSamples
                 internal_points, rejection_rate = sample_internal_points_LHC(model, num_points, θindices,
-                    profile_type, θlb_nuisance, θub_nuisance, conf_struct, confidence_level, boundary_not_ordered, hullmethod,
+                    profile_type, θlb_nuisance, θub_nuisance, conf_struct, confidence_level, dof, boundary_not_ordered, hullmethod,
                     optimizationsettings, use_threads)
             end
             internal_points, rejection_rate = sample_internal_points_uniform_random(model, num_points, θindices,
-                profile_type, θlb_nuisance, θub_nuisance, conf_struct, confidence_level, boundary_not_ordered, hullmethod,
+                profile_type, θlb_nuisance, θub_nuisance, conf_struct, confidence_level, dof, boundary_not_ordered, hullmethod,
                 optimizationsettings, use_threads)
         end
 
@@ -333,6 +338,7 @@ Samples `num_points` internal points in interest parameter space of existing biv
 
 # Keyword Arguments
 - `confidence_levels`: a vector of confidence levels. If empty, all confidence levels of bivariate profiles will be considered for finding interval points. Otherwise, only confidence levels in `confidence_levels` will be considered. Default is `Float64[]` (any confidence level).
+- `dofs`: a vector of integer degrees of freedom. If empty, all degrees of freedom of bivariate profiles will be considered. Otherwise, only degrees of freedom in `dofs` are allowed. Default is `Int[]` (any degree of freedom).
 - `profile_types`: a vector of [`AbstractProfileType`](@ref) structs. If empty, all profile types of bivariate profiles are considered. Otherwise, only profiles with matching profile types will be considered. Default is `AbstractProfileType[]` (any profile type).
 - `methods`: a vector of [`AbstractBivariateMethod`](@ref) structs. If empty all methods used to find bivariate profiles are considered. Otherwise, only profiles with matching method types will be considered (struct arguments do not need to be the same). Default is `AbstractBivariateMethod[]` (any bivariate method).
 - `sample_type`: either a [`UniformRandomSamples`](@ref) or [`LatinHypercubeSamples`](@ref) struct for how to sample internal points from the polygon hull. [`UniformRandomSamples`](@ref) are homogeneously sampled from the polygon and [`LatinHypercubeSamples`](@ref) use the intersection of a heuristically optimised Latin Hypercube sampling plan with the polygon. Default is `LatinHypercubeSamples()` ([`LatinHypercubeSamples`](@ref)).
@@ -349,7 +355,7 @@ Samples `num_points` internal points in interest parameter space of existing biv
 
 # Details
 
-For each bivariate profile that meets the requirements of [`PlaceholderLikelihood.desired_df_subset`](@ref) it creates a 2D polygon hull from it's set of boundary and internal points (method dependent) using `hullmethod` and samples points from the hull using `sample_type` until `num_points` are found, rejecting any that are not inside the log-likelihood threshold at that `confidence_level` and `profile_type`. For [`LatinHypercubeSamples`](@ref) this will be approximately `num_points`, whereas for [`UniformRandomSamples`](@ref) this will be exactly `num_points`. Nuisance parameters of each point in bivariate interest parameter space are found by maximising the log-likelihood function given by the `profile_type` of the profile.
+For each bivariate profile that meets the requirements of [`PlaceholderLikelihood.desired_df_subset`](@ref) it creates a 2D polygon hull from it's set of boundary and internal points (method dependent) using `hullmethod` and samples points from the hull using `sample_type` until `num_points` are found, rejecting any that are not inside the log-likelihood threshold at that `confidence_level`, `dof` and `profile_type`. For [`LatinHypercubeSamples`](@ref) this will be approximately `num_points`, whereas for [`UniformRandomSamples`](@ref) this will be exactly `num_points`. Nuisance parameters of each point in bivariate interest parameter space are found by maximising the log-likelihood function given by the `profile_type` of the profile.
 
 It is highly recommended to view the docstrings of each `hullmethod` as the rejection rate of sampled points and the representation accuracy / coverage of the true confidence boundary varies between them, which can impact both computational performance and sampling coverage. For example, given the same set of boundary and internal points, [`ConvexHullMethod`](@ref) will produce a polygon hull that contains at least as much of the true confidence boundary as the other methods, but may have a higher rejection rate than other methods leading to higher computational cost.
 
@@ -364,6 +370,7 @@ An iteration within the progress meter is specified as the time it takes for all
 function sample_bivariate_internal_points!(model::LikelihoodModel,
                                     num_points::Int;
                                     confidence_levels::Vector{<:Float64}=Float64[],
+                                    dofs::Vector{<:Int}=Int[],
                                     profile_types::Vector{<:AbstractProfileType}=AbstractProfileType[],
                                     methods::Vector{<:AbstractBivariateMethod}=AbstractBivariateMethod[],
                                     sample_type::AbstractSampleType=LatinHypercubeSamples(),
@@ -397,7 +404,7 @@ function sample_bivariate_internal_points!(model::LikelihoodModel,
     optimizationsettings = ismissing(optimizationsettings) ? model.core.optimizationsettings : optimizationsettings
     
     sub_df = desired_df_subset(model.biv_profiles_df, model.num_biv_profiles, Tuple{Int,Int}[], 
-                confidence_levels, profile_types, methods)
+                confidence_levels, dofs, profile_types, methods)
 
     if nrow(sub_df) < 1
         return nothing

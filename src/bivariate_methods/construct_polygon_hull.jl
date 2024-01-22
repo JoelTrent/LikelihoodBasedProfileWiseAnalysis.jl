@@ -3,6 +3,7 @@
         θindices::Vector{<:Int},
         conf_struct::BivariateConfidenceStruct,
         confidence_level::Float64,
+        dof::Int,
         boundary_not_ordered::Bool,
         hullmethod::AbstractBivariateHullMethod,
         return_boundary_not_mesh::Bool)
@@ -13,6 +14,7 @@ function construct_polygon_hull(model::LikelihoodModel,
                                 θindices::Vector{<:Int},
                                 conf_struct::BivariateConfidenceStruct,
                                 confidence_level::Float64,
+                                dof::Int,
                                 boundary_not_ordered::Bool,
                                 hullmethod::AbstractBivariateHullMethod,
                                 return_boundary_not_mesh::Bool)
@@ -40,7 +42,7 @@ function construct_polygon_hull(model::LikelihoodModel,
         point_union = hcat(conf_struct.confidence_boundary[θindices, :], conf_struct.internal_points.points[θindices, :])
 
         num_boundary_points = size(conf_struct.confidence_boundary, 2)
-        ll_boundary = get_target_loglikelihood(model, confidence_level, EllipseApprox(), 2)
+        ll_boundary = get_target_loglikelihood(model, confidence_level, EllipseApprox(), dof)
         ll_values = vcat(fill(ll_boundary, num_boundary_points), conf_struct.internal_points.ll)
 
         boundary = bivariate_concave_hull(point_union, ll_values, 0.8, 0.8, ll_boundary)

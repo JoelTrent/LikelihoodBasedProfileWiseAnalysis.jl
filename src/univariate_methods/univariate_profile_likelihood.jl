@@ -431,7 +431,7 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
         all(θlb_nuisance .≤ model.core.θmle) || throw(DomainError("θlb_nuisance must be less than or equal to model.core.θmle"))
         all(θub_nuisance .≥ model.core.θmle) || throw(DomainError("θub_nuisance must be greater than or equal to model.core.θmle"))
 
-        (dof ≥ 0) || throw(DomainError("dof must be greater than or equal to 1. Setting to 1 is recommended"))
+        (dof ≥ 1) || throw(DomainError("dof must be greater than or equal to 1. Setting to 1 is recommended"))
 
         (!use_distributed && use_threads && timeit_debug_enabled()) &&
             throw(ArgumentError("use_threads cannot be true when debug timings from TimerOutputs are enabled and use_distributed is false. Either set use_threads to false or disable debug timings using `PlaceholderLikelihood.TimerOutputs.disable_debug_timings(PlaceholderLikelihood)`"))

@@ -48,6 +48,9 @@ This simulated coverage check is used to estimate the performance of propagating
 
 The uncertainty in estimates of the prediction coverage under the simulated model will decrease as the number of simulations, `N`, is increased. Confidence intervals for the coverage estimate are provided to quantify this uncertainty. The confidence interval for the estimated coverage is a Clopper-Pearson interval on a binomial test generated using [HypothesisTests.jl](https://juliastats.org/HypothesisTests.jl/stable/).
 
+!!! note "Support for `dof`"
+    Setting the degrees of freedom of a sampled parameter confidence set to a value other than the interest parameter dimensionality is not currently supported (e.g. as supported for univariate and bivariate profiles). Support may be added in the future.
+
 !!! note "Recommended setting for distributed_over_parameters"
     - If the number of processes available to use is significantly greater than the number of model parameters or only a few pairs of model parameters are being checked for coverage, `false` is recommended.   
     - If system memory or model size in system memory is a concern, or the number of processes available is similar or less than the number of pairs of model parameters being checked, `true` will likely be more appropriate. 
@@ -285,6 +288,9 @@ The prediction coverage from combining the prediction sets of multiple confidenc
 This simulated coverage check is used to estimate the performance of propagating dimensional samples into prediction realisation space. The simulation uses [Distributed.jl](https://docs.julialang.org/en/v1/stdlib/Distributed/) to parallelise the workload.
 
 The uncertainty in estimates of the prediction realisation coverage under the simulated model will decrease as the number of simulations, `N`, is increased. Confidence intervals for the coverage estimate are provided to quantify this uncertainty. The confidence interval for the estimated coverage is a Clopper-Pearson interval on a binomial test generated using [HypothesisTests.jl](https://juliastats.org/HypothesisTests.jl/stable/).
+
+!!! note "Support for `dof`"
+    Setting the degrees of freedom of a sampled parameter confidence set to a value other than the interest parameter dimensionality is not currently supported (e.g. as supported for univariate and bivariate profiles). Support may be added in the future.
 
 !!! note "Recommended setting for distributed_over_parameters"
     - If the number of processes available to use is significantly greater than the number of model parameters or only a few pairs of model parameters are being checked for coverage, `false` is recommended.   

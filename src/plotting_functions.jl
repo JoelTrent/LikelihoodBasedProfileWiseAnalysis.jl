@@ -310,6 +310,7 @@ function plot_bivariate_profiles(model::LikelihoodModel,
                                     for_dim_samples::Bool=false,
                                     θcombinations_to_plot::Vector=Tuple{Int,Int}[],
                                     confidence_levels::Vector{<:Float64}=Float64[],
+                                    dofs::Vector{<:Int}=Int[],
                                     profile_types::Vector{<:AbstractProfileType}=AbstractProfileType[],
                                     methods::Vector{<:AbstractBivariateMethod}=AbstractBivariateMethod[],
                                     sample_types::Vector{<:AbstractSampleType}=AbstractSampleType[],
@@ -321,13 +322,13 @@ function plot_bivariate_profiles(model::LikelihoodModel,
 
     max_internal_points = max(1, max_internal_points)
     if for_dim_samples
-        sub_df = desired_df_subset(model.dim_samples_df, model.num_dim_samples, confidence_levels, sample_types, 
+        sub_df = desired_df_subset(model.dim_samples_df, model.num_dim_samples, confidence_levels, dofs, sample_types, 
                                     sample_dimension=2)
     else
         θcombinations_to_plot = θcombinations_to_plot_typeconversion(model, θcombinations_to_plot)
                                         
         sub_df = desired_df_subset(model.biv_profiles_df, model.num_biv_profiles, θcombinations_to_plot, confidence_levels,
-                                    profile_types, methods)
+                                    dofs, profile_types, methods)
     end
 
     if nrow(sub_df) < 1
@@ -344,11 +345,12 @@ function plot_bivariate_profiles(model::LikelihoodModel,
         for j in 1:2; θindices[j] = row.θindices[j] end
         
         if for_dim_samples
-            boundary = bivariate_concave_hull(model.dim_samples_dict[row.row_ind], θindices, 1.0, 1.0, get_target_loglikelihood(model, row.conf_level, EllipseApproxAnalytical(), 2), row.sample_type)
+            boundary = bivariate_concave_hull(model.dim_samples_dict[row.row_ind], θindices, 1.0, 1.0, 
+                get_target_loglikelihood(model, row.conf_level, EllipseApproxAnalytical(), row.dof), row.sample_type)
             profile_type=row.sample_type
 
             title=string("Sample type: ", profile_type, 
-                        "\nConfidence level: ", row.conf_level)
+                        "\nConfidence level: ", row.conf_level, ", dof: ", row.dof)
         else
             full_boundary = model.biv_profiles_dict[row.row_ind].confidence_boundary
             boundary = @view(full_boundary[θindices, :])
@@ -356,7 +358,7 @@ function plot_bivariate_profiles(model::LikelihoodModel,
 
             title=string("Profile type: ", profile_type, 
                         "\nMethod: ", row.method,
-                        "\nConfidence level: ", row.conf_level)
+                        "\nConfidence level: ", row.conf_level, ", dof: ", row.dof)
         end
         
         parMLEs = model.core.θmle[θindices]
@@ -410,6 +412,7 @@ function plot_bivariate_profiles_iterativeboundary_gif(model::LikelihoodModel,
                                     ylim_scaler::Real=0.2;
                                     θcombinations_to_plot::Vector=Tuple{Int,Int}[],
                                     confidence_levels::Vector{<:Float64}=Float64[],
+                                    dofs::Vector{<:Int}=Int[],
                                     profile_types::Vector{<:AbstractProfileType}=AbstractProfileType[],
                                     palette_to_use::Symbol=:Paired_6,
                                     save_as_separate_plots::Bool=false,
@@ -423,7 +426,7 @@ function plot_bivariate_profiles_iterativeboundary_gif(model::LikelihoodModel,
     θcombinations_to_plot = θcombinations_to_plot_typeconversion(model, θcombinations_to_plot)
                                     
     sub_df = desired_df_subset(model.biv_profiles_df, model.num_biv_profiles, θcombinations_to_plot, confidence_levels,
-                                profile_types, methods)
+                                dofs, profile_types, methods)
 
     if nrow(sub_df) < 1
         return nothing
@@ -443,7 +446,7 @@ function plot_bivariate_profiles_iterativeboundary_gif(model::LikelihoodModel,
 
         title=string("Profile type: ", profile_type, 
                     "\nMethod: ", row.method,
-                    "\nConfidence level: ", row.conf_level)
+                    "\nConfidence level: ", row.conf_level, ", dof: ", row.dof)
         
         parMLEs = model.core.θmle[θindices]
         θnames = model.core.θnames[θindices]
@@ -522,6 +525,7 @@ function plot_bivariate_profiles_comparison(model::LikelihoodModel,
                                     ylim_scaler::Real=0.2;
                                     θcombinations_to_plot::Vector=Tuple{Int,Int}[],
                                     confidence_levels::Vector{<:Float64}=Float64[],
+                                    dofs::Vector{<:Int}=Int[],
                                     profile_types::Vector{<:AbstractProfileType}=AbstractProfileType[],
                                     methods::Vector{<:AbstractBivariateMethod}=AbstractBivariateMethod[],
                                     sample_types::Vector{<:AbstractSampleType}=AbstractSampleType[],
@@ -535,9 +539,9 @@ function plot_bivariate_profiles_comparison(model::LikelihoodModel,
     θcombinations_to_plot = θcombinations_to_plot_typeconversion(model, θcombinations_to_plot)
 
     sub_df = desired_df_subset(model.biv_profiles_df, model.num_biv_profiles, θcombinations_to_plot, confidence_levels,
-                                profile_types, methods)
+                                dofs, profile_types, methods)
 
-    sub_df_samples = desired_df_subset(model.dim_samples_df, model.num_dim_samples, confidence_levels, sample_types, 
+    sub_df_samples = desired_df_subset(model.dim_samples_df, model.num_dim_samples, confidence_levels, dofs, sample_types, 
                                         sample_dimension=2)
 
     if ((!include_dim_samples || compare_within_methods) && nrow(sub_df) < 1) || 
@@ -547,6 +551,9 @@ function plot_bivariate_profiles_comparison(model::LikelihoodModel,
 
     if isempty(confidence_levels)
         confidence_levels = unique(sub_df.conf_level)
+    end
+    if isempty(dofs)
+        dofs = unique(sub_df.dof)
     end
 
     if compare_within_methods
@@ -583,17 +590,88 @@ function plot_bivariate_profiles_comparison(model::LikelihoodModel,
         parMLEs = model.core.θmle[θindices]
         θnames = model.core.θnames[θindices]
 
-        for confidence_level in confidence_levels
-            if compare_within_methods
-                for method in methods
+        for dof in dofs
+            for confidence_level in confidence_levels
+                if compare_within_methods
+                    for method in methods
+                        row_subset .= (sub_df.θindices .== Ref(θindices_tuple)) .& 
+                                        (sub_df.dof .== dof) .&
+                                        (sub_df.conf_level .== confidence_level) .&
+                                        (sub_df.method .== Ref(method))
+
+                        conf_df = @view(sub_df[row_subset, :])
+
+                        if nrow(conf_df) < 2; 
+                            continue 
+                        end
+
+                        if plot_i > 1
+                            append!(profile_plots, [plot()])
+                        end
+                        
+                        min_vals = zeros(2)
+                        max_vals = zeros(2)
+
+                        for i in 1:nrow(conf_df)
+                            row = @view(conf_df[i,:])
+
+                            full_boundary = model.biv_profiles_dict[row.row_ind].confidence_boundary
+                            boundary = @view(full_boundary[θindices, :])
+
+                            if i == 1
+                                min_vals .= minimum(boundary, dims=2)
+                                max_vals .= maximum(boundary, dims=2)
+                            else
+                                min_vals .= min.(min_vals, minimum(boundary, dims=2))
+                                max_vals .= max.(max_vals, maximum(boundary, dims=2))
+                            end
+
+                            plot2Dboundary!(profile_plots[plot_i], boundary, 
+                                label=label_only_MLE ? "" : string(row.profile_type),
+                                markershape=profile2Dmarkershape(row.profile_type, true), 
+                                markercolor=color_palette[profilecolor(row.profile_type)],
+                                linecolor=color_palette[profilecolor(row.profile_type)],
+                                markeralpha=markeralpha,
+                                linealpha=markeralpha)
+                        end
+
+                        ranges = max_vals .- min_vals
+
+                        addMLE!(profile_plots[plot_i], parMLEs; 
+                            markercolor=color_palette[end],
+                            xlabel=string(θnames[1]), ylabel=string(θnames[2]),
+                            xlims=[min_vals[1]-ranges[1]*xlim_scaler, 
+                                    max_vals[1]+ranges[1]*xlim_scaler],
+                            ylims=[min_vals[2]-ranges[2]*ylim_scaler, 
+                            max_vals[2]+ranges[2]*ylim_scaler],
+                            title=string("Method: ", method, 
+                                        "\nConfidence level: ", confidence_level, ", dof: ", dof),
+                            titlefontsize=10, kwargs...)
+
+                        plot_i+=1
+                    end
+                else
                     row_subset .= (sub_df.θindices .== Ref(θindices_tuple)) .& 
-                                    (sub_df.conf_level .== confidence_level) .&
-                                    (sub_df.method .== Ref(method))
+                                        (sub_df.dof .== dof) .& 
+                                        (sub_df.conf_level .== confidence_level)
 
                     conf_df = @view(sub_df[row_subset, :])
+                    nrow_conf_df = nrow(conf_df)
 
-                    if nrow(conf_df) < 2; 
-                        continue 
+                    if include_dim_samples
+                        row_subset_samples .= (sub_df_samples.θindices .== Ref(θindices)) .& 
+                                            (sub_df_samples.dof .== dof) .&
+                                            (sub_df_samples.conf_level .== confidence_level)
+                        conf_df_samples = @view(sub_df_samples[row_subset_samples, :])
+                        nrow_conf_df_samples = nrow(conf_df_samples)
+                    else
+                        conf_df_samples=nothing
+                        nrow_conf_df_samples=0
+                    end
+
+                    if !( nrow_conf_df > 1 && length(unique(conf_df.profile_type)) > 1 || nrow_conf_df_samples > 1 || (nrow_conf_df_samples == 1 && nrow_conf_df > 0) 
+                        )
+                        continue
                     end
 
                     if plot_i > 1
@@ -602,12 +680,24 @@ function plot_bivariate_profiles_comparison(model::LikelihoodModel,
                     
                     min_vals = zeros(2)
                     max_vals = zeros(2)
+                    i = 1
+                    for profile_type in profile_types
+                        rows = @view(conf_df[conf_df.profile_type .== Ref(profile_type),:])
+                        boundary = zeros(2,0)
 
-                    for i in 1:nrow(conf_df)
-                        row = @view(conf_df[i,:])
+                        if nrow(rows) == 0
+                            continue
+                        elseif nrow(rows) == 1
+                            full_boundary = model.biv_profiles_dict[rows.row_ind[1]].confidence_boundary
+                            boundary = @view(full_boundary[θindices, :])
+                        else
+                            for j in 1:nrow(rows)
+                                full_boundary = model.biv_profiles_dict[rows.row_ind[j]].confidence_boundary
+                                
+                                boundary = reduce(hcat, (boundary, full_boundary[θindices, :]))
+                            end
+                        end
 
-                        full_boundary = model.biv_profiles_dict[row.row_ind].confidence_boundary
-                        boundary = @view(full_boundary[θindices, :])
 
                         if i == 1
                             min_vals .= minimum(boundary, dims=2)
@@ -617,13 +707,47 @@ function plot_bivariate_profiles_comparison(model::LikelihoodModel,
                             max_vals .= max.(max_vals, maximum(boundary, dims=2))
                         end
 
-                        plot2Dboundary!(profile_plots[plot_i], boundary, 
-                            label=label_only_MLE ? "" : string(row.profile_type),
-                            markershape=profile2Dmarkershape(row.profile_type, true), 
-                            markercolor=color_palette[profilecolor(row.profile_type)],
-                            linecolor=color_palette[profilecolor(row.profile_type)],
+                        plot2Dboundary!(profile_plots[plot_i], boundary,
+                            label=label_only_MLE ? "" : string(profile_type),
+                            markershape=profile2Dmarkershape(profile_type, true), 
+                            markercolor=color_palette[profilecolor(profile_type)],
+                            linecolor=color_palette[profilecolor(profile_type)],
                             markeralpha=markeralpha,
                             linealpha=markeralpha)
+                        
+                        i += 1
+                    end
+
+                    if !isnothing(conf_df_samples)
+                        for sample_type in sample_types
+                            row = @view(conf_df_samples[conf_df_samples.sample_type .== Ref(sample_type),:])
+                            boundary = zeros(2,0)
+
+                            if nrow(row) == 0
+                                continue
+                            else
+                                boundary = bivariate_concave_hull(model.dim_samples_dict[row.row_ind[1]], θindices, 1.0, 1.0, 
+                                                                get_target_loglikelihood(model, confidence_level, EllipseApproxAnalytical(), dof), sample_type)
+                            end
+
+                            if i == 1
+                                min_vals .= minimum(boundary, dims=2)
+                                max_vals .= maximum(boundary, dims=2)
+                            else
+                                min_vals .= min.(min_vals, minimum(boundary, dims=2))
+                                max_vals .= max.(max_vals, maximum(boundary, dims=2))
+                            end
+
+                            plot2Dboundary!(profile_plots[plot_i], boundary, 
+                                label=string(sample_type),
+                                markershape=profile2Dmarkershape(sample_type, true), 
+                                markercolor=color_palette[profilecolor(sample_type)],
+                                linecolor=color_palette[profilecolor(sample_type)],
+                                markeralpha=markeralpha,
+                                linealpha=markeralpha)
+                            
+                            i += 1
+                        end
                     end
 
                     ranges = max_vals .- min_vals
@@ -635,123 +759,11 @@ function plot_bivariate_profiles_comparison(model::LikelihoodModel,
                                 max_vals[1]+ranges[1]*xlim_scaler],
                         ylims=[min_vals[2]-ranges[2]*ylim_scaler, 
                         max_vals[2]+ranges[2]*ylim_scaler],
-                        title=string("Method: ", method, 
-                                    "\nConfidence level: ", confidence_level),
+                        title=string("Confidence level: ", confidence_level, ", dof: ", dof),
                         titlefontsize=10, kwargs...)
 
                     plot_i+=1
                 end
-            else
-                row_subset .= (sub_df.θindices .== Ref(θindices_tuple)) .& 
-                                    (sub_df.conf_level .== confidence_level)
-
-                conf_df = @view(sub_df[row_subset, :])
-                nrow_conf_df = nrow(conf_df)
-
-                if include_dim_samples
-                    row_subset_samples .= (sub_df_samples.θindices .== Ref(θindices)) .&
-                                        (sub_df_samples.conf_level .== confidence_level)
-                    conf_df_samples = @view(sub_df_samples[row_subset_samples, :])
-                    nrow_conf_df_samples = nrow(conf_df_samples)
-                else
-                    conf_df_samples=nothing
-                    nrow_conf_df_samples=0
-                end
-
-                if !( nrow_conf_df > 1 && length(unique(conf_df.profile_type)) > 1 || nrow_conf_df_samples > 1 || (nrow_conf_df_samples == 1 && nrow_conf_df > 0) 
-                    )
-                    continue
-                end
-
-                if plot_i > 1
-                    append!(profile_plots, [plot()])
-                end
-                
-                min_vals = zeros(2)
-                max_vals = zeros(2)
-                i = 1
-                for profile_type in profile_types
-                    rows = @view(conf_df[conf_df.profile_type .== Ref(profile_type),:])
-                    boundary = zeros(2,0)
-
-                    if nrow(rows) == 0
-                        continue
-                    elseif nrow(rows) == 1
-                        full_boundary = model.biv_profiles_dict[rows.row_ind[1]].confidence_boundary
-                        boundary = @view(full_boundary[θindices, :])
-                    else
-                        for j in 1:nrow(rows)
-                            full_boundary = model.biv_profiles_dict[rows.row_ind[j]].confidence_boundary
-                            
-                            boundary = reduce(hcat, (boundary, full_boundary[θindices, :]))
-                        end
-                    end
-
-
-                    if i == 1
-                        min_vals .= minimum(boundary, dims=2)
-                        max_vals .= maximum(boundary, dims=2)
-                    else
-                        min_vals .= min.(min_vals, minimum(boundary, dims=2))
-                        max_vals .= max.(max_vals, maximum(boundary, dims=2))
-                    end
-
-                    plot2Dboundary!(profile_plots[plot_i], boundary,
-                        label=label_only_MLE ? "" : string(profile_type),
-                        markershape=profile2Dmarkershape(profile_type, true), 
-                        markercolor=color_palette[profilecolor(profile_type)],
-                        linecolor=color_palette[profilecolor(profile_type)],
-                        markeralpha=markeralpha,
-                        linealpha=markeralpha)
-                    
-                    i += 1
-                end
-
-                if !isnothing(conf_df_samples)
-                    for sample_type in sample_types
-                        row = @view(conf_df_samples[conf_df_samples.sample_type .== Ref(sample_type),:])
-                        boundary = zeros(2,0)
-
-                        if nrow(row) == 0
-                            continue
-                        else
-                            boundary = bivariate_concave_hull(model.dim_samples_dict[row.row_ind[1]], θindices, 1.0, 1.0, 
-                                                            get_target_loglikelihood(model, confidence_level, EllipseApproxAnalytical(), 2), sample_type)
-                        end
-
-                        if i == 1
-                            min_vals .= minimum(boundary, dims=2)
-                            max_vals .= maximum(boundary, dims=2)
-                        else
-                            min_vals .= min.(min_vals, minimum(boundary, dims=2))
-                            max_vals .= max.(max_vals, maximum(boundary, dims=2))
-                        end
-
-                        plot2Dboundary!(profile_plots[plot_i], boundary, 
-                            label=string(sample_type),
-                            markershape=profile2Dmarkershape(sample_type, true), 
-                            markercolor=color_palette[profilecolor(sample_type)],
-                            linecolor=color_palette[profilecolor(sample_type)],
-                            markeralpha=markeralpha,
-                            linealpha=markeralpha)
-                        
-                        i += 1
-                    end
-                end
-
-                ranges = max_vals .- min_vals
-
-                addMLE!(profile_plots[plot_i], parMLEs; 
-                    markercolor=color_palette[end],
-                    xlabel=string(θnames[1]), ylabel=string(θnames[2]),
-                    xlims=[min_vals[1]-ranges[1]*xlim_scaler, 
-                            max_vals[1]+ranges[1]*xlim_scaler],
-                    ylims=[min_vals[2]-ranges[2]*ylim_scaler, 
-                    max_vals[2]+ranges[2]*ylim_scaler],
-                    title=string("Confidence level: ", confidence_level),
-                    titlefontsize=10, kwargs...)
-
-                plot_i+=1
             end
         end
     end
@@ -789,7 +801,7 @@ function plot_predictions_individual(model::LikelihoodModel,
         θindices_to_plot = θindices_to_plot isa Vector{Vector{Symbol}} ? 
                             convertθnames_toindices(model, θindices_to_plot) :
                             θindices_to_plot
-        sub_df = desired_df_subset(model.dim_samples_df, model.num_dim_samples, confidence_levels, sample_types;
+        sub_df = desired_df_subset(model.dim_samples_df, model.num_dim_samples, confidence_levels, dofs, sample_types;
                                     sample_dimension=profile_dimension, for_prediction_plots=true)
         predictions_dict = model.dim_predictions_dict
     else
@@ -803,7 +815,7 @@ function plot_predictions_individual(model::LikelihoodModel,
         elseif profile_dimension == 2
             θcombinations_to_plot = θcombinations_to_plot_typeconversion(model, θcombinations_to_plot)
             sub_df = desired_df_subset(model.biv_profiles_df, model.num_biv_profiles, θcombinations_to_plot, confidence_levels,
-                                        profile_types, methods; for_prediction_plots=true)
+                                        dofs, profile_types, methods; for_prediction_plots=true)
             predictions_dict = model.biv_predictions_dict
         end
     end
@@ -824,7 +836,7 @@ function plot_predictions_individual(model::LikelihoodModel,
 
         if for_dim_samples
             title=string("Sample type: ", row.sample_type, 
-                        "\nConfidence level: ", row.conf_level,
+                        "\nConfidence level: ", row.conf_level, ", dof: ", row.dof,
                         "\nTarget parameter(s): ", model.core.θnames[row.θindices])
             title_vspan = 0.15
         else
@@ -839,7 +851,7 @@ function plot_predictions_individual(model::LikelihoodModel,
 
                 title=string("Profile type: ", row.profile_type, 
                             "\nMethod: ", row.method, 
-                            "\nConfidence level: ", row.conf_level,
+                            "\nConfidence level: ", row.conf_level, ", dof: ", row.dof,
                             "\nTarget parameters: ", model.core.θnames[θindices])
                 title_vspan = 0.2
             end
@@ -915,7 +927,7 @@ function plot_predictions_union(model::LikelihoodModel,
         θindices_to_plot = θindices_to_plot isa Vector{Vector{Symbol}} ? 
                             convertθnames_toindices(model, θindices_to_plot) :
                             θindices_to_plot
-        sub_df = desired_df_subset(model.dim_samples_df, model.num_dim_samples, confidence_level, sample_types; 
+        sub_df = desired_df_subset(model.dim_samples_df, model.num_dim_samples, confidence_level, dof, sample_types; 
                                     sample_dimension=profile_dimension, for_prediction_plots=true)
         predictions_dict = model.dim_predictions_dict
         title = string("Parameter dimension: " , profile_dimension,
@@ -929,7 +941,7 @@ function plot_predictions_union(model::LikelihoodModel,
             predictions_dict = model.uni_predictions_dict
         elseif profile_dimension == 2
             θcombinations_to_plot = θcombinations_to_plot_typeconversion(model, θcombinations_to_plot)
-            sub_df = desired_df_subset(model.biv_profiles_df, model.num_biv_profiles, θcombinations_to_plot, confidence_level, profile_types, methods; for_prediction_plots=true, include_lower_confidence_levels)
+            sub_df = desired_df_subset(model.biv_profiles_df, model.num_biv_profiles, θcombinations_to_plot, confidence_level, dof, profile_types, methods; for_prediction_plots=true, include_lower_confidence_levels)
             predictions_dict = model.biv_predictions_dict
         end
 
@@ -989,7 +1001,7 @@ function plot_predictions_union(model::LikelihoodModel,
     end
 
     if !ismissing(compare_to_full_sample_type)
-        row_subset = desired_df_subset(model.dim_samples_df, model.num_dim_samples, confidence_level,
+        row_subset = desired_df_subset(model.dim_samples_df, model.num_dim_samples, confidence_level, model.core.num_pars,
                                         [compare_to_full_sample_type], sample_dimension=model.core.num_pars, 
                                         for_prediction_plots=true,
                                         include_higher_confidence_levels=true)
@@ -1041,7 +1053,8 @@ function plot_realisations_individual(model::LikelihoodModel,
                             θcombinations_to_plot::Vector=Tuple{Int,Int}[],
                             θindices_to_plot::Vector=Vector{Int}[],
                             confidence_levels::Vector{<:Float64}=Float64[],
-                            dofs::Vector{<:Int}=Int[]
+                            dofs::Vector{<:Int}=Int[],
+                            regions::Vector{<:Real}=Float64[],
                             profile_types::Vector{<:AbstractProfileType}=[LogLikelihood()],
                             methods::Vector{<:AbstractBivariateMethod}=AbstractBivariateMethod[],
                             sample_types::Vector{<:AbstractSampleType}=AbstractSampleType[],
@@ -1058,8 +1071,8 @@ function plot_realisations_individual(model::LikelihoodModel,
         θindices_to_plot = θindices_to_plot isa Vector{Vector{Symbol}} ? 
                             convertθnames_toindices(model, θindices_to_plot) :
                             θindices_to_plot
-        sub_df = desired_df_subset(model.dim_samples_df, model.num_dim_samples, confidence_levels, sample_types;
-                                    sample_dimension=profile_dimension, for_prediction_plots=true)
+        sub_df = desired_df_subset(model.dim_samples_df, model.num_dim_samples, confidence_levels, dofs, sample_types;
+                                    sample_dimension=profile_dimension, regions=regions, for_prediction_plots=true)
         predictions_dict = model.dim_predictions_dict
     else
         profile_dimension in [1,2] || throw(DomainError("profile_dimension must be 1 or 2"))
@@ -1067,12 +1080,12 @@ function plot_realisations_individual(model::LikelihoodModel,
         if profile_dimension == 1
             θs_to_plot = θs_to_plot_typeconversion(model, θs_to_plot)
             sub_df = desired_df_subset(model.uni_profiles_df, model.num_uni_profiles, θs_to_plot, confidence_levels,
-                                        dofs, profile_types; for_prediction_plots=true)
+                                        dofs, profile_types; regions=regions, for_prediction_plots=true)
             predictions_dict = model.uni_predictions_dict
         elseif profile_dimension == 2
             θcombinations_to_plot = θcombinations_to_plot_typeconversion(model, θcombinations_to_plot)
             sub_df = desired_df_subset(model.biv_profiles_df, model.num_biv_profiles, θcombinations_to_plot, confidence_levels,
-                                        profile_types, methods; for_prediction_plots=true)
+                                        dofs, profile_types, methods; regions=regions, for_prediction_plots=true)
             predictions_dict = model.biv_predictions_dict
         end
     end
@@ -1097,13 +1110,15 @@ function plot_realisations_individual(model::LikelihoodModel,
 
         if for_dim_samples
             title=string("Sample type: ", row.sample_type, 
-                        "\nConfidence level: ", row.conf_level,
+                        "\nConfidence level: ", confidence_level, ", dof: ", row.dof,
+                        "\nReference region: ", row.region,
                         "\nTarget parameter(s): ", model.core.θnames[row.θindices])
             title_vspan = 0.15
         else
             if profile_dimension == 1
                 title=string("Profile type: ", row.profile_type, 
-                            "\nConfidence level: ", confidence_level, ", dof: ", dof,
+                            "\nConfidence level: ", confidence_level, ", dof: ", row.dof,
+                            "\nReference region: ", row.region,
                             "\nTarget parameter: ", model.core.θnames[row.θindex])
                 title_vspan = 0.15
             else
@@ -1112,7 +1127,8 @@ function plot_realisations_individual(model::LikelihoodModel,
 
                 title=string("Profile type: ", row.profile_type, 
                             "\nMethod: ", row.method, 
-                            "\nConfidence level: ", row.conf_level,
+                            "\nConfidence level: ", confidence_level, ", dof: ", row.dof,
+                            "\nReference region: ", row.region,
                             "\nTarget parameters: ", model.core.θnames[θindices])
                 title_vspan = 0.2
             end
@@ -1162,6 +1178,7 @@ function plot_realisations_union(model::LikelihoodModel,
                             profile_dimension::Int=1,
                             confidence_level::Float64=0.95;
                             dof::Int=profile_dimension,
+                            region::Real=0.95,
                             xlabel::String="t",
                             ylabel::Union{Nothing,String,Vector{String}}=nothing,
                             for_dim_samples::Bool=false,
@@ -1188,27 +1205,31 @@ function plot_realisations_union(model::LikelihoodModel,
         θindices_to_plot = θindices_to_plot isa Vector{Vector{Symbol}} ? 
                             convertθnames_toindices(model, θindices_to_plot) :
                             θindices_to_plot
-        sub_df = desired_df_subset(model.dim_samples_df, model.num_dim_samples, confidence_level, sample_types; 
-                                    sample_dimension=profile_dimension, for_prediction_plots=true)
+        sub_df = desired_df_subset(model.dim_samples_df, model.num_dim_samples, confidence_level, dof, sample_types; 
+                                    sample_dimension=profile_dimension, regions=region, for_prediction_plots=true)
         predictions_dict = model.dim_predictions_dict
         title = string("Parameter dimension: " , profile_dimension,
                         "\nMethod: sampled",
-                        "\nConfidence level: ", confidence_level)
+                        "\nConfidence level: ", confidence_level, ", dof: ", dof,
+                        "\nReference region: ", region)
     else
         profile_dimension in [1,2] || throw(DomainError("profile_dimension must be 1 or 2"))
         if profile_dimension == 1
             θs_to_plot = θs_to_plot_typeconversion(model, θs_to_plot)
-            sub_df = desired_df_subset(model.uni_profiles_df, model.num_uni_profiles, θs_to_plot, confidence_level, dof, profile_types; for_prediction_plots=true)
+            sub_df = desired_df_subset(model.uni_profiles_df, model.num_uni_profiles, θs_to_plot, confidence_level, 
+                dof, profile_types; regions=region, for_prediction_plots=true)
             predictions_dict = model.uni_predictions_dict
         elseif profile_dimension == 2
             θcombinations_to_plot = θcombinations_to_plot_typeconversion(model, θcombinations_to_plot)
-            sub_df = desired_df_subset(model.biv_profiles_df, model.num_biv_profiles, θcombinations_to_plot, confidence_level, profile_types, methods; for_prediction_plots=true, include_lower_confidence_levels)
+            sub_df = desired_df_subset(model.biv_profiles_df, model.num_biv_profiles, θcombinations_to_plot, confidence_level, 
+                dof, profile_types, methods; regions=region, for_prediction_plots=true, include_lower_confidence_levels)
             predictions_dict = model.biv_predictions_dict
         end
 
         title = string("Parameter dimension: " , profile_dimension,
                         "\nMethod: boundary",
-                        "\nConfidence level: ", confidence_level, ", dof: ", dof)
+                        "\nConfidence level: ", confidence_level, ", dof: ", dof,
+                        "\nReference region: ", region)
     end
 
     if nrow(sub_df) < 1
@@ -1267,8 +1288,9 @@ function plot_realisations_union(model::LikelihoodModel,
     end
 
     if !ismissing(compare_to_full_sample_type)
-        row_subset = desired_df_subset(model.dim_samples_df, model.num_dim_samples, confidence_level,
+        row_subset = desired_df_subset(model.dim_samples_df, model.num_dim_samples, confidence_level, model.core.num_pars,
                                         [compare_to_full_sample_type], sample_dimension=model.core.num_pars, 
+                                        regions=region,
                                         for_realisation_plots=true,
                                         include_higher_confidence_levels=true)
         

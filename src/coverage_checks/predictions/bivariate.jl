@@ -35,6 +35,8 @@ The prediction coverage from combining the prediction sets of multiple confidenc
 - `num_internal_points`: an integer number of points to optionally evaluate within the a polygon hull approximation of a bivariate boundary for each interest parameter pair using [`sample_bivariate_internal_points`](@ref). Default is `0`. 
 - `hullmethod`: method of type [`AbstractBivariateHullMethod`](@ref) used to create a 2D polygon hull that approximates the bivariate boundary from a set of boundary points and internal points (method dependent). For available methods see [`bivariate_hull_methods()`](@ref). Default is `MPPHullMethod()` ([`MPPHullMethod`](@ref)).
 - `sample_type`: either a [`UniformRandomSamples`](@ref) or [`LatinHypercubeSamples`](@ref) struct for how to sample internal points from the polygon hull. [`UniformRandomSamples`](@ref) are homogeneously sampled from the polygon and [`LatinHypercubeSamples`](@ref) use the intersection of a heuristically optimised Latin Hypercube sampling plan with the polygon. Default is `LatinHypercubeSamples()` ([`LatinHypercubeSamples`](@ref)).
+- `confidence_level`: a number ∈ (0.0, 1.0) for the confidence level on which to find the `profile_type` boundary. Default is `0.95` (95%).
+- `dof`: an integer ∈ [2, `model.core.num_pars`] for the degrees of freedom used to define the asymptotic threshold ([`PlaceholderLikelihood.get_target_loglikelihood`](@ref)) which defines the boundary of the bivariate profile. For bivariate profiles that are considered individually, it should be set to `2`. For profiles that are considered simultaneously, it should be set to `model.core.num_pars`. Default is `2`. Setting it to `model.core.num_pars` should be reasonable when making predictions for well-identified models with `<10` parameters. Note: values other than `2` and `model.core.num_pars` may not have a clear statistical interpretation.
 - `θlb_nuisance`: a vector of lower bounds on nuisance parameters, require `θlb_nuisance .≤ model.core.θmle`. Default is `model.core.θlb`. 
 - `θub_nuisance`: a vector of upper bounds on nuisance parameters, require `θub_nuisance .≥ model.core.θmle`. Default is `model.core.θub`.
 - `coverage_estimate_confidence_level`: a number ∈ (0.0, 1.0) for the level of a confidence interval of the estimated coverage. Default is `0.95` (95%).
@@ -71,7 +73,8 @@ function check_bivariate_prediction_coverage(data_generator::Function,
     num_internal_points::Int=0,
     hullmethod::AbstractBivariateHullMethod=MPPHullMethod(),
     sample_type::AbstractSampleType=LatinHypercubeSamples(),
-    confidence_level::Float64=0.95, 
+    confidence_level::Float64=0.95,
+    dof::Int=2,
     profile_type::AbstractProfileType=LogLikelihood(), 
     method::Union{AbstractBivariateMethod,Vector{<:AbstractBivariateMethod}}=RadialRandomMethod(3),
     θlb_nuisance::AbstractVector{<:Real}=model.core.θlb,
@@ -99,6 +102,7 @@ function check_bivariate_prediction_coverage(data_generator::Function,
         end
 
         N > 0 || throw(DomainError("N must be greater than 0"))
+        (dof ≥ 2) || throw(DomainError("dof must be greater than or equal to 2. Setting to 2 is generally recommended"))
 
         length(θlb_nuisance) == model.core.num_pars || throw(ArgumentError("θlb_nuisance must have the same length as the number of model parameters"))
         length(θub_nuisance) == model.core.num_pars || throw(ArgumentError("θub_nuisance must have the same length as the number of model parameters"))
@@ -151,15 +155,17 @@ function check_bivariate_prediction_coverage(data_generator::Function,
             if combine_methods
                 for (j, methodj) in enumerate(method) 
                     bivariate_confidenceprofiles!(m_new, deepcopy(θcombinations), num_points[j];
-                        confidence_level=confidence_level, profile_type=profile_type, method=methodj, θlb_nuisance=lb, θub_nuisance=ub,
+                        confidence_level=confidence_level, dof=dof, 
+                        profile_type=profile_type, method=methodj, θlb_nuisance=lb, θub_nuisance=ub,
                         use_threads=false,
                         optimizationsettings=optimizationsettings)
                 end
-                combine_bivariate_boundaries!(m_new, confidence_level=confidence_level, 
+                combine_bivariate_boundaries!(m_new, confidence_level=confidence_level, dof=dof,
                     not_evaluated_predictions=true)
             else
                 bivariate_confidenceprofiles!(m_new, deepcopy(θcombinations), num_points;
-                    confidence_level=confidence_level, profile_type=profile_type, method=method, θlb_nuisance=lb, θub_nuisance=ub,
+                    confidence_level=confidence_level, dof=dof,
+                    profile_type=profile_type, method=method, θlb_nuisance=lb, θub_nuisance=ub,
                     use_threads=false,
                     optimizationsettings=optimizationsettings)
             end
@@ -209,16 +215,18 @@ function check_bivariate_prediction_coverage(data_generator::Function,
                     if combine_methods
                         for (j, methodj) in enumerate(method) 
                             bivariate_confidenceprofiles!(m_new, deepcopy(θcombinations), num_points[j];
-                                confidence_level=confidence_level, profile_type=profile_type, method=methodj,
+                                confidence_level=confidence_level, dof=dof, 
+                                profile_type=profile_type, method=methodj,
                                 θlb_nuisance=lb, θub_nuisance=ub,
                                 use_distributed=false, use_threads=false,
                                 optimizationsettings=optimizationsettings)
                         end
-                        combine_bivariate_boundaries!(m_new, confidence_level=confidence_level, 
+                        combine_bivariate_boundaries!(m_new, confidence_level=confidence_level, dof=dof,
                             not_evaluated_predictions=true)
                     else
                         bivariate_confidenceprofiles!(m_new, deepcopy(θcombinations), num_points;
-                            confidence_level=confidence_level, profile_type=profile_type, method=method, θlb_nuisance=lb, θub_nuisance=ub,
+                            confidence_level=confidence_level, dof=dof,
+                            profile_type=profile_type, method=method, θlb_nuisance=lb, θub_nuisance=ub,
                             use_distributed=false, use_threads=false,
                             optimizationsettings=optimizationsettings)
                     end
@@ -327,7 +335,8 @@ The prediction coverage from combining the prediction reference sets of multiple
 - `num_internal_points`: an integer number of points to optionally evaluate within the a polygon hull approximation of a bivariate boundary for each interest parameter pair using [`sample_bivariate_internal_points`](@ref). Default is `0`. 
 - `hullmethod`: method of type [`AbstractBivariateHullMethod`](@ref) used to create a 2D polygon hull that approximates the bivariate boundary from a set of boundary points and internal points (method dependent). For available methods see [`bivariate_hull_methods()`](@ref). Default is `MPPHullMethod()` ([`MPPHullMethod`](@ref)).
 - `sample_type`: either a [`UniformRandomSamples`](@ref) or [`LatinHypercubeSamples`](@ref) struct for how to sample internal points from the polygon hull. [`UniformRandomSamples`](@ref) are homogeneously sampled from the polygon and [`LatinHypercubeSamples`](@ref) use the intersection of a heuristically optimised Latin Hypercube sampling plan with the polygon. Default is `LatinHypercubeSamples()` ([`LatinHypercubeSamples`](@ref)).
-- `confidence_level`: a number ∈ (0.0, 1.0) for the confidence level to evaluate the confidence interval coverage at. Default is `0.95` (95%).
+- `confidence_level`: a number ∈ (0.0, 1.0) for the confidence level on which to find the `profile_type` boundary. Default is `0.95` (95%).
+- `dof`: an integer ∈ [2, `model.core.num_pars`] for the degrees of freedom used to define the asymptotic threshold ([`PlaceholderLikelihood.get_target_loglikelihood`](@ref)) which defines the boundary of the bivariate profile. For bivariate profiles that are considered individually, it should be set to `2`. For profiles that are considered simultaneously, it should be set to `model.core.num_pars`. Default is `2`. Setting it to `model.core.num_pars` should be reasonable when making predictions for well-identified models with `<10` parameters. Note: values other than `2` and `model.core.num_pars` may not have a clear statistical interpretation.
 - `region`: a `Real` number ∈ [0, 1] specifying the proportion of the density of the error model from which to evaluate the highest density region. Default is `0.95`.
 - `profile_type`: whether to use the true log-likelihood function or an ellipse approximation of the log-likelihood function centred at the MLE (with optional use of parameter bounds). Available profile types are [`LogLikelihood`](@ref), [`EllipseApprox`](@ref) and [`EllipseApproxAnalytical`](@ref). Default is `LogLikelihood()` ([`LogLikelihood`](@ref)).
 - `θlb_nuisance`: a vector of lower bounds on nuisance parameters, require `θlb_nuisance .≤ model.core.θmle`. Default is `model.core.θlb`. 
@@ -368,6 +377,7 @@ function check_bivariate_prediction_realisations_coverage(data_generator::Functi
     hullmethod::AbstractBivariateHullMethod=MPPHullMethod(),
     sample_type::AbstractSampleType=LatinHypercubeSamples(),
     confidence_level::Float64=0.95,
+    dof::Int=2,
     region::Float64=0.95,
     profile_type::AbstractProfileType=LogLikelihood(),
     method::Union{AbstractBivariateMethod,Vector{<:AbstractBivariateMethod}}=RadialRandomMethod(3),
@@ -399,6 +409,7 @@ function check_bivariate_prediction_realisations_coverage(data_generator::Functi
         end
 
         N > 0 || throw(DomainError("N must be greater than 0"))
+        (dof ≥ 2) || throw(DomainError("dof must be greater than or equal to 2. Setting to 2 is generally recommended"))
 
         length(θlb_nuisance) == model.core.num_pars || throw(ArgumentError("θlb_nuisance must have the same length as the number of model parameters"))
         length(θub_nuisance) == model.core.num_pars || throw(ArgumentError("θub_nuisance must have the same length as the number of model parameters"))
@@ -459,16 +470,18 @@ function check_bivariate_prediction_realisations_coverage(data_generator::Functi
             if combine_methods
                 for (j, methodj) in enumerate(method)
                     bivariate_confidenceprofiles!(m_new, deepcopy(θcombinations), num_points[j];
-                        confidence_level=confidence_level, profile_type=profile_type, method=methodj,
+                        confidence_level=confidence_level, dof=dof, 
+                        profile_type=profile_type, method=methodj,
                         θlb_nuisance=lb, θub_nuisance=ub,
                         use_threads=false,
                         optimizationsettings=optimizationsettings)
                 end
-                combine_bivariate_boundaries!(m_new, confidence_level=confidence_level,
+                combine_bivariate_boundaries!(m_new, confidence_level=confidence_level, dof=dof,
                     not_evaluated_predictions=true)
             else
                 bivariate_confidenceprofiles!(m_new, deepcopy(θcombinations), num_points;
-                    confidence_level=confidence_level, profile_type=profile_type, method=method,
+                    confidence_level=confidence_level, dof=dof, 
+                    profile_type=profile_type, method=method,
                     θlb_nuisance=lb, θub_nuisance=ub,
                     use_threads=false,
                     optimizationsettings=optimizationsettings)
@@ -533,16 +546,18 @@ function check_bivariate_prediction_realisations_coverage(data_generator::Functi
                     if combine_methods
                         for (j, methodj) in enumerate(method)
                             bivariate_confidenceprofiles!(m_new, deepcopy(θcombinations), num_points[j];
-                                confidence_level=confidence_level, profile_type=profile_type, method=methodj,
+                                confidence_level=confidence_level, dof=dof, 
+                                profile_type=profile_type, method=methodj,
                                 θlb_nuisance=lb, θub_nuisance=ub,
                                 use_distributed=false, use_threads=false,
                                 optimizationsettings=optimizationsettings)
                         end
-                        combine_bivariate_boundaries!(m_new, confidence_level=confidence_level,
+                        combine_bivariate_boundaries!(m_new, confidence_level=confidence_level, dof=dof,
                             not_evaluated_predictions=true)
                     else
                         bivariate_confidenceprofiles!(m_new, deepcopy(θcombinations), num_points;
-                            confidence_level=confidence_level, profile_type=profile_type, method=method,
+                            confidence_level=confidence_level, dof=dof,
+                            profile_type=profile_type, method=method,
                             θlb_nuisance=lb, θub_nuisance=ub,
                             use_distributed=false, use_threads=false,
                             optimizationsettings=optimizationsettings)

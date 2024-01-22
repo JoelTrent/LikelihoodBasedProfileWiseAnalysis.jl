@@ -28,12 +28,14 @@ function set_dim_samples_row!(model::LikelihoodModel,
                                 θindices::Vector{Int},
                                 not_evaluated_predictions::Bool,
                                 confidence_level::Float64,
+                                dof::Int,
                                 sample_type::AbstractSampleType,
                                 num_points::Int)
     model.dim_samples_df[row_ind, 2:end-1] .= θindices,
                                             length(θindices),
                                             not_evaluated_predictions,
                                             confidence_level,
+                                            dof,
                                             sample_type,
                                             num_points
     return nothing
@@ -431,7 +433,7 @@ function full_likelihood_sample!(model::LikelihoodModel,
     end
 
     model.dim_samples_dict[row_ind] = sample_struct
-    set_dim_samples_row!(model, row_ind, collect(1:model.core.num_pars), true, confidence_level, sample_type, num_points_kept)
+    set_dim_samples_row!(model, row_ind, collect(1:model.core.num_pars), true, confidence_level, model.core.num_pars, sample_type, num_points_kept)
 
     return nothing
 end

@@ -307,6 +307,7 @@ function initial_continuation_solution!(p::NamedTuple,
                                         num_points::Int, 
                                         ind1::Int, 
                                         ind2::Int,
+                                        dof::Int,
                                         profile_type::AbstractProfileType,
                                         ellipse_confidence_level::Float64,
                                         target_confidence_ll::Float64,
@@ -326,6 +327,7 @@ function initial_continuation_solution!(p::NamedTuple,
     ellipse_points = generate_N_clustered_points(num_points, model.ellipse_MLE_approx.Γmle,
                                                         model.core.θmle, ind1, ind2,
                                                         confidence_level=ellipse_confidence_level, 
+                                                        dof=dof,
                                                         start_point_shift=ellipse_start_point_shift, 
                                                         sqrt_distortion=0.0)
 
@@ -406,6 +408,7 @@ end
         consistent::NamedTuple, 
         ind1::Int, 
         ind2::Int,
+        dof::Int,
         profile_type::AbstractProfileType,
         θlb_nuisance::AbstractVector{<:Real},
         θub_nuisance::AbstractVector{<:Real},
@@ -428,6 +431,7 @@ function bivariate_confidenceprofile_continuation(bivariate_optimiser::Function,
                                                     consistent::NamedTuple, 
                                                     ind1::Int, 
                                                     ind2::Int,
+                                                    dof::Int,
                                                     profile_type::AbstractProfileType,
                                                     θlb_nuisance::AbstractVector{<:Real},
                                                     θub_nuisance::AbstractVector{<:Real},
@@ -457,13 +461,13 @@ function bivariate_confidenceprofile_continuation(bivariate_optimiser::Function,
         q=q, options=optimizationsettings)
 
     initial_target_ll = get_target_loglikelihood(model, target_confidence_level,
-                                                 EllipseApproxAnalytical(), 2)
+                                                 EllipseApproxAnalytical(), dof)
 
     # find initial solution
     current_level_set_2D, current_level_set_all, 
         search_directions, initial_ll, point_is_on_bounds =
         initial_continuation_solution!(p, bivariate_optimiser, 
-                                        model, num_points, ind1, ind2, profile_type,
+                                        model, num_points, ind1, ind2, dof, profile_type,
                                         ellipse_confidence_level, initial_target_ll, 
                                         ellipse_start_point_shift, 
                                         find_zero_atol, channel)
@@ -472,18 +476,18 @@ function bivariate_confidenceprofile_continuation(bivariate_optimiser::Function,
         return current_level_set_all
     end
 
-    initial_confidence_level = cdf(Chisq(2), -initial_ll*2.0)
+    initial_confidence_level = cdf(Chisq(dof), -initial_ll*2.0)
     if level_set_spacing == :loglikelihood
         level_set_lls = collect(LinRange(get_target_loglikelihood(model, initial_confidence_level,
-                                                                profile_type, 2),
+                                                                profile_type, dof),
                                         get_target_loglikelihood(model, target_confidence_level,
-                                                                profile_type, 2), 
+                                                                profile_type, dof), 
                                         num_level_sets+1)[2:end]
                                 )
     else
         conf_level_sets = collect(LinRange(initial_confidence_level, target_confidence_level, num_level_sets+1)[2:end])
         level_set_lls = [get_target_loglikelihood(model, conf_level_sets[i], 
-                            profile_type, 2) for i in 1:num_level_sets]
+                            profile_type, dof) for i in 1:num_level_sets]
     end
 
     require_TSP_reordering=false
@@ -491,7 +495,7 @@ function bivariate_confidenceprofile_continuation(bivariate_optimiser::Function,
         if save_internal_points
             internal_all = hcat(internal_all, current_level_set_all[:, .!point_is_on_bounds])
             ll_values = vcat(ll_values, fill(i == 1 ? 
-                                                get_target_loglikelihood(model, initial_confidence_level, profile_type, 2) : 
+                                                get_target_loglikelihood(model, initial_confidence_level, profile_type, dof) : 
                                                 level_set_lls[i-1], length(point_is_on_bounds) - sum(point_is_on_bounds)))
         end
         

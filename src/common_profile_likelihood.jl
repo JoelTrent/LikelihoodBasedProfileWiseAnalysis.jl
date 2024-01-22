@@ -170,9 +170,11 @@ end
 """
     desired_df_subset(df::DataFrame, 
         num_used_rows::Int, 
-        confidence_levels::Union{Float64, Vector{<:Float64}}, 
+        confidence_levels::Union{Float64, Vector{<:Float64}},
+        dofs::Union{Int, Vector{<:Int}}, 
         sample_types::Vector{<:AbstractSampleType}; 
         sample_dimension::Int=0, 
+        regions::Union{Real, Vector{<:Real}}=Float64[],
         for_prediction_generation::Bool=false, 
         for_prediction_plots::Bool=false, 
         include_higher_confidence_levels::Bool=false)
@@ -183,10 +185,12 @@ Returns a view of `df` that includes only valid rows ∈ `1:num_used_rows`, and 
 - `df`: a DataFrame - `model.dim_samples_df`.
 - `num_used_rows`: the number of valid rows in `df` - `model.num_dim_samples`.
 - `confidence_levels`: a vector of confidence levels or a `Float64` of a single confidence level. If empty, all confidence levels in `df` are allowed. Otherwise, if `include_higher_confidence_levels == true` and `confidence_levels` is a `Float64`, all confidence levels greater than or equal to `confidence_levels` are allowed. Else, only matching confidence levels in `df` are allowed.
+- `dofs`: a vector of integer degrees of freedom or a `Int` of a single degree of freedom. If empty, all degrees of freedom for dimensional profiles are allowed. Otherwise, only matching degrees of freedom in `df` are allowed.
 - `sample_types`: a vector of `AbstractSampleType` structs. If empty, all sample types in `df` are allowed. Otherwise, only matching sample types in `df` are allowed.
 
 # Keyword Arguments
-- `sample_dimension`: an integer greater than or equal to 0; if non-zero only matching dimensions of interest parameters in `df` are allowed, otherwise all are a allowed. Default is `0`.
+- `sample_dimension`: an integer greater than or equal to 0; if non-zero only matching dimensions of interest parameters in `df` are allowed, otherwise all are allowed. Default is `0`.
+- `regions`: a vector of `Real` numbers ∈ [0, 1] or a single `Real` number specifying the regions in `df` that are allowed. If empty, all regions are allowed. Otherwise, only matching regions in `df` are allowed. Default is `Float64[]`.
 - `for_prediction_generation`: a boolean specifying whether only rows which have not had predictions evaluated are allowed. As predictions do not need to be generated for rows which already have them evaluated. 
 - `for_prediction_plots`: a boolean specifying whether only rows which have had predictions evaluated are allowed. As prediction plots can only include rows which have evaluated predictions. 
 - `include_higher_confidence_levels`: a boolean specifying whether all confidence levels greater than or equal to `confidence_levels` are allowed. Useful for prediction plots as a dimensional sample can be evaluated at a high confidence level (e.g. 0.95) and then used at a lower confidence level (e.g. 0.9), extracting only the sample points that are in the 0.9 confidence set.
@@ -194,8 +198,10 @@ Returns a view of `df` that includes only valid rows ∈ `1:num_used_rows`, and 
 function desired_df_subset(df::DataFrame, 
                             num_used_rows::Int,
                             confidence_levels::Union{Float64, Vector{<:Float64}},
+                            dofs::Union{Int, Vector{<:Int}}, 
                             sample_types::Vector{<:AbstractSampleType};
                             sample_dimension::Int=0,
+                            regions::Union{Real, Vector{<:Real}}=Float64[],
                             for_prediction_generation::Bool=false,
                             for_prediction_plots::Bool=false,
                             include_higher_confidence_levels::Bool=false)
@@ -219,6 +225,12 @@ function desired_df_subset(df::DataFrame,
             row_subset .= row_subset .& (df_sub.conf_level .∈ Ref(confidence_levels))
         end
     end
+    if !isempty(dofs)
+        row_subset .= row_subset .& (df_sub.dof .∈ Ref(dofs))
+    end
+    if !isempty(regions)
+        row_subset .= row_subset .& (df_sub.region .∈ Ref(regions))
+    end
     if !isempty(sample_types)
         row_subset .= row_subset .& (df_sub.sample_type .∈ Ref(sample_types))
     end
@@ -231,7 +243,9 @@ end
         num_used_rows::Int, 
         θs_of_interest::Vector{<:Int}, 
         confidence_levels::Union{Float64, Vector{<:Float64}}, 
+        dofs::Union{Int, Vector{<:Int}}, 
         profile_types::Vector{<:AbstractProfileType}; 
+        regions::Union{Real, Vector{<:Real}}=Float64[],
         for_points_in_interval::Tuple{Bool,Int,Real}=(false,0,0), 
         for_prediction_generation::Bool=false, 
         for_prediction_plots::Bool=false)
@@ -246,6 +260,7 @@ Returns a view of `df` that includes only valid rows ∈ `1:num_used_rows`, and 
 - `profile_types`: a vector of `AbstractProfileType` structs. If empty, all profile types in `df` are allowed. Otherwise, only matching profile types in `df` are allowed.
 
 # Keyword Arguments
+- `regions`: a vector of `Real` numbers ∈ [0, 1] or a single `Real` number specifying the regions in `df` that are allowed. If empty, all regions are allowed. Otherwise, only matching regions in `df` are allowed. Default is `Float64[]`.
 - `for_points_in_interval`: a tuple used for only extracting the rows that need to have points in the confidence interval evaluated by [`get_points_in_intervals!`](@ref). Default is `(false, 0, 0)`.
 - `for_prediction_generation`: a boolean specifying whether only rows which have not had predictions evaluated are allowed. As predictions do not need to be generated for rows which already have them evaluated. 
 - `for_prediction_plots`: a boolean specifying whether only rows which have had predictions evaluated are allowed. As prediction plots can only include rows which have evaluated predictions. 
@@ -256,6 +271,7 @@ function desired_df_subset(df::DataFrame,
                             confidence_levels::Union{Float64, Vector{<:Float64}},
                             dofs::Union{Int, Vector{<:Int}},
                             profile_types::Vector{<:AbstractProfileType};
+                            regions::Union{Float64, Vector{<:Float64}}=Float64[],
                             for_points_in_interval::Tuple{Bool,Int,Real}=(false,0,0),
                             for_prediction_generation::Bool=false,
                             for_prediction_plots::Bool=false)
@@ -285,6 +301,9 @@ function desired_df_subset(df::DataFrame,
     if !isempty(dofs)
         row_subset .= row_subset .& (df_sub.dof .∈ Ref(dofs))
     end
+    if !isempty(regions)
+        row_subset .= row_subset .& (df_sub.region .∈ Ref(regions))
+    end
     if !isempty(profile_types)
         row_subset .= row_subset .& (df_sub.profile_type .∈ Ref(profile_types))
     end
@@ -298,8 +317,10 @@ end
         num_used_rows::Int, 
         θs_of_interest::Vector{Tuple{Int,Int}}, 
         confidence_levels::Union{Float64, Vector{<:Float64}}, 
+        dofs::Union{Int, Vector{<:Int}}, 
         profile_types::Vector{<:AbstractProfileType}, 
-        methods::Vector{<:AbstractBivariateMethod}=AbstractBivariateMethod[]; 
+        methods::Vector{<:AbstractBivariateMethod}=AbstractBivariateMethod[];
+        regions::Union{Real, Vector{<:Real}}=Float64[], 
         for_prediction_generation::Bool=false, 
         for_prediction_plots::Bool=false, 
         include_lower_confidence_levels::Bool=false)
@@ -310,10 +331,12 @@ Returns a view of `df` that includes only valid rows ∈ `1:num_used_rows`, and 
 - `df`: a DataFrame - `model.biv_profiles_df`.
 - `num_used_rows`: the number of valid rows in `df` - `model.num_biv_profiles`.
 - `confidence_levels`: a vector of confidence levels or a `Float64` of a single confidence level. If empty, all confidence levels in `df` are allowed. Otherwise, if `include_lower_confidence_levels == true` and `confidence_levels` is a `Float64`, all confidence levels less than or equal to `confidence_levels` are allowed. Else, only matching confidence levels in `df` are allowed.
+- `dofs`: a vector of integer degrees of freedom or a `Int` of a integer degree of freedom. If empty, all degrees of freedom for bivariate profiles are allowed. Otherwise, only matching degrees of freedom in `df` are allowed.
 - `profile_types`: a vector of `AbstractProfileType` structs. If empty, all profile types in `df` are allowed. Otherwise, only matching profile types in `df` are allowed.
 - `methods`: a vector of `AbstractBivariateMethod` structs. If empty, all methods in `df` are allowed. Otherwise, only methods of the same type in `df` are allowed.
 
 # Keyword Arguments
+- `regions`: a vector of `Real` numbers ∈ [0, 1] or a single `Real` number specifying the regions in `df` that are allowed. If empty, all regions are allowed. Otherwise, only matching regions in `df` are allowed. Default is `Float64[]`.
 - `for_prediction_generation`: a boolean specifying whether only rows which have not had predictions evaluated are allowed. As predictions do not need to be generated for rows which already have them evaluated. 
 - `for_prediction_plots`: a boolean specifying whether only rows which have had predictions evaluated are allowed. As prediction plots can only include rows which have evaluated predictions. 
 - `remove_combined_method`: a boolean specifiying whether rows with `method` of type [`CombinedBivariateMethod`](@ref) should be removed. Needed by [`combine_bivariate_boundaries!`](@ref) to ensure that combined boundaries are not removed from `df`.
@@ -323,8 +346,10 @@ function desired_df_subset(df::DataFrame,
                             num_used_rows::Int,
                             θs_of_interest::Vector{Tuple{Int,Int}},
                             confidence_levels::Union{Float64, Vector{<:Float64}},
+                            dofs::Union{Int, Vector{<:Int}},
                             profile_types::Vector{<:AbstractProfileType},
                             methods::Vector{<:AbstractBivariateMethod}=AbstractBivariateMethod[];
+                            regions::Union{Real, Vector{<:Real}}=Float64[],
                             for_prediction_generation::Bool=false,
                             for_prediction_plots::Bool=false,
                             remove_combined_method::Bool=false,
@@ -348,6 +373,12 @@ function desired_df_subset(df::DataFrame,
         else
             row_subset .= row_subset .& (df_sub.conf_level .∈ Ref(confidence_levels))
         end
+    end
+    if !isempty(dofs)
+        row_subset .= row_subset .& (df_sub.dof .∈ Ref(dofs))
+    end
+    if !isempty(regions)
+        row_subset .= row_subset .& (df_sub.region .∈ Ref(regions))
     end
     if !isempty(profile_types)
         row_subset .= row_subset .& (df_sub.profile_type .∈ Ref(profile_types))
