@@ -108,12 +108,12 @@ end
 function plotrealisation!(plt, t, extrema, linealpha, layout; extremacolor=:red, kwargs...)
     if layout > 1
         for i in 1:(layout-1)
-            plot!(plt[i], t, extrema[:,:,i], lw=3, color=extremacolor, label=["PCBs (≈)" ""], legend=false)
+            plot!(plt[i], t, extrema[:,:,i], lw=3, color=extremacolor, label=["SRTBs (≈)" ""], legend=false)
         end
-        plot!(plt[layout], t, extrema[:,:,layout], lw=3, color=extremacolor, label=["PCBs (≈)" ""])
+        plot!(plt[layout], t, extrema[:,:,layout], lw=3, color=extremacolor, label=["SRTBs (≈)" ""])
         return plt
     end    
-    plot!(plt, t, extrema, lw=3, color=extremacolor, label=["PCBs (≈)" ""])
+    plot!(plt, t, extrema, lw=3, color=extremacolor, label=["SRTBs (≈)" ""])
     return plt
 end
 
@@ -1253,10 +1253,8 @@ function plot_realisations_union(model::LikelihoodModel,
         j+=1
         
         if j == 1
-            predictions_union = predictions .* 1.0
             extrema_union = extrema .* 1.0
         else
-            predictions_union = reduce(hcat, (predictions_union, predictions))
             if layout > 1
                 extrema_union[:,1,:] .= min.(extrema_union[:,1,:], extrema[:,1,:])
                 extrema_union[:,2,:] .= max.(extrema_union[:,2,:], extrema[:,2,:])
@@ -1291,7 +1289,7 @@ function plot_realisations_union(model::LikelihoodModel,
         row_subset = desired_df_subset(model.dim_samples_df, model.num_dim_samples, confidence_level, model.core.num_pars,
                                         [compare_to_full_sample_type], sample_dimension=model.core.num_pars, 
                                         regions=region,
-                                        for_realisation_plots=true,
+                                        for_prediction_plots=true,
                                         include_higher_confidence_levels=true)
         
         if nrow(row_subset) > 0
@@ -1322,7 +1320,7 @@ function plot_realisations_union(model::LikelihoodModel,
                     end
                 end
 
-                add_extrema!(realisation_plot, t, sampled_extrema, layout; label=["Sampled PCBs (≈)" ""])
+                add_extrema!(realisation_plot, t, sampled_extrema, layout; label=["Sampled SRTBs (≈)" ""])
             end
         end
     end
