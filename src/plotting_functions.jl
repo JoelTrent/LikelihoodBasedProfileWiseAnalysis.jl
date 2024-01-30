@@ -1110,14 +1110,14 @@ function plot_realisations_individual(model::LikelihoodModel,
 
         if for_dim_samples
             title=string("Sample type: ", row.sample_type, 
-                        "\nConfidence level: ", confidence_level, ", dof: ", row.dof,
+                        "\nConfidence level: ", row.conf_level, ", dof: ", row.dof,
                         "\nReference region: ", row.region,
                         "\nTarget parameter(s): ", model.core.θnames[row.θindices])
             title_vspan = 0.15
         else
             if profile_dimension == 1
                 title=string("Profile type: ", row.profile_type, 
-                            "\nConfidence level: ", confidence_level, ", dof: ", row.dof,
+                            "\nConfidence level: ", row.conf_level, ", dof: ", row.dof,
                             "\nReference region: ", row.region,
                             "\nTarget parameter: ", model.core.θnames[row.θindex])
                 title_vspan = 0.15
@@ -1127,7 +1127,7 @@ function plot_realisations_individual(model::LikelihoodModel,
 
                 title=string("Profile type: ", row.profile_type, 
                             "\nMethod: ", row.method, 
-                            "\nConfidence level: ", confidence_level, ", dof: ", row.dof,
+                            "\nConfidence level: ", row.conf_level, ", dof: ", row.dof,
                             "\nReference region: ", row.region,
                             "\nTarget parameters: ", model.core.θnames[θindices])
                 title_vspan = 0.2
