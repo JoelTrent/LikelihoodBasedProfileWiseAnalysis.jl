@@ -42,6 +42,7 @@ makedocs(;
                         "Logistic Model" => "examples/logistic.md",
                         "Lotka-Volterra Model" => "examples/lotka-volterra.md",
                         "Two-Species Logistic Model"=> "examples/two-species_logistic.md",
+                        "Gaussian Approximation of a Binomial Distribution"=> "examples/binomial_normal_approximation.md",
                         "Function Evaluation Timing - Logistic Model" => "examples/logistic_timing_estimates.md"],
         "Internal Library" => 
             ["Common Functions" => "internal_library/common.md",
