@@ -126,7 +126,7 @@ If a parameter bound is in the way of reaching the boundary in a given search di
 
 # Threaded implementation
 
-This method is partially implemented with Threads parallelisation if `use_threads` is set to true when calling [`bivariate_confidenceprofiles!`](@ref). The initial boundary step is parallelised and the boundary improvement steps are not.
+This method is partially implemented with Threads parallelisation if `use_threads` is set to true when calling [`bivariate_confidenceprofiles!`](@ref). The initial boundary step is partially parallelised (the finding point pairs step is not parallelised and the finding boundary from point pairs step is parallelised) while the boundary improvement steps are not.
 
 # Internal Points
 
@@ -195,7 +195,7 @@ If a parameter bound is in the way of reaching the boundary in a given search di
 
 # Threaded implementation
 
-This method is implemented with Threads parallelisation if `use_threads` is set to true when calling [`bivariate_confidenceprofiles!`](@ref).
+This method is partially implemented with Threads parallelisation if `use_threads` is set to true when calling [`bivariate_confidenceprofiles!`](@ref). The finding point pairs step is not parallelised and the finding boundary from point pairs step is parallelised.
 
 # Internal Points
 

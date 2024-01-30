@@ -17,7 +17,6 @@ using Clustering, Meshes, ConcaveHull, PolygonInbounds
 using AngleBetweenVectors
 using Distributed, SharedArrays
 using FLoops
-FLoops.assistant(false)
 
 using Requires
 

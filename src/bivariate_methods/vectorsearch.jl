@@ -339,8 +339,7 @@ function findNpointpairs_radialMLE!(q::NamedTuple,
                                     dof::Int,
                                     ellipse_start_point_shift::Float64,
                                     ellipse_sqrt_distortion::Float64,
-                                    optimizationsettings::OptimizationSettings,
-                                    use_threads::Bool)
+                                    optimizationsettings::OptimizationSettings)
 
     mle_point = model.core.θmle[[ind1, ind2]]
     internal = zeros(2,num_points) .= mle_point
@@ -364,11 +363,10 @@ function findNpointpairs_radialMLE!(q::NamedTuple,
                                                         start_point_shift=ellipse_start_point_shift, 
                                                         sqrt_distortion=ellipse_sqrt_distortion)
 
-    ex = use_threads ? ThreadedEx() : ThreadedEx(basesize=num_points)
-    @floop ex for i in 1:num_points
-        FLoops.@init pointa = zeros(2)
-        FLoops.@init uhat = zeros(2)
-        FLoops.@init ω_opt = zeros(model.core.num_pars-2)
+    for i in 1:num_points
+        pointa = zeros(2)
+        uhat = zeros(2)
+        ω_opt = zeros(model.core.num_pars-2)
         p = (ω_opt=ω_opt, pointa=pointa, uhat=uhat, q=q, options=optimizationsettings)
 
         g = 0.0
@@ -504,7 +502,7 @@ function bivariate_confidenceprofile_vectorsearch(bivariate_optimiser::Function,
                                         mle_targetll, save_internal_points, biv_opt_is_ellipse_analytical,
                                         ellipse_confidence_level, dof, 
                                         ellipse_start_point_shift, ellipse_sqrt_distortion,
-                                        optimizationsettings, use_threads)
+                                        optimizationsettings)
 
     elseif num_radial_directions == 0
         internal, internal_all, ll_values, external =

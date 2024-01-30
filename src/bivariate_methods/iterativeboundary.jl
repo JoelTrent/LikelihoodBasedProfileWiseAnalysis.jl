@@ -22,8 +22,7 @@ function findNpointpairs_radialMLE!(q::NamedTuple,
                                     ind2::Int,
                                     biv_opt_is_ellipse_analytical::Bool, 
                                     radial_start_point_shift::Float64,
-                                    optimizationsettings::OptimizationSettings,
-                                    use_threads::Bool)
+                                    optimizationsettings::OptimizationSettings)
 
     mle_point = model.core.θmle[[ind1, ind2]]
     internal = zeros(2,num_points) .= mle_point
@@ -40,34 +39,30 @@ function findNpointpairs_radialMLE!(q::NamedTuple,
     end
 
     radial_dirs = find_m_spaced_radialdirections(num_points, start_point_shift=radial_start_point_shift)
+    for i in 1:num_points
+        pointa = zeros(2)
+        uhat = zeros(2)
+        ω_opt = zeros(model.core.num_pars-2)
+        p = (ω_opt=ω_opt, pointa=pointa, uhat=uhat, q=q, options=optimizationsettings)
 
-    ex = use_threads ? ThreadedEx() : ThreadedEx(basesize=num_points)
-    let relative_magnitude=relative_magnitude
-        @floop ex for i in 1:num_points
-            FLoops.@init pointa = zeros(2)
-            FLoops.@init uhat = zeros(2)
-            FLoops.@init ω_opt = zeros(model.core.num_pars-2)
-            p = (ω_opt=ω_opt, pointa=pointa, uhat=uhat, q=q, options=optimizationsettings)
+        dir_vector = [relative_magnitude * cospi(radial_dirs[i]), sinpi(radial_dirs[i]) ]
+        external[:,i], bound_ind, upper_or_lower = findpointonbounds(model, mle_point, dir_vector, ind1, ind2, true)
 
-            dir_vector = [relative_magnitude * cospi(radial_dirs[i]), sinpi(radial_dirs[i]) ]
-            external[:,i], bound_ind, upper_or_lower = findpointonbounds(model, mle_point, dir_vector, ind1, ind2, true)
-
-            # if bound point is a point inside the boundary, note that this is the case
-            p.pointa .= external[:,i]
-            g = bivariate_optimiser(0.0, p)
-            if g ≥ 0
-                point_is_on_bounds[i] = true
-                bound_inds[i] = (bound_ind, upper_or_lower)
-                if !biv_opt_is_ellipse_analytical
-                    external_all[[ind1, ind2], i] .= external[:, i]
-                    variablemapping!(@view(external_all[:, i]), p.ω_opt .* 1.0, q.θranges, q.ωranges)
-                end
-            else
-                # make bracket a tiny bit smaller
-                if isinf(g)
-                    v_bar = external[:,i] .- mle_point
-                    external[:,i] .= mle_point .+ ((1.0-1e-12) .* v_bar)
-                end
+        # if bound point is a point inside the boundary, note that this is the case
+        p.pointa .= external[:,i]
+        g = bivariate_optimiser(0.0, p)
+        if g ≥ 0
+            point_is_on_bounds[i] = true
+            bound_inds[i] = (bound_ind, upper_or_lower)
+            if !biv_opt_is_ellipse_analytical
+                external_all[[ind1, ind2], i] .= external[:, i]
+                variablemapping!(@view(external_all[:, i]), p.ω_opt .* 1.0, q.θranges, q.ωranges)
+            end
+        else
+            # make bracket a tiny bit smaller
+            if isinf(g)
+                v_bar = external[:,i] .- mle_point
+                external[:,i] .= mle_point .+ ((1.0-1e-12) .* v_bar)
             end
         end
     end
@@ -192,7 +187,7 @@ function iterativeboundary_init(bivariate_optimiser::Function,
                                         dof,
                                         radial_start_point_shift, 
                                         ellipse_sqrt_distortion,
-                                        optimizationsettings, use_threads)
+                                        optimizationsettings)
 
         if save_internal_points
             internal_count = length(ll_values_init)
@@ -205,7 +200,7 @@ function iterativeboundary_init(bivariate_optimiser::Function,
                                         initial_num_points, ind1, ind2, 
                                         biv_opt_is_ellipse_analytical,
                                         radial_start_point_shift,
-                                        optimizationsettings, use_threads)
+                                        optimizationsettings)
     end
 
     point_is_on_bounds[1:initial_num_points] .= point_is_on_bounds_external[:]
