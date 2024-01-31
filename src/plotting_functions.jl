@@ -108,12 +108,12 @@ end
 function plotrealisation!(plt, t, extrema, linealpha, layout; extremacolor=:red, kwargs...)
     if layout > 1
         for i in 1:(layout-1)
-            plot!(plt[i], t, extrema[:,:,i], lw=3, color=extremacolor, label=["Profile-wise SRTBs (≈)" ""], legend=false, kwargs...)
+            plot!(plt[i], t, extrema[:,:,i]; lw=3, color=extremacolor, label=["Profile-wise SRTBs (≈)" ""], legend=false, kwargs...)
         end
-        plot!(plt[layout], t, extrema[:,:,layout], lw=3, color=extremacolor, label=["Profile-wise SRTBs (≈)" ""], kwargs...)
+        plot!(plt[layout], t, extrema[:,:,layout]; lw=3, color=extremacolor, label=["Profile-wise SRTBs (≈)" ""], kwargs...)
         return plt
     end    
-    plot!(plt, t, extrema, lw=3, color=extremacolor, label=["Profile-wise SRTBs (≈)" ""])
+    plot!(plt, t, extrema; lw=3, color=extremacolor, label=["Profile-wise SRTBs (≈)" ""], kwargs...)
     return plt
 end
 
