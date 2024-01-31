@@ -18,7 +18,7 @@ function add_prediction_function!(model::LikelihoodModel,
     ndims(ymle) ∈ SA[1, 2] || throw(DimensionMismatch(("predictfunction must return an array with 1D or 2D outputs")))
 
     corelikelihoodmodel = model.core
-    model.core = @set corelikelihoodmodel.predictfunction = predictfunction
+    corelikelihoodmodel = @set corelikelihoodmodel.predictfunction = predictfunction
     model.core = @set corelikelihoodmodel.ymle = ymle
 
     return nothing
