@@ -93,27 +93,27 @@ end
 function plotprediction!(plt, t, predictions, extrema, linealpha, layout; extremacolor=:red, kwargs...)
     if layout > 1
         for i in 1:(layout-1)
-            plot!(plt[i], t, predictions[:,:,i], color=:grey, linealpha=linealpha; label=hcat("Predictions", fill("", 1, size(predictions, 2)-1)), kwargs...)
-            plot!(plt[i], t, extrema[:,:,i], lw=3, color=extremacolor, label=["SCBs (≈)" ""], legend=false)
+            plot!(plt[i], t, predictions[:,:,i], color=:grey, linealpha=linealpha; label=hcat("Profile-wise predictions", fill("", 1, size(predictions, 2)-1)), kwargs...)
+            plot!(plt[i], t, extrema[:,:,i], lw=3, color=extremacolor, label=["Profile-wise SCBs (≈)" ""], legend=false)
         end
-        plot!(plt[layout], t, predictions[:,:,layout], color=:grey, linealpha=linealpha; label=hcat("Predictions", fill("", 1, size(predictions, 2)-1)), kwargs...)
-        plot!(plt[layout], t, extrema[:,:,layout], lw=3, color=extremacolor, label=["SCBs (≈)" ""])
+        plot!(plt[layout], t, predictions[:,:,layout], color=:grey, linealpha=linealpha; label=hcat("Profile-wise predictions", fill("", 1, size(predictions, 2)-1)), kwargs...)
+        plot!(plt[layout], t, extrema[:,:,layout], lw=3, color=extremacolor, label=["Profile-wise SCBs (≈)" ""])
         return plt
     end    
-    plot!(plt, t, predictions, color=:grey, linealpha=linealpha; label=hcat("Predictions", fill("", 1, size(predictions, 2)-1)), kwargs...)
-    plot!(plt, t, extrema, lw=3, color=extremacolor, label=["SCBs (≈)" ""])
+    plot!(plt, t, predictions, color=:grey, linealpha=linealpha; label=hcat("Profile-wise predictions", fill("", 1, size(predictions, 2)-1)), kwargs...)
+    plot!(plt, t, extrema, lw=3, color=extremacolor, label=["Profile-wise SCBs (≈)" ""])
     return plt
 end
 
 function plotrealisation!(plt, t, extrema, linealpha, layout; extremacolor=:red, kwargs...)
     if layout > 1
         for i in 1:(layout-1)
-            plot!(plt[i], t, extrema[:,:,i], lw=3, color=extremacolor, label=["SRTBs (≈)" ""], legend=false, kwargs...)
+            plot!(plt[i], t, extrema[:,:,i], lw=3, color=extremacolor, label=["Profile-wise SRTBs (≈)" ""], legend=false, kwargs...)
         end
-        plot!(plt[layout], t, extrema[:,:,layout], lw=3, color=extremacolor, label=["SRTBs (≈)" ""], kwargs...)
+        plot!(plt[layout], t, extrema[:,:,layout], lw=3, color=extremacolor, label=["Profile-wise SRTBs (≈)" ""], kwargs...)
         return plt
     end    
-    plot!(plt, t, extrema, lw=3, color=extremacolor, label=["SRTBs (≈)" ""])
+    plot!(plt, t, extrema, lw=3, color=extremacolor, label=["Profile-wise SRTBs (≈)" ""])
     return plt
 end
 
@@ -1299,29 +1299,22 @@ function plot_realisations_union(model::LikelihoodModel,
                 subset_to_use = @view(row_subset[1,:])
             end
 
-            for i in 1:nrow(subset_to_use)
-                row = @view(subset_to_use[i, :])
-                if isempty(model.dim_predictions_dict[row.row_ind].realisations.extrema)
-                    continue
-                end
+            if subset_to_use.conf_level == confidence_level
+                sampled_extrema = model.dim_predictions_dict[subset_to_use.row_ind].realisations.extrema
+            else
+                ll_level = get_target_loglikelihood(model, confidence_level, 
+                                                    EllipseApproxAnalytical(), model.core.num_pars)
 
-                if row.conf_level == confidence_level
-                    sampled_extrema = model.dim_predictions_dict[row.row_ind].realisations.extrema
+                valid_point = model.dim_samples_dict[subset_to_use.row_ind].ll .> ll_level 
+
+                if layout > 1
+                    sampled_extrema = model.dim_predictions_dict[subset_to_use.row_ind].realisations.extrema[valid_point,:,:]
                 else
-                    ll_level = get_target_loglikelihood(model, confidence_level, 
-                                                        EllipseApproxAnalytical(), model.core.num_pars)
-
-                    valid_point = model.dim_samples_dict[row.row_ind].ll .> ll_level 
-
-                    if layout > 1
-                        sampled_extrema = model.dim_predictions_dict[row.row_ind].realisations.extrema[valid_point,:,:]
-                    else
-                        sampled_extrema = model.dim_predictions_dict[row.row_ind].realisations.extrema[valid_point,:]
-                    end
+                    sampled_extrema = model.dim_predictions_dict[subset_to_use.row_ind].realisations.extrema[valid_point,:]
                 end
-
-                add_extrema!(realisation_plot, t, sampled_extrema, layout; label=["Sampled SRTBs (≈)" ""])
             end
+
+            add_extrema!(realisation_plot, t, sampled_extrema, layout; label=["Sampled SRTBs (≈)" ""])
         end
     end
 
