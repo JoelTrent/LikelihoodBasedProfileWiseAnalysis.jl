@@ -1,4 +1,3 @@
-using Revise
 using PlaceholderLikelihood
 using Plots
 using Documenter, DocumenterCitations
