@@ -1,18 +1,20 @@
 # Logistic Model
 
+The code included in this example is compiled into a single file [here](../../../examples/logistic.jl).
+
 The logistic model with a normal data distribution [simpsonprofilewise2023](@cite) has the following differential equation for the population density ``C(t)\geq0``:
 ```math
 \frac{\mathrm{d}C(t)}{\mathrm{d}t} = \lambda C(t) \Bigg[1-\frac{C(t)}{K}\Bigg],
 ```
 where the model parameter vector is given by ``\theta^M = (\lambda, K, C(0))``. The corresponding additive Gaussian data distribution, with a fixed standard deviation, has a density function for the observed data given by:
 ```math
-y_i \sim p(y_i ; \theta) \sim \mathcal{N}(z_i(\theta^M), \sigma^2_N),
+y_i \sim p(y_i ; \theta) \sim \mathcal{N}(z_i(\theta^M), \sigma^2),
 ```
 where ``z_i(\theta^M)=z(t_i; \theta^M)`` is the model solution of the first Equation at ``t_i`` and ``\sigma=10``.
 
 The true parameter values are ``\theta^M =(0.01, 100, 10)``. The corresponding lower and upper parameter bounds are ``a = (0, 50, 0)`` and ``b = (0.05,150,50)``. Observation times are ``t_{1:I} = 0,100,200,...,1000``. The original implementation can be found at [https://github.com/ProfMJSimpson/Workflow](https://github.com/ProfMJSimpson/Workflow). Example realisations, the true model trajectory and 95% population reference set under this parameterisation can be seen in the figure below:
 
-<!-- ![](assets/figures/.png) -->
+![](../assets/figures/logistic/logistic_example.png)
 
 ## Initial Setup
 
@@ -72,7 +74,7 @@ par_magnitudes = [0.005, 10, 10]
 Here we choose to set some optimization settings, `opt_settings`, which are used when determining the maximum likelihood estimate ``\hat{\theta}``. If different settings are not provided to functions for profiling, then these settings (which are now contained in the [`LikelihoodModel`](@ref)), will be used.
 
 ```julia
-opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5))
+opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5,))
 model = initialise_LikelihoodModel(loglhood, data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings=opt_settings)
 ```
 
@@ -121,13 +123,34 @@ get_points_in_intervals!(model, 20, additional_width=0.2)
 
 This can also be done within [`univariate_confidenceintervals`](@ref) using the `num_points_in_interval` and `additional_width` keyword arguments.
 
+#### Initial Guesses
+
+We can use existing confidence intervals to reduce the search bracket for other confidence intervals of interest. 
+
+For example, we can use the confidence intervals found at a 99% confidence level with one degree of freedom to more quickly find the corresponding intervals at a 95% confidence level. We set `existing_profiles=:overwrite` so that we recalculate these profiles - otherwise they won't be calculated as they already exist!
+
+```julia
+univariate_confidenceintervals!(model, confidence_level=0.99)
+univariate_confidenceintervals!(model, confidence_level=0.95, use_existing_profiles=true, 
+    existing_profiles=:overwrite, num_points_in_interval=20, additional_width=0.2)
+```
+
+Similarly, we can use profiles of type [`EllipseApproxAnalytical`](@ref) to decrease the bracket. This is recommended for identifiable parameters.
+
+```julia
+univariate_confidenceintervals!(model, profile_type=EllipseApproxAnalytical())
+univariate_confidenceintervals!(model, use_ellipse_approx_analytical_start=true, 
+    existing_profiles=:overwrite, num_points_in_interval=20, additional_width=0.2)
+```
+
 ### Bivariate Profiles
 
 To evaluate the bivariate boundaries for all three bivariate parameter combinations, here we use the [`IterativeBoundaryMethod`](@ref), which uses a 20 point ellipse approximation of the boundary as a starting guess using [`RadialMLEMethod`](@ref). The boundaries in this example are reasonably convex, which makes this starting guess appropriate. To speed up computation we provide stronger optimization settings.
 
 ```julia
 opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
-bivariate_confidenceprofiles!(model, 50, method=IterativeBoundaryMethod(20, 5, 5, 0.15, 1.0, use_ellipse=true), 
+bivariate_confidenceprofiles!(model, 50, 
+    method=IterativeBoundaryMethod(20, 5, 5, 0.15, 1.0, use_ellipse=true), 
     optimizationsettings=opt_settings)
 ```
 
@@ -135,7 +158,8 @@ Similarly, if we wish to evaluate simultaneous 95% bivariate profiles we set the
 
 ```julia
 opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
-bivariate_confidenceprofiles!(model, 50, method=IterativeBoundaryMethod(20, 5, 5, 0.15, 1.0, use_ellipse=true), 
+bivariate_confidenceprofiles!(model, 50, 
+    method=IterativeBoundaryMethod(20, 5, 5, 0.15, 1.0, use_ellipse=true), 
     dof=model.core.num_pars,
     optimizationsettings=opt_settings)
 ```
@@ -143,7 +167,8 @@ bivariate_confidenceprofiles!(model, 50, method=IterativeBoundaryMethod(20, 5, 5
 To evaluate the analytical ellipse boundaries using [EllipseSampling](https://joeltrent.github.io/EllipseSampling.jl/stable) we use:
 
 ```julia
-bivariate_confidenceprofiles!(model, 50, profile_type=EllipseApproxAnalytical(), method=AnalyticalEllipseMethod(0.15, 1.0))
+bivariate_confidenceprofiles!(model, 50, 
+    profile_type=EllipseApproxAnalytical(), method=AnalyticalEllipseMethod(0.15, 1.0))
 ```
 
 To efficiently sample 100 points within the bivariate boundaries using a rejection sampling approach we use:
@@ -157,18 +182,30 @@ sample_bivariate_internal_points!(model, 100)
 To visualise plots of these profiles we load [Plots](https://docs.juliaplots.org/stable/) alongside a plotting backend. Here we use [GR](https://github.com/jheinen/GR.jl).
 
 ```julia
-using Plots; gr()
+using Plots, Plots.PlotMeasures; gr()
+Plots.reset_defaults(); Plots.scalefontsizes(0.75)
 ```
+
+
+plts = plot_univariate_profiles_comparison(model, 0.1, 0.1, confidence_levels=[0.95], dofs=[1])
+plt = plot(plts..., layout=(1,3),
+    legend=:outertop, title="", dpi=150, size=(550,300), margin=1mm)
+display(plt)
+savefig(plt, joinpath("docs", "src", "assets", "figures", "logistic", "logistic_univariate_plots.png"))
 
 Univariate and bivariate profiles can either be visualised individually or in comparison to profiles at the same confidence level and degrees of freedom. 
 
-Here we compare the univariate profiles formed at a 95% confidence level and 1 degree of freedom.
+Here we compare the univariate profiles formed at a 95% confidence level and 1 degree of freedom. The first two arguments scale the limits of the x and y axis, respectively, away from the found confidence interval at the specified threshold.
 ```julia
-plts = plot_univariate_profiles_comparison(model, confidence_level=0.95, dof=1)
+plts = plot_univariate_profiles_comparison(model, 0.1, 0.1,
+    confidence_levels=[0.95], dofs=[1])
 
-plt = plot(plts..., layout=(1,3))
+plt = plot(plts..., layout=(1,3),
+    legend=:outertop, title="", dpi=150, size=(550,300), margin=1mm)
 display(plt)
 ```
+
+![](../assets/figures/logistic/logistic_univariate_plots.png)
 
 Similarly, here we compare the bivariate profiles formed at a 95% confidence level and 2 degrees of freedom.
 ```julia
@@ -177,6 +214,8 @@ plts = plot_bivariate_profiles_comparison(model, confidence_level=0.95, dof=2)
 plt = plot(plts..., layout=(1,3))
 display(plt)
 ```
+
+![](../assets/figures/logistic/logistic_bivariate_plots.png)
 
 ## Predictions
 
@@ -206,29 +245,58 @@ We can plot the predictions of individual profiles or the union of all profiles 
 
 #### Model Trajectory
 
-```julia
-using Plots; gr()
-plot_predictions_union(model, t_pred, 1, dof=model.core.num_pars,
-    compare_to_full_sample_type=LatinHypercubeSamples()) # univariate profiles
-```
+SCBs ``(\approx)`` here refer to approximate simultaneous confidence bands for the true model trajectory.
 
 ```julia
-plot_predictions_union(model, t_pred, 2, dof=model.core.num_pars,
-    compare_to_full_sample_type=LatinHypercubeSamples()) # bivariate profiles
+using Plots, Plots.PlotMeasures; gr()
+plt = plot_predictions_union(model, t_pred, 1, dof=model.core.num_pars,
+    compare_to_full_sample_type=LatinHypercubeSamples(), title="") # univariate profiles
+
+plot!(plt, t_pred, solvedmodel(t_pred, θ_true), 
+    label="True model trajectory", lw=3, color=:turquoise4, linestyle=:dash,
+    dpi=150, size=(450,300), rightmargin=3mm)
 ```
+
+![](../assets/figures/logistic/logistic_univariate_trajectory.png)
+
+```julia
+plt = plot_predictions_union(model, t_pred, 2, dof=model.core.num_pars,
+    compare_to_full_sample_type=LatinHypercubeSamples(), title="") # bivariate profiles
+
+plot!(plt, t_pred, solvedmodel(t_pred, θ_true), 
+    label="True model trajectory", lw=3, color=:turquoise4, linestyle=:dash,
+    dpi=150, size=(450,300), rightmargin=3mm)
+```
+
+![](../assets/figures/logistic/logistic_bivariate_trajectory.png)
 
 #### ``1-\delta`` Population Reference Set 
 
-```julia
-using Plots; gr()
-plot_realisations_union(model, t_pred, 1, dof=model.core.num_pars,
-    compare_to_full_sample_type=LatinHypercubeSamples()) # univariate profiles
-```
+SRTBs ``(\approx)`` here refer to approximate simultaneous reference tolerance bands for the ``1-\delta`` population reference tolerance set.
 
 ```julia
-plot_realisations_union(model, t_pred, 2, dof=model.core.num_pars, 
-    compare_to_full_sample_type=LatinHypercubeSamples()) # bivariate profiles
+using Plots; gr()
+plt = plot_realisations_union(model, t_pred, 1, dof=model.core.num_pars,
+    compare_to_full_sample_type=LatinHypercubeSamples(), title="") # univariate profiles
+
+lq, uq = errorfunction(solvedmodel(t_pred, θ_true), θ_true, 0.95)
+plot!(plt, t_pred, lq, fillrange=uq, fillalpha=0.3, linealpha=0,
+    label="95% population reference set", color=palette(:Paired)[1])
+scatter!(plt, data.t, data.y_obs, label="Observations", msw=0, ms=7, color=palette(:Paired)[3])
 ```
+
+![](../assets/figures/logistic/logistic_univariate_reference_tolerance.png)
+
+```julia
+plt = plot_realisations_union(model, t_pred, 2, dof=model.core.num_pars, 
+    compare_to_full_sample_type=LatinHypercubeSamples(), title="") # bivariate profiles
+
+plot!(plt, t_pred, lq, fillrange=uq, fillalpha=0.3, linealpha=0,
+    label="95% population reference set", color=palette(:Paired)[1])
+scatter!(plt, data.t, data.y_obs, label="Observations", msw=0, ms=7, color=palette(:Paired)[3])
+```
+
+![](../assets/figures/logistic/logistic_bivariate_reference_tolerance.png)
 
 ## Coverage Testing
 
@@ -266,7 +334,8 @@ Here we check the coverage of the 95% confidence interval for each of the three 
 ```julia
 opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
 
-uni_coverage_df = check_univariate_parameter_coverage(data_generator, training_gen_args, model, 1000, θ_true, collect(1:model.core.num_pars),
+uni_coverage_df = check_univariate_parameter_coverage(data_generator,
+    training_gen_args, model, 1000, θ_true, collect(1:model.core.num_pars),
     optimizationsettings=opt_settings)
 ```
 
@@ -277,9 +346,11 @@ Similarly, we can check the coverage of a 95% bivariate profile boundary for eac
 ```julia
 opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
 
-biv_coverage_df = check_bivariate_parameter_coverage(data_generator, training_gen_args, model, 1000, 50, θ_true, 
+biv_coverage_df = check_bivariate_parameter_coverage(data_generator,
+    training_gen_args, model, 1000, 50, θ_true, 
+    collect(combinations(1:model.core.num_pars, 2)),
     method = IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, use_ellipse=true), 
-    collect(combinations(1:model.core.num_pars, 2)), optimizationsettings=opt_settings)
+    optimizationsettings=opt_settings)
 ```
 
 We can also evaluate how well a given bivariate boundary is being represented for a given boundary method and number of boundary points. To do this we use [`check_bivariate_boundary_coverage`](@ref) which not only calculates each bivariate profiles boundary using `method`, but also uses a rejection sampling approach to find points inside each profiles boundary. Here we sample 4000 points using [`dimensional_likelihood_samples!`](@ref) inside the specified parameters bounds and retain those that are within each profiles boundary. In this case this corresponds to around 250-400 retained points. We then check the proportion of these sampled points that are inside our bivariate profile using a point in polygon algorithm. If our `method` is performing well, we would expect this proportion to be close to 1.0. 
@@ -289,11 +360,12 @@ Here we set `coverage_estimate_quantile_level` to `0.9`; we are interested in th
 ```julia
 opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
 
-biv_boundary_coverage_df = check_bivariate_boundary_coverage(data_generator, training_gen_args, model, 200, 50, 4000, θ_true,
-            method=IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, use_ellipse=true), 
-            collect(combinations(1:model.core.num_pars, 2)); 
-            coverage_estimate_quantile_level=0.9,
-            optimizationsettings=opt_settings)
+biv_boundary_coverage_df = check_bivariate_boundary_coverage(data_generator,
+    training_gen_args, model, 200, 50, 4000, θ_true,
+    collect(combinations(1:model.core.num_pars, 2)); 
+    method=IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, use_ellipse=true), 
+    coverage_estimate_quantile_level=0.9,
+    optimizationsettings=opt_settings)
 ```
 
 ### Prediction Coverage
@@ -304,20 +376,24 @@ To test the coverage of the true model trajectory we can use [`check_dimensional
 
 The profile-wise predictions are approximate trajectory confidence sets and are not expected to reach 95% simultaneous coverage. However, they will converge to approximately the correct coverage as higher numbers of interest parameters are considered. Additionally, the asymptotic threshold being used to define the extremities of the profiles is lower than the threshold for the full parameter confidence set; there is evidence to suggest this is also responsible for constraining their coverage performance on this model. We do generally recommend sampling some points within univariate confidence intervals for propagation forward into the prediction sets, here we use 20.
 
-!!! note "Using manual GC calls"
-    On versions of Julia earlier than 1.10, we recommend setting the kwarg, `manual_GC_calls` to true. Otherwise the garbage collector may not successfully free memory every iteration leading to out of memory errors. 
+!!! danger "Using manual GC calls"
+    On versions of Julia earlier than 1.10, we recommend setting the kwarg, `manual_GC_calls`, to true in each of the coverage functions. Otherwise the garbage collector may not successfully free memory every iteration leading to out of memory errors. 
 
 ```julia
 opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
 
-full_trajectory_coverage_df = check_dimensional_prediction_coverage(data_generator, training_gen_args, t_pred, model, 1000, 30000, 
+full_trajectory_coverage_df = check_dimensional_prediction_coverage(data_generator, 
+    training_gen_args, t_pred, model, 1000, 30000, 
     θ_true, [collect(1:model.core.num_pars)])
 
-uni_trajectory_coverage_df = check_univariate_prediction_coverage(data_generator, training_gen_args, t_pred, model, 1000, 
-    θ_true, collect(1:model.core.num_pars), num_points_in_interval=20, 
+uni_trajectory_coverage_df = check_univariate_prediction_coverage(data_generator, 
+    training_gen_args, t_pred, model, 1000, 
+    θ_true, collect(1:model.core.num_pars), 
+    num_points_in_interval=20, 
     optimizationsettings=opt_settings)
 
-biv_trajectory_coverage_df = check_bivariate_prediction_coverage(data_generator, training_gen_args, t_pred, model, 1000, 20, θ_true, 
+biv_trajectory_coverage_df = check_bivariate_prediction_coverage(data_generator, 
+    training_gen_args, t_pred, model, 1000, 20, θ_true, 
     collect(combinations(1:model.core.num_pars, 2)),
     method=IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, use_ellipse=true),
     optimizationsettings=opt_settings)
@@ -326,13 +402,15 @@ biv_trajectory_coverage_df = check_bivariate_prediction_coverage(data_generator,
 We instead suggest using the profile path approach for these lower dimensional profiles, where the degrees of freedom, `dof`, used to calibrate the asymptotic threshold is equal to the number of model parameters (as opposed to the dimensionality of the profile). This produces simultaneous profiles; the extremities of these profiles now touch the extremities of the full parameter vector confidence set. This has been shown to be reasonable for identifiable models with low numbers of parameters (<10). Most significantly in this example, the coverage of the trajectory confidence set from the union of simultaneous bivariate profiles is approximately 0.95. 
 
 ```julia
-uni_trajectory_coverage_df = check_univariate_prediction_coverage(data_generator, training_gen_args, t_pred, model, 1000, 
+uni_trajectory_coverage_df = check_univariate_prediction_coverage(data_generator, 
+    training_gen_args, t_pred, model, 1000, 
     θ_true, collect(1:model.core.num_pars), 
     dof=model.core.num_pars,
     num_points_in_interval=20, 
     optimizationsettings=opt_settings)
 
-biv_trajectory_coverage_df = check_bivariate_prediction_coverage(data_generator, training_gen_args, t_pred, model, 1000, 20, θ_true, 
+biv_trajectory_coverage_df = check_bivariate_prediction_coverage(data_generator, 
+    training_gen_args, t_pred, model, 1000, 20, θ_true, 
     collect(combinations(1:model.core.num_pars, 2)),
     dof=model.core.num_pars,
     method=IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, use_ellipse=true),
@@ -343,8 +421,8 @@ biv_trajectory_coverage_df = check_bivariate_prediction_coverage(data_generator,
 
 To test the coverage of the ``1-\delta`` population reference set as well as observations we can use [`check_dimensional_prediction_realisations_coverage`](@ref), [`check_univariate_prediction_realisations_coverage`](@ref) and [`check_bivariate_prediction_realisations_coverage`](@ref). Here we will only look at the coverage for simultaneous profiles.
 
-!!! note "Using manual GC calls"
-    On versions of Julia earlier than 1.10, we recommend setting the kwarg, `manual_GC_calls` to true. Otherwise the garbage collector may not successfully free memory every iteration leading to out of memory errors.
+!!! danger "Using manual GC calls"
+    On versions of Julia earlier than 1.10, we recommend setting the kwarg, `manual_GC_calls`, to true in each of the coverage functions. Otherwise the garbage collector may not successfully free memory every iteration leading to out of memory errors.
 
 ```julia
 full_reference_coverage_df = check_dimensional_prediction_realisations_coverage(data_generator,

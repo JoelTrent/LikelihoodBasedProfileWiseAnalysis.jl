@@ -10,11 +10,13 @@ The Lotka-Volterra model with a normal data distribution [simpsonprofilewise2023
 ```
 where the model parameter vector is given by ``\theta^M = (\alpha, \beta, x(0), y(0))``. The corresponding additive Gaussian data distribution, with a fixed standard deviation, has a density function for the observed data given by: 
 ```math
-    y_i \sim p(y_i ; \theta) \sim \mathcal{N}(z_i(\theta^M), \sigma^2_N \mathbb{I}),
+    y_i \sim p(y_i ; \theta) \sim \mathcal{N}(z_i(\theta^M), \sigma^2 \mathbb{I}),
 ```
 where  ``z_i(\theta^M)=z(t_i; \theta^M) = (x(t_i; \theta^M), y(t_i; \theta^M))`` is the model solution of the differential equations, meaning at each ``t_i`` we have an observation of both ``x(t)`` and ``y(t)``, ``y_i^\textrm{o}=(x_i^\textrm{o}, y_i^\textrm{o})``, ``\mathbb{I}`` is a ``2\times2`` identity matrix and ``\sigma=0.2``.
 
 The true parameter values are ``\theta^M =(0.9, 1.1, 0.8, 0.3)``. The corresponding lower and upper parameter bounds are ``a = (0.7, 0.7, 0.5, 0.1)`` and ``b = (1.2, 1.4, 1.2, 0.5)``. Observation times are ``t_{1:I} = 0,0.5,1.0,...,7``. The times considered for predictions are extended up to ``t_I=10``. The original implementation can be found at [https://github.com/ProfMJSimpson/Workflow](https://github.com/ProfMJSimpson/Workflow). Example realisations, the true model trajectory and 95% population reference set under this parameterisation can be seen in the figure below:
+
+![](../assets/figures/lotka-volterra/lotka-volterra_example.png)
 
 ## Initial Setup
 
@@ -98,7 +100,7 @@ par_magnitudes = [1,1,1,1]
 ## LikelihoodModel Initialisation
 
 ```julia
-opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5))
+opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5,))
 model = initialise_LikelihoodModel(loglhood, data, θnames, θG, lb, ub, par_magnitudes, optimizationsettings=opt_settings)
 ```
 
@@ -123,7 +125,7 @@ univariate_confidenceintervals!(model)
 Similarly, if we wish to find simultaneous 95% confidence intervals for the parameters we set the degrees of freedom parameter, `dof`, to the number of model parameters (instead of `1`).
 
 ```julia
-univariate_confidenceintervals!(model, dof=model.core.num_pars) # model.core.num_pars=3
+univariate_confidenceintervals!(model, dof=model.core.num_pars) # model.core.num_pars=4
 ```
 
 ### Bivariate Profiles
@@ -132,7 +134,8 @@ To evaluate the bivariate boundaries for all six bivariate parameter combination
 
 ```julia
 opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
-bivariate_confidenceprofiles!(model, 30, method=IterativeBoundaryMethod(10, 5, 5, 0.15, 1.0, use_ellipse=true), 
+bivariate_confidenceprofiles!(model, 30, 
+    method=IterativeBoundaryMethod(10, 5, 5, 0.15, 1.0, use_ellipse=true), 
     optimizationsettings=opt_settings)
 ```
 
@@ -140,7 +143,8 @@ Similarly, if we wish to evaluate simultaneous 95% bivariate profiles we set the
 
 ```julia
 opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
-bivariate_confidenceprofiles!(model, 30, method=IterativeBoundaryMethod(10, 5, 5, 0.15, 1.0, use_ellipse=true), 
+bivariate_confidenceprofiles!(model, 30, 
+    method=IterativeBoundaryMethod(10, 5, 5, 0.15, 1.0, use_ellipse=true), 
     dof=model.core.num_pars,
     optimizationsettings=opt_settings)
 ```
@@ -157,7 +161,7 @@ Univariate and bivariate profiles can either be visualised individually or in co
 
 Here we plot the univariate profiles formed at a 95% confidence level and 1 degree of freedom.
 ```julia
-plts = plot_univariate_profiles_individual(model, confidence_level=0.95, dof=1)
+plts = plot_univariate_profiles(model, confidence_level=0.95, dof=1)
 
 plt = plot(plts..., layout=(1,4))
 display(plt)
@@ -165,7 +169,7 @@ display(plt)
 
 Similarly, here we plot the simultaneous bivariate profiles formed at a 95% confidence level and 4 degrees of freedom.
 ```julia
-plts = plot_bivariate_profiles_comparison(model, confidence_level=0.95, dof=model.core.num_pars)
+plts = plot_bivariate_profiles(model, confidence_level=0.95, dof=model.core.num_pars)
 
 plt = plot(plts..., layout=(2,3))
 display(plt)
@@ -261,7 +265,8 @@ Coverage of parameter confidence intervals:
 ```julia
 opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
 
-uni_coverage_df = check_univariate_parameter_coverage(data_generator, training_gen_args, model, 1000, θ_true, collect(1:model.core.num_pars),
+uni_coverage_df = check_univariate_parameter_coverage(data_generator,
+    training_gen_args, model, 1000, θ_true, collect(1:model.core.num_pars),
     optimizationsettings=opt_settings)
 ```
 
@@ -272,9 +277,11 @@ Coverage of the true value of each set of bivariate interest parameters:
 ```julia
 opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
 
-biv_coverage_df = check_bivariate_parameter_coverage(data_generator, training_gen_args, model, 1000, 50, θ_true, 
+biv_coverage_df = check_bivariate_parameter_coverage(data_generator,
+    training_gen_args, model, 1000, 50, θ_true, 
+    collect(combinations(1:model.core.num_pars, 2)),
     method = IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, use_ellipse=true), 
-    collect(combinations(1:model.core.num_pars, 2)), optimizationsettings=opt_settings)
+    optimizationsettings=opt_settings)
 ```
 
 Coverage of the true bivariate boundary. 5000 samples corresponds to around 200-400 retained points:
@@ -282,13 +289,13 @@ Coverage of the true bivariate boundary. 5000 samples corresponds to around 200-
 ```julia
 opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
 
-biv_boundary_coverage_df = check_bivariate_boundary_coverage(data_generator, training_gen_args, model, 100, 30, 5000, θ_true,
-            method=IterativeBoundaryMethod(20, 5, 5, 0.15, 0.1, use_ellipse=true), 
-            collect(combinations(1:model.core.num_pars, 2)); 
-            coverage_estimate_quantile_level=0.9,
-            optimizationsettings=opt_settings)
+biv_boundary_coverage_df = check_bivariate_boundary_coverage(data_generator,
+    training_gen_args, model, 100, 30, 5000, θ_true,
+    collect(combinations(1:model.core.num_pars, 2)); 
+    method=IterativeBoundaryMethod(20, 5, 5, 0.15, 0.1, use_ellipse=true), 
+    coverage_estimate_quantile_level=0.9,
+    optimizationsettings=opt_settings)
 ```
-
 
 ### Prediction Coverage
 
@@ -296,20 +303,24 @@ biv_boundary_coverage_df = check_bivariate_boundary_coverage(data_generator, tra
 
 To test the coverage of the true model trajectory we can use [`check_dimensional_prediction_coverage`](@ref), [`check_univariate_prediction_coverage`](@ref) and [`check_bivariate_prediction_coverage`](@ref). Again we use the default 95% confidence level here. Given a sufficient number of sampled points we expect the model trajectory coverage from the trajectory confidence set from propagating forward the full parameter vector 95% confidence set to have 95% simultaneous coverage. 
 
-!!! note "Using manual GC calls"
-    On versions of Julia earlier than 1.10, we recommend setting the kwarg, `manual_GC_calls` to true. Otherwise the garbage collector may not successfully free memory every iteration leading to out of memory errors.
+!!! danger "Using manual GC calls"
+    On versions of Julia earlier than 1.10, we recommend setting the kwarg, `manual_GC_calls`, to true in each of the coverage functions. Otherwise the garbage collector may not successfully free memory every iteration leading to out of memory errors.
 
 ```julia
 opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
 
-full_trajectory_coverage_df = check_dimensional_prediction_coverage(data_generator, training_gen_args, t_pred, model, 1000, 500000, 
+full_trajectory_coverage_df = check_dimensional_prediction_coverage(data_generator, 
+    training_gen_args, t_pred, model, 1000, 500000, 
     θ_true, [collect(1:model.core.num_pars)])
 
-uni_trajectory_coverage_df = check_univariate_prediction_coverage(data_generator, training_gen_args, t_pred, model, 1000, 
-    θ_true, collect(1:model.core.num_pars), num_points_in_interval=20, 
+uni_trajectory_coverage_df = check_univariate_prediction_coverage(data_generator, 
+    training_gen_args, t_pred, model, 1000, 
+    θ_true, collect(1:model.core.num_pars), 
+    num_points_in_interval=20, 
     optimizationsettings=opt_settings)
 
-biv_trajectory_coverage_df = check_bivariate_prediction_coverage(data_generator, training_gen_args, t_pred, model, 1000, 30, θ_true, 
+biv_trajectory_coverage_df = check_bivariate_prediction_coverage(data_generator, 
+    training_gen_args, t_pred, model, 1000, 30, θ_true, 
     collect(combinations(1:model.core.num_pars, 2)),
     method=IterativeBoundaryMethod(20, 5, 5, 0.15, 0.1, use_ellipse=true),
     optimizationsettings=opt_settings)
@@ -318,30 +329,31 @@ biv_trajectory_coverage_df = check_bivariate_prediction_coverage(data_generator,
 Repeating the coverage of univariate and bivariate profiles using the profile path approach:
 
 ```julia
-uni_trajectory_coverage_df = check_univariate_prediction_coverage(data_generator, training_gen_args, t_pred, model, 1000, 
+uni_trajectory_coverage_df = check_univariate_prediction_coverage(data_generator, 
+    training_gen_args, t_pred, model, 1000, 
     θ_true, collect(1:model.core.num_pars), 
     dof=model.core.num_pars,
     num_points_in_interval=20, 
     optimizationsettings=opt_settings)
 
-biv_trajectory_coverage_df = check_bivariate_prediction_coverage(data_generator, training_gen_args, t_pred, model, 1000, 30, θ_true, 
+biv_trajectory_coverage_df = check_bivariate_prediction_coverage(data_generator, 
+    training_gen_args, t_pred, model, 1000, 30, θ_true, 
     collect(combinations(1:model.core.num_pars, 2)),
     dof=model.core.num_pars,
     method=IterativeBoundaryMethod(20, 5, 5, 0.15, 0.1, use_ellipse=true),
     optimizationsettings=opt_settings)
 ```
 
-
 #### ``1-\delta`` Population Reference Set and Observations
 
 To test the coverage of the ``1-\delta`` population reference set as well as observations we can use [`check_dimensional_prediction_realisations_coverage`](@ref), [`check_univariate_prediction_realisations_coverage`](@ref) and [`check_bivariate_prediction_realisations_coverage`](@ref). Here we will only look at the coverage for simultaneous profiles.
 
-!!! note "Using manual GC calls"
-    On versions of Julia earlier than 1.10, we recommend setting the kwarg, `manual_GC_calls` to true. Otherwise the garbage collector may not successfully free memory every iteration leading to out of memory errors.
+!!! danger "Using manual GC calls"
+    On versions of Julia earlier than 1.10, we recommend setting the kwarg, `manual_GC_calls`, to true in each of the coverage functions. Otherwise the garbage collector may not successfully free memory every iteration leading to out of memory errors.
 
 ```julia
 full_reference_coverage_df = check_dimensional_prediction_realisations_coverage(data_generator,
-    reference_set_generator, training_gen_args, testing_gen_args, t_pred, model, 1000, 30000, 
+    reference_set_generator, training_gen_args, testing_gen_args, t_pred, model, 1000, 500000, 
     θ_true, [collect(1:model.core.num_pars)])
 
 uni_reference_coverage_df = check_univariate_prediction_realisations_coverage(data_generator,
