@@ -1,8 +1,8 @@
-using PlaceholderLikelihood
+using LikelihoodBasedProfileWiseAnalysis
 using Plots
 using Documenter, DocumenterCitations
 
-DocMeta.setdocmeta!(PlaceholderLikelihood, :DocTestSetup, :(using PlaceholderLikelihood); recursive=true)
+DocMeta.setdocmeta!(LikelihoodBasedProfileWiseAnalysis, :DocTestSetup, :(using LikelihoodBasedProfileWiseAnalysis); recursive=true)
 
 bib = CitationBibliography(
     joinpath(@__DIR__, "src", "refs.bib");
@@ -10,12 +10,12 @@ bib = CitationBibliography(
 )
 
 makedocs(;
-    modules=[PlaceholderLikelihood],
+    modules=[LikelihoodBasedProfileWiseAnalysis],
     authors="JoelTrent <79883375+JoelTrent@users.noreply.github.com> and contributors",
-    sitename="PlaceholderLikelihood.jl",
+    sitename="LikelihoodBasedProfileWiseAnalysis.jl",
     format=Documenter.HTML(;
         prettyurls=get(ENV, "CI", "false") == "true",
-        canonical="https://JoelTrent.github.io/PlaceholderLikelihood.jl",
+        canonical="https://JoelTrent.github.io/LikelihoodBasedProfileWiseAnalysis.jl",
         edit_link="main",
         assets=String[],
     ),
@@ -59,6 +59,6 @@ makedocs(;
 )
 
 deploydocs(;
-    repo="github.com/JoelTrent/PlaceholderLikelihood.jl",
+    repo="github.com/JoelTrent/LikelihoodBasedProfileWiseAnalysis.jl",
     devbranch="main",
 )

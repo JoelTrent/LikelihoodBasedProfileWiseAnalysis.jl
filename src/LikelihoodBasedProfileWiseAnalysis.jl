@@ -1,4 +1,4 @@
-module PlaceholderLikelihood
+module LikelihoodBasedProfileWiseAnalysis
 
 using DataStructures, DataFrames, Accessors, StaticArrays, TrackingHeaps
 using SciMLBase, Optimization
