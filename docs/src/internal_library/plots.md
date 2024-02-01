@@ -6,21 +6,21 @@ Pages = ["plots.md"]
 
 ## Helper Functions
 ```@docs
-PlaceholderLikelihood.profilecolor
-PlaceholderLikelihood.profile1Dlinestyle
-PlaceholderLikelihood.profile2Dmarkershape
-PlaceholderLikelihood.θs_to_plot_typeconversion
-PlaceholderLikelihood.θcombinations_to_plot_typeconversion
+LikelihoodBasedProfileWiseAnalysis.profilecolor
+LikelihoodBasedProfileWiseAnalysis.profile1Dlinestyle
+LikelihoodBasedProfileWiseAnalysis.profile2Dmarkershape
+LikelihoodBasedProfileWiseAnalysis.θs_to_plot_typeconversion
+LikelihoodBasedProfileWiseAnalysis.θcombinations_to_plot_typeconversion
 ```
 
 ## Plots
 
 ```@docs
-PlaceholderLikelihood.plot1Dprofile!
-PlaceholderLikelihood.addMLEandLLstar!
-PlaceholderLikelihood.plot2Dboundary!
-PlaceholderLikelihood.addMLE!
-PlaceholderLikelihood.plotprediction!
-PlaceholderLikelihood.add_yMLE!
-PlaceholderLikelihood.add_extrema!
+LikelihoodBasedProfileWiseAnalysis.plot1Dprofile!
+LikelihoodBasedProfileWiseAnalysis.addMLEandLLstar!
+LikelihoodBasedProfileWiseAnalysis.plot2Dboundary!
+LikelihoodBasedProfileWiseAnalysis.addMLE!
+LikelihoodBasedProfileWiseAnalysis.plotprediction!
+LikelihoodBasedProfileWiseAnalysis.add_yMLE!
+LikelihoodBasedProfileWiseAnalysis.add_extrema!
 ```

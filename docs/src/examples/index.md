@@ -28,8 +28,8 @@ workers() # the ids of the allocated workers
 We import our package with the annotation `@everywhere`, letting Julia know that we wish to load the package on all allocated workers.
 
 !!! warning "Use of `@everywhere`"
-    If `@everywhere` is not used at the beginning of the package import, then the package `PlaceholderLikelihood` is only loaded onto the master worker's environment and cannot be seen by the other workers we wish to parallelise the simulation on. Similarly, any other functions that need to be loaded onto all workers, such as those that define the log-likelihood function, also need to have the annotation `@everywhere`. Resultantly, Julia will throw an error if  `nprocs()>1`. However, an error won't be thrown if we haven't added any worker processes (if `nprocs()==1`) using the above multiprocessing arguments (this package can run on a single thread).
+    If `@everywhere` is not used at the beginning of the package import, then the package `LikelihoodBasedProfileWiseAnalysis` is only loaded onto the master worker's environment and cannot be seen by the other workers we wish to parallelise the simulation on. Similarly, any other functions that need to be loaded onto all workers, such as those that define the log-likelihood function, also need to have the annotation `@everywhere`. Resultantly, Julia will throw an error if  `nprocs()>1`. However, an error won't be thrown if we haven't added any worker processes (if `nprocs()==1`) using the above multiprocessing arguments (this package can run on a single thread).
 
 ```julia
-@everywhere using PlaceholderLikelihood
+@everywhere using LikelihoodBasedProfileWiseAnalysis
 ```

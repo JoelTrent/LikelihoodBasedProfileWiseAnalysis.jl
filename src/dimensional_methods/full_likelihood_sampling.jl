@@ -1,7 +1,7 @@
 """
     add_dim_samples_rows!(model::LikelihoodModel, num_rows_to_add::Int)
 
-Adds `num_rows_to_add` free rows to `model.dim_samples_df` by vertically concatenating the existing DataFrame and free rows using [`PlaceholderLikelihood.init_dim_samples_df`](@ref).
+Adds `num_rows_to_add` free rows to `model.dim_samples_df` by vertically concatenating the existing DataFrame and free rows using [`LikelihoodBasedProfileWiseAnalysis.init_dim_samples_df`](@ref).
 """
 function add_dim_samples_rows!(model::LikelihoodModel, 
                                 num_rows_to_add::Int)
@@ -364,7 +364,7 @@ function full_likelihood_sample!(model::LikelihoodModel,
         existing_profiles ∈ [:ignore, :overwrite] || throw(ArgumentError("existing_profiles can only take value :ignore or :overwrite"))
         
         (!use_distributed && use_threads && timeit_debug_enabled()) && 
-            throw(ArgumentError("use_threads cannot be true when debug timings from TimerOutputs are enabled and use_distributed is false. Either set use_threads to false or disable debug timings using `PlaceholderLikelihood.TimerOutputs.disable_debug_timings(PlaceholderLikelihood)`"))
+            throw(ArgumentError("use_threads cannot be true when debug timings from TimerOutputs are enabled and use_distributed is false. Either set use_threads to false or disable debug timings using `LikelihoodBasedProfileWiseAnalysis.TimerOutputs.disable_debug_timings(LikelihoodBasedProfileWiseAnalysis)`"))
         return nothing
     end
 

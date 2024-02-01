@@ -1,8 +1,8 @@
 ```@meta
-CurrentModule = PlaceholderLikelihood
+CurrentModule = LikelihoodBasedProfileWiseAnalysis
 ```
 
-# PlaceholderLikelihood
+# LikelihoodBasedProfileWiseAnalysis
 
-Documentation for [PlaceholderLikelihood](https://github.com/JoelTrent/PlaceholderLikelihood.jl).
+Documentation for [LikelihoodBasedProfileWiseAnalysis](https://github.com/JoelTrent/LikelihoodBasedProfileWiseAnalysis.jl).
 

@@ -7,24 +7,24 @@ Pages = ["dimensional.md"]
 ## Common Full and Dimensional Likelihood
 
 ```@docs
-PlaceholderLikelihood.add_dim_samples_rows!
-PlaceholderLikelihood.set_dim_samples_row!
-PlaceholderLikelihood.valid_points
-PlaceholderLikelihood.check_if_bounds_supplied
-PlaceholderLikelihood.uniform_grid
-PlaceholderLikelihood.uniform_random
-PlaceholderLikelihood.LHS
+LikelihoodBasedProfileWiseAnalysis.add_dim_samples_rows!
+LikelihoodBasedProfileWiseAnalysis.set_dim_samples_row!
+LikelihoodBasedProfileWiseAnalysis.valid_points
+LikelihoodBasedProfileWiseAnalysis.check_if_bounds_supplied
+LikelihoodBasedProfileWiseAnalysis.uniform_grid
+LikelihoodBasedProfileWiseAnalysis.uniform_random
+LikelihoodBasedProfileWiseAnalysis.LHS
 ```
 
 ## Full Likelihood Only
 
 ```@docs
-PlaceholderLikelihood.full_likelihood_sample
+LikelihoodBasedProfileWiseAnalysis.full_likelihood_sample
 ```
 
 ## Dimensional Likelihood Only
 
 ```@docs
-PlaceholderLikelihood.dimensional_optimiser!
-PlaceholderLikelihood.dimensional_likelihood_sample
+LikelihoodBasedProfileWiseAnalysis.dimensional_optimiser!
+LikelihoodBasedProfileWiseAnalysis.dimensional_likelihood_sample
 ```

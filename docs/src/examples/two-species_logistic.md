@@ -44,7 +44,7 @@ using Distributed
 if nprocs()==1; addprocs(10, env=["JULIA_NUM_THREADS"=>"1"]) end
 @everywhere using Random, Distributions, DifferentialEquations
 @everywhere using LogExpFunctions
-@everywhere using PlaceholderLikelihood
+@everywhere using LikelihoodBasedProfileWiseAnalysis
 using Combinatorics
 ```
 

@@ -6,7 +6,7 @@ Creates a [`OptimizationSettings`](@ref) struct with defaults of:
 - `solve_alg`: [`NLopt.LN_BOBYQA()`](https://nlopt.readthedocs.io/en/latest/NLopt_Algorithms/#bobyqa).
 - `solve_kwargs`: `(maxtime=15, xtol_rel=1e-12)`.
 
-If this function causes an error then `PlaceholderLikelihood` needs to be loaded. Alternatively, the packages `SciMLBase`, `Optimization` and `OptimizationNLopt` need to be loaded.
+If this function causes an error then `LikelihoodBasedProfileWiseAnalysis` needs to be loaded. Alternatively, the packages `SciMLBase`, `Optimization` and `OptimizationNLopt` need to be loaded.
 """
 function default_OptimizationSettings()
     return OptimizationSettings(SciMLBase.NoAD(), NLopt.LN_BOBYQA(), (maxtime=15, xtol_rel=1e-12))

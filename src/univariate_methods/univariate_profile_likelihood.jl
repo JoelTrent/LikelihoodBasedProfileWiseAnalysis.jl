@@ -59,7 +59,7 @@ end
 """
     add_uni_profiles_rows!(model::LikelihoodModel, num_rows_to_add::Int)
 
-Adds `num_rows_to_add` free rows to `model.uni_profiles_df` by vertically concatenating the existing DataFrame and free rows using [`PlaceholderLikelihood.init_uni_profiles_df`](@ref).
+Adds `num_rows_to_add` free rows to `model.uni_profiles_df` by vertically concatenating the existing DataFrame and free rows using [`LikelihoodBasedProfileWiseAnalysis.init_uni_profiles_df`](@ref).
 """
 function add_uni_profiles_rows!(model::LikelihoodModel, 
                                 num_rows_to_add::Int)
@@ -110,7 +110,7 @@ end
 
 Returns the correct univariate optimisation function used to for find the optimal values of nuisance parameters for a given interest parameter value for the `profile_type` log-likelihood function. The optimisation function returns the value of the `profile_type` log-likelihood function as well as finding the optimal nuisance parameters and saving these in one of it's inputs.
     
-Will be [`PlaceholderLikelihood.univariateψ`](@ref) for the [`LogLikelihood()`](@ref) and [`EllipseApprox()`](@ref) profiles types and [`PlaceholderLikelihood.univariateψ_ellipse_unbounded`](@ref) for the [`EllipseApproxAnalytical`](@ref) profile type.
+Will be [`LikelihoodBasedProfileWiseAnalysis.univariateψ`](@ref) for the [`LogLikelihood()`](@ref) and [`EllipseApprox()`](@ref) profiles types and [`LikelihoodBasedProfileWiseAnalysis.univariateψ_ellipse_unbounded`](@ref) for the [`EllipseApproxAnalytical`](@ref) profile type.
 """
 function get_univariate_opt_func(profile_type::AbstractProfileType=LogLikelihood())
 
@@ -361,11 +361,11 @@ Computes likelihood-based confidence interval profiles for the provided `θs_to_
 
 # Keyword Arguments
 - `confidence_level`: a number ∈ (0.0, 1.0) for the confidence level to evaluate the confidence interval. Default is `0.95` (95%).
-- `dof`: an integer ∈ [1, `model.core.num_pars`] for the degrees of freedom used to define the asymptotic threshold ([`PlaceholderLikelihood.get_target_loglikelihood`](@ref)) which defines the extremities of the univariate profile, i.e. the confidence interval. For parameter confidence intervals that are considered individually, it should be set to `1`. For intervals that are considered simultaneously, it should be set to the number of intervals that are being calculated, i.e. `model.core.num_pars` when we wish the confidence interval for every parameter to hold simultaneously. Default is `1`. Setting it to `model.core.num_pars` should be reasonable when making predictions for well-identified models with `<10` parameters. Note: values other than `1` and `model.core.num_pars` may not have a clear statistical interpretation.
+- `dof`: an integer ∈ [1, `model.core.num_pars`] for the degrees of freedom used to define the asymptotic threshold ([`LikelihoodBasedProfileWiseAnalysis.get_target_loglikelihood`](@ref)) which defines the extremities of the univariate profile, i.e. the confidence interval. For parameter confidence intervals that are considered individually, it should be set to `1`. For intervals that are considered simultaneously, it should be set to the number of intervals that are being calculated, i.e. `model.core.num_pars` when we wish the confidence interval for every parameter to hold simultaneously. Default is `1`. Setting it to `model.core.num_pars` should be reasonable when making predictions for well-identified models with `<10` parameters. Note: values other than `1` and `model.core.num_pars` may not have a clear statistical interpretation.
 - `profile_type`: whether to use the true log-likelihood function or an ellipse approximation of the log-likelihood function centred at the MLE (with optional use of parameter bounds). Available profile types are [`LogLikelihood`](@ref), [`EllipseApprox`](@ref) and [`EllipseApproxAnalytical`](@ref). Default is `LogLikelihood()` ([`LogLikelihood`](@ref)).
 - `θlb_nuisance`: a vector of lower bounds on nuisance parameters, require `θlb_nuisance .≤ model.core.θmle`. Default is `model.core.θlb`. 
 - `θub_nuisance`: a vector of upper bounds on nuisance parameters, require `θub_nuisance .≥ model.core.θmle`. Default is `model.core.θub`.
-- `use_existing_profiles`: boolean variable specifying whether to use existing profiles of a parameter `θi` to decrease the width of the bracket used to search for the desired confidence interval using [`PlaceholderLikelihood.get_interval_brackets`](@ref). Existing profiles must have been calculated using the same value of `dof`. Default is `false`.
+- `use_existing_profiles`: boolean variable specifying whether to use existing profiles of a parameter `θi` to decrease the width of the bracket used to search for the desired confidence interval using [`LikelihoodBasedProfileWiseAnalysis.get_interval_brackets`](@ref). Existing profiles must have been calculated using the same value of `dof`. Default is `false`.
 - `use_ellipse_approx_analytical_start`: boolean variable specifying whether to use existing profiles at `confidence_level` and `dof` of type [`EllipseApproxAnalytical`](@ref) of a parameter `θi` to decrease the width of the bracket used to search for the desired confidence interval. Can decrease search times significantly for [`LogLikelihood`](@ref) profile types. Default is `false`.
 - `num_points_in_interval`: an integer number of points to optionally evaluate within the confidence interval for each interest parameter using [`get_points_in_intervals!`](@ref). Points are linearly spaced in the interval and have their optimised log-likelihood value recorded. Useful for plots that visualise the confidence interval or for predictions from univariate profiles. Default is `0`. 
 - `additional_width`: a `Real` number greater than or equal to zero. Specifies the additional width to optionally evaluate outside the confidence interval's width if `num_points_in_interval` is greater than 0 using [`get_points_in_intervals!`](@ref). Half of this additional width will be placed on either side of the confidence interval. If the additional width goes outside a bound on the parameter, only up to the bound will be considered. The spacing of points in the additional width will try to match the spacing of points evaluated inside the interval. Useful for plots that visualise the confidence interval as it shows the trend of the log-likelihood profile outside the interval range. Default is `0.0`.
@@ -382,7 +382,7 @@ Computes likelihood-based confidence interval profiles for the provided `θs_to_
 
 # Details
 
-By calling [`PlaceholderLikelihood.univariate_confidenceinterval`](@ref) this function finds each side of the confidence interval using a bracketing method for interest parameters in `θs_to_profile` (depending on the setting for `existing_profiles` if these profiles already exist). Nuisance parameters of each point in univariate interest parameter space are found by maximising the log-likelihood function given by `profile_type`. Updates `model.uni_profiles_df` for each successful profile and saves their results as a [`UnivariateConfidenceStruct`](@ref) in `model.uni_profiles_dict`, where the keys for the dictionary is the row number in `model.uni_profiles_df` of the corresponding profile. `model.uni_profiles_df.num_points` is the number of points currently saved within the confidence interval inclusive.
+By calling [`LikelihoodBasedProfileWiseAnalysis.univariate_confidenceinterval`](@ref) this function finds each side of the confidence interval using a bracketing method for interest parameters in `θs_to_profile` (depending on the setting for `existing_profiles` if these profiles already exist). Nuisance parameters of each point in univariate interest parameter space are found by maximising the log-likelihood function given by `profile_type`. Updates `model.uni_profiles_df` for each successful profile and saves their results as a [`UnivariateConfidenceStruct`](@ref) in `model.uni_profiles_dict`, where the keys for the dictionary is the row number in `model.uni_profiles_df` of the corresponding profile. `model.uni_profiles_df.num_points` is the number of points currently saved within the confidence interval inclusive.
 
 # Extended help
 
@@ -434,7 +434,7 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
         (dof ≥ 1) || throw(DomainError("dof must be greater than or equal to 1. Setting to 1 is recommended"))
 
         (!use_distributed && use_threads && timeit_debug_enabled()) &&
-            throw(ArgumentError("use_threads cannot be true when debug timings from TimerOutputs are enabled and use_distributed is false. Either set use_threads to false or disable debug timings using `PlaceholderLikelihood.TimerOutputs.disable_debug_timings(PlaceholderLikelihood)`"))
+            throw(ArgumentError("use_threads cannot be true when debug timings from TimerOutputs are enabled and use_distributed is false. Either set use_threads to false or disable debug timings using `LikelihoodBasedProfileWiseAnalysis.TimerOutputs.disable_debug_timings(LikelihoodBasedProfileWiseAnalysis)`"))
         return nothing
     end
 

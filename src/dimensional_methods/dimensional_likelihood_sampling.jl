@@ -109,7 +109,7 @@ end
         arguments_checked::Bool=false,
         channel::RemoteChannel=RemoteChannel(() -> Channel{Bool}(Inf)))
 
-Creates a uniform grid on interest parameter space `θindices` with `points_per_dimension` in each interest dimension, uniformly spaced between `lb[θindices]` and `ub[θindices]` if supplied or between the bounds contained in `model.core`. The grid is then passed to [`PlaceholderLikelihood.valid_points`](@ref) to determine the values of nuisance parameters that maximise log-likelihood function at each grid point. All grid points within the `confidence_level` log-likelihood threshold are then saved as a [`SampledConfidenceStruct`](@ref). Points are saved alongside a vector of their log-likelihood values. Log-likelihood values are standardised to 0.0 at the MLE point.
+Creates a uniform grid on interest parameter space `θindices` with `points_per_dimension` in each interest dimension, uniformly spaced between `lb[θindices]` and `ub[θindices]` if supplied or between the bounds contained in `model.core`. The grid is then passed to [`LikelihoodBasedProfileWiseAnalysis.valid_points`](@ref) to determine the values of nuisance parameters that maximise log-likelihood function at each grid point. All grid points within the `confidence_level` log-likelihood threshold are then saved as a [`SampledConfidenceStruct`](@ref). Points are saved alongside a vector of their log-likelihood values. Log-likelihood values are standardised to 0.0 at the MLE point.
 
 For the [`UniformGridSamples`](@ref) sample type.
 """
@@ -249,7 +249,7 @@ end
         arguments_checked::Bool=false,
         channel::RemoteChannel=RemoteChannel(() -> Channel{Bool}(num_points+1)))
 
-Creates a grid of `num_points` uniform random points on interest parameter space `θindices` sampled between `lb[θindices]` and `ub[θindices]` if supplied or between the bounds contained in `model.core`. The grid is then passed to [`PlaceholderLikelihood.valid_points`](@ref) to determine the values of nuisance parameters that maximise log-likelihood function at each grid point. All grid points within the `confidence_level` log-likelihood threshold are then saved as a [`SampledConfidenceStruct`](@ref). Points are saved alongside a vector of their log-likelihood values. Log-likelihood values are standardised to 0.0 at the MLE point.
+Creates a grid of `num_points` uniform random points on interest parameter space `θindices` sampled between `lb[θindices]` and `ub[θindices]` if supplied or between the bounds contained in `model.core`. The grid is then passed to [`LikelihoodBasedProfileWiseAnalysis.valid_points`](@ref) to determine the values of nuisance parameters that maximise log-likelihood function at each grid point. All grid points within the `confidence_level` log-likelihood threshold are then saved as a [`SampledConfidenceStruct`](@ref). Points are saved alongside a vector of their log-likelihood values. Log-likelihood values are standardised to 0.0 at the MLE point.
     
 For the [`UniformRandomSamples`](@ref) sample type.
 """
@@ -305,7 +305,7 @@ end
         arguments_checked::Bool=false,
         channel::RemoteChannel=RemoteChannel(() -> Channel{Bool}(num_points+1)))
 
-Creates a grid of `num_points` points on interest parameter space `θindices` using a Latin Hypercube sampling plan between `lb[θindices]` and `ub[θindices]` if supplied or between the bounds contained in `model.core`. The grid is then passed to [`PlaceholderLikelihood.valid_points`](@ref) to determine the values of nuisance parameters that maximise log-likelihood function at each grid point. All grid points within the `confidence_level` log-likelihood threshold are then saved as a [`SampledConfidenceStruct`](@ref). Points are saved alongside a vector of their log-likelihood values. Log-likelihood values are standardised to 0.0 at the MLE point.
+Creates a grid of `num_points` points on interest parameter space `θindices` using a Latin Hypercube sampling plan between `lb[θindices]` and `ub[θindices]` if supplied or between the bounds contained in `model.core`. The grid is then passed to [`LikelihoodBasedProfileWiseAnalysis.valid_points`](@ref) to determine the values of nuisance parameters that maximise log-likelihood function at each grid point. All grid points within the `confidence_level` log-likelihood threshold are then saved as a [`SampledConfidenceStruct`](@ref). Points are saved alongside a vector of their log-likelihood values. Log-likelihood values are standardised to 0.0 at the MLE point.
 
 For the [`LatinHypercubeSamples`](@ref) sample type.
 """
@@ -487,7 +487,7 @@ function dimensional_likelihood_samples!(model::LikelihoodModel,
         existing_profiles ∈ [:ignore, :overwrite] || throw(ArgumentError("existing_profiles can only take value :ignore or :overwrite"))
 
         (!use_distributed && use_threads && timeit_debug_enabled()) &&
-            throw(ArgumentError("use_threads cannot be true when debug timings from TimerOutputs are enabled and use_distributed is false. Either set use_threads to false or disable debug timings using `PlaceholderLikelihood.TimerOutputs.disable_debug_timings(PlaceholderLikelihood)`"))
+            throw(ArgumentError("use_threads cannot be true when debug timings from TimerOutputs are enabled and use_distributed is false. Either set use_threads to false or disable debug timings using `LikelihoodBasedProfileWiseAnalysis.TimerOutputs.disable_debug_timings(LikelihoodBasedProfileWiseAnalysis)`"))
 
         # error handle confidence_level
         get_target_loglikelihood(model, confidence_level, LogLikelihood(), 1)

@@ -5,7 +5,7 @@ Pages = ["predictions.md"]
 ```
 
 ```@docs
-PlaceholderLikelihood.generate_prediction
-PlaceholderLikelihood.generate_prediction_univariate
-PlaceholderLikelihood.generate_prediction_bivariate
+LikelihoodBasedProfileWiseAnalysis.generate_prediction
+LikelihoodBasedProfileWiseAnalysis.generate_prediction_univariate
+LikelihoodBasedProfileWiseAnalysis.generate_prediction_bivariate
 ```

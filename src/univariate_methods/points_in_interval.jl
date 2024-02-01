@@ -36,7 +36,7 @@ end
         additional_width::Real,
         use_threads::Bool)
 
-Method for getting `num_points_in_interval` points inside a confidence interval for parameter `θi`, directly called by [`PlaceholderLikelihood.univariate_confidenceinterval`](@ref) and called via it's other method for [`get_points_in_intervals!`](@ref). Adds `additional_width` outside of the confidence interval, so long as a parameter bound is not reached. If a bound is reached, up until the bound will be considered instead.
+Method for getting `num_points_in_interval` points inside a confidence interval for parameter `θi`, directly called by [`LikelihoodBasedProfileWiseAnalysis.univariate_confidenceinterval`](@ref) and called via it's other method for [`get_points_in_intervals!`](@ref). Adds `additional_width` outside of the confidence interval, so long as a parameter bound is not reached. If a bound is reached, up until the bound will be considered instead.
 """
 function get_points_in_interval_single_row(univariate_optimiser::Function, 
                                 model::LikelihoodModel,
@@ -186,7 +186,7 @@ end
         num_points_in_interval::Int; 
         <keyword arguments>)
 
-Evaluate and save `num_points_in_interval` linearly spaced points between the confidence intervals of existing univariate profiles that meet the requirements of the univariate method of [`PlaceholderLikelihood.desired_df_subset`](@ref) (see Keyword Arguments), as well as any additional width on the sides of the interval. Modifies `model` in place.
+Evaluate and save `num_points_in_interval` linearly spaced points between the confidence intervals of existing univariate profiles that meet the requirements of the univariate method of [`LikelihoodBasedProfileWiseAnalysis.desired_df_subset`](@ref) (see Keyword Arguments), as well as any additional width on the sides of the interval. Modifies `model` in place.
 
 # Arguments
 - `model`: a [`LikelihoodModel`](@ref) containing model information, saved profiles and predictions.
@@ -206,7 +206,7 @@ Evaluate and save `num_points_in_interval` linearly spaced points between the co
 
 # Details
 
-Interval points and their corresponding log-likelihood values are stored in the `interval_points` field of a [`UnivariateConfidenceStruct`](@ref). These are updated using [`PlaceholderLikelihood.update_uni_dict_internal!`](@ref). Nuisance parameters of each point in univariate interest parameter space are found by maximising the log-likelihood function given by the `profile_type` of the profile. 
+Interval points and their corresponding log-likelihood values are stored in the `interval_points` field of a [`UnivariateConfidenceStruct`](@ref). These are updated using [`LikelihoodBasedProfileWiseAnalysis.update_uni_dict_internal!`](@ref). Nuisance parameters of each point in univariate interest parameter space are found by maximising the log-likelihood function given by the `profile_type` of the profile. 
 
 If [`get_points_in_intervals!`](@ref) has already been used on a univariate profile, with the same values of `num_points_in_interval` and `additional_width`, it will not be recomputed for that profile.
 
@@ -243,7 +243,7 @@ function get_points_in_intervals!(model::LikelihoodModel,
         all(θub_nuisance .≥ model.core.θmle) || throw(DomainError("θub_nuisance must be greater than or equal to model.core.θmle"))
 
         (use_threads && timeit_debug_enabled()) &&
-            throw(ArgumentError("use_threads cannot be true when debug timings from TimerOutputs are enabled. Either set use_threads to false or disable debug timings using `PlaceholderLikelihood.TimerOutputs.disable_debug_timings(PlaceholderLikelihood)`"))
+            throw(ArgumentError("use_threads cannot be true when debug timings from TimerOutputs are enabled. Either set use_threads to false or disable debug timings using `LikelihoodBasedProfileWiseAnalysis.TimerOutputs.disable_debug_timings(LikelihoodBasedProfileWiseAnalysis)`"))
 
         (use_threads && nworkers() > 1) &&
             throw(ArgumentError("use_threads cannot be true when the number of workers for distributed computing is greater than 1 (`Distributed.nworkers()>1`). Either set use_threads to false or remove these workers using `Distributed.rmprocs(workers())`"))

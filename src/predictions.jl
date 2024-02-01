@@ -290,7 +290,7 @@ end
         proportion_to_keep::Real;
         <keyword arguments>)
 
-Evalute and save `proportion_to_keep` individual predictions and their extrema from existing univariate profiles that meet the requirements of the univariate method of [`PlaceholderLikelihood.desired_df_subset`](@ref) (see Keyword Arguments) at time points `t`. Modifies `model` in place.
+Evalute and save `proportion_to_keep` individual predictions and their extrema from existing univariate profiles that meet the requirements of the univariate method of [`LikelihoodBasedProfileWiseAnalysis.desired_df_subset`](@ref) (see Keyword Arguments) at time points `t`. Modifies `model` in place.
 
 # Arguments
 - `model`: a [`LikelihoodModel`](@ref) containing model information, saved profiles and predictions.
@@ -308,7 +308,7 @@ Evalute and save `proportion_to_keep` individual predictions and their extrema f
 
 # Details
 
-For each univariate profile that meets the requirements of [`PlaceholderLikelihood.desired_df_subset`](@ref), it uses [`PlaceholderLikelihood.generate_prediction`](@ref) to generates the predictions for every parameter point in the profiles. The extrema of these predictions are computed (these are approximate simultaneous confidence bands for the prediction mean). The extrema and `proportion_to_keep` of the individual predictions are saved as a [`PredictionStruct`](@ref) in `model.uni_predictions_dict`, where the keys for the dictionary is the row number in `model.uni_profiles_df` of the corresponding profile.
+For each univariate profile that meets the requirements of [`LikelihoodBasedProfileWiseAnalysis.desired_df_subset`](@ref), it uses [`LikelihoodBasedProfileWiseAnalysis.generate_prediction`](@ref) to generates the predictions for every parameter point in the profiles. The extrema of these predictions are computed (these are approximate simultaneous confidence bands for the prediction mean). The extrema and `proportion_to_keep` of the individual predictions are saved as a [`PredictionStruct`](@ref) in `model.uni_predictions_dict`, where the keys for the dictionary is the row number in `model.uni_profiles_df` of the corresponding profile.
 
 ## Distributed Computing Implementation
 
@@ -387,7 +387,7 @@ end
         proportion_to_keep::Real;
         <keyword arguments>)
 
-Evalute and save `proportion_to_keep` individual predictions and their extrema from existing bivariate profiles that meet the requirements of the bivariate method of [`PlaceholderLikelihood.desired_df_subset`](@ref) (see Keyword Arguments) at time points `t`. Modifies `model` in place.
+Evalute and save `proportion_to_keep` individual predictions and their extrema from existing bivariate profiles that meet the requirements of the bivariate method of [`LikelihoodBasedProfileWiseAnalysis.desired_df_subset`](@ref) (see Keyword Arguments) at time points `t`. Modifies `model` in place.
 
 # Arguments
 - `model`: a [`LikelihoodModel`](@ref) containing model information, saved profiles and predictions.
@@ -406,7 +406,7 @@ Evalute and save `proportion_to_keep` individual predictions and their extrema f
 
 # Details
 
-For each bivariate profile that meets the requirements of [`PlaceholderLikelihood.desired_df_subset`](@ref), it uses [`PlaceholderLikelihood.generate_prediction`](@ref) to generates the predictions for every parameter point in the profiles. The extrema of these predictions are computed (these are approximate simultaneous confidence bands for the prediction mean). The extrema and `proportion_to_keep` of the individual predictions are saved as a [`PredictionStruct`](@ref) in `model.biv_predictions_dict`, where the keys for the dictionary is the row number in `model.biv_profiles_df` of the corresponding profile.
+For each bivariate profile that meets the requirements of [`LikelihoodBasedProfileWiseAnalysis.desired_df_subset`](@ref), it uses [`LikelihoodBasedProfileWiseAnalysis.generate_prediction`](@ref) to generates the predictions for every parameter point in the profiles. The extrema of these predictions are computed (these are approximate simultaneous confidence bands for the prediction mean). The extrema and `proportion_to_keep` of the individual predictions are saved as a [`PredictionStruct`](@ref) in `model.biv_predictions_dict`, where the keys for the dictionary is the row number in `model.biv_profiles_df` of the corresponding profile.
 
 ## Distributed Computing Implementation
 
@@ -488,7 +488,7 @@ end
         proportion_to_keep::Real;
         <keyword arguments>)
 
-Evalute and save `proportion_to_keep` individual predictions and their extrema from existing dimensional samples that meet the requirements of the dimensional method of [`PlaceholderLikelihood.desired_df_subset`](@ref) (see Keyword Arguments) at time points `t`. Modifies `model` in place.
+Evalute and save `proportion_to_keep` individual predictions and their extrema from existing dimensional samples that meet the requirements of the dimensional method of [`LikelihoodBasedProfileWiseAnalysis.desired_df_subset`](@ref) (see Keyword Arguments) at time points `t`. Modifies `model` in place.
 
 # Arguments
 - `model`: a [`LikelihoodModel`](@ref) containing model information, saved profiles and predictions.
@@ -506,7 +506,7 @@ Evalute and save `proportion_to_keep` individual predictions and their extrema f
 
 # Details
 
-For each dimensional sample that meets the requirements of [`PlaceholderLikelihood.desired_df_subset`](@ref), it uses [`PlaceholderLikelihood.generate_prediction`](@ref) to generates the predictions for every parameter point in the samples. The extrema of these predictions are computed (these are approximate simultaneous confidence bands for the prediction mean). The extrema and `proportion_to_keep` of the individual predictions are saved as a [`PredictionStruct`](@ref) in `model.dim_predictions_dict`, where the keys for the dictionary is the row number in `model.dim_samples_df` of the corresponding sample.
+For each dimensional sample that meets the requirements of [`LikelihoodBasedProfileWiseAnalysis.desired_df_subset`](@ref), it uses [`LikelihoodBasedProfileWiseAnalysis.generate_prediction`](@ref) to generates the predictions for every parameter point in the samples. The extrema of these predictions are computed (these are approximate simultaneous confidence bands for the prediction mean). The extrema and `proportion_to_keep` of the individual predictions are saved as a [`PredictionStruct`](@ref) in `model.dim_predictions_dict`, where the keys for the dictionary is the row number in `model.dim_samples_df` of the corresponding sample.
 
 ## Distributed Computing Implementation
 

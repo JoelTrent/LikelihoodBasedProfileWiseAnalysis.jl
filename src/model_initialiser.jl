@@ -182,7 +182,7 @@ Initialises a [`LikelihoodModel`](@ref) struct, which contains all model informa
 - `θinitialguess`: a vector containing the initial guess for the values of each parameter. Used to find the MLE point.
 - `θlb`: a vector of lower bounds on parameters. 
 - `θub`: a vector of upper bounds on parameters. 
-- `θmagnitudes`: a vector of the relative magnitude of each parameter. If not provided, it will be estimated using the difference of `θlb` and `θub` with [`PlaceholderLikelihood.calculate_θmagnitudes`](@ref). Can be updated after initialisation using [`setmagnitudes!`](@ref).
+- `θmagnitudes`: a vector of the relative magnitude of each parameter. If not provided, it will be estimated using the difference of `θlb` and `θub` with [`LikelihoodBasedProfileWiseAnalysis.calculate_θmagnitudes`](@ref). Can be updated after initialisation using [`setmagnitudes!`](@ref).
 
 # Keyword Arguments
 - `optimizationsettings`: optimization settings used to optimize the log-likelihood function using [Optimization.jl](https://docs.sciml.ai/Optimization/stable/). Default is `default_OptimizationSettings()` (see [`default_OptimizationSettings`](@ref)).

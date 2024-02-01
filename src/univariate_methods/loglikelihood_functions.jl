@@ -4,7 +4,7 @@
 """
     univariateψ_ellipse_unbounded(ψ::Real, p::NamedTuple)
 
-Given an ellipse approximation of a log-likelihood function ([`PlaceholderLikelihood.ellipse_loglike`](@ref)) which is unbounded in parameter space, this function finds the values of the nuisance parameters ω that optimise the function at fixed values of the interest parameter ψ and returns the approximated log-likelihood value minus the confidence interval target threshold. The returned function value will be zero at the locations of the approximate confidence interval for ψ, which correspond to the locations found by [`PlaceholderLikelihood.analytic_ellipse_loglike_1D_soln`](@ref). Nuisance parameter values are stored in the NamedTuple `p`. 
+Given an ellipse approximation of a log-likelihood function ([`LikelihoodBasedProfileWiseAnalysis.ellipse_loglike`](@ref)) which is unbounded in parameter space, this function finds the values of the nuisance parameters ω that optimise the function at fixed values of the interest parameter ψ and returns the approximated log-likelihood value minus the confidence interval target threshold. The returned function value will be zero at the locations of the approximate confidence interval for ψ, which correspond to the locations found by [`LikelihoodBasedProfileWiseAnalysis.analytic_ellipse_loglike_1D_soln`](@ref). Nuisance parameter values are stored in the NamedTuple `p`. 
 """
 function univariateψ_ellipse_unbounded(ψ::Real, p::NamedTuple)
 

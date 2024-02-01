@@ -5,7 +5,7 @@ Models can be saved easily using [BSON.jl](https://github.com/JuliaIO/BSON.jl/tr
 The only thing to be careful of is ensuring that empty dataframe rows within the model are removed prior to saving using [`trim_model_dfs!`](@ref) (as they include undefined references). 
 
 ```julia
-using PlaceholderLikelihood
+using LikelihoodBasedProfileWiseAnalysis
 
 # function definitions and initialisation...
 model = 
@@ -18,7 +18,7 @@ using BSON: @save
 To load `model` in a new session/file:
 
 ```julia
-using PlaceholderLikelihood
+using LikelihoodBasedProfileWiseAnalysis
 using BSON: @load
 
 # function definitions....
@@ -29,7 +29,7 @@ using BSON: @load
 ## Potential Issues When Loading
 
 There are a couple of things to watch out for if the model saved had functions defined in `model.core`:
-- The log-likelihood function (and if defined, the prediction and error functions) must be defined with the same name and be available in the scope we are loading `model` in. Functions used within `model.core.optimizationsettings` must also be defined in the scope we are loading `model` in (i.e. by loading `PlaceholderLikelihood`).
+- The log-likelihood function (and if defined, the prediction and error functions) must be defined with the same name and be available in the scope we are loading `model` in. Functions used within `model.core.optimizationsettings` must also be defined in the scope we are loading `model` in (i.e. by loading `LikelihoodBasedProfileWiseAnalysis`).
 - The variable name `model` has when saved is the same name it needs to be loaded with.
 
 ## Fixing Issues
@@ -46,10 +46,10 @@ core_original = remove_functions_from_core!(model)
 model.core = core_original 
 ```
 
-If we want to add the log-likelihood function to this loaded version of the `model` we can use [`add_loglikelihood_function!`](@ref) after loading `PlaceholderLikelihood`.
+If we want to add the log-likelihood function to this loaded version of the `model` we can use [`add_loglikelihood_function!`](@ref) after loading `LikelihoodBasedProfileWiseAnalysis`.
 
 ```julia
-using PlaceholderLikelihood
+using LikelihoodBasedProfileWiseAnalysis
 # log-likelihood function function definition
 function loglikefunction(θ, data); return ... end
 add_loglikelihood_function!(model, loglikefunction)

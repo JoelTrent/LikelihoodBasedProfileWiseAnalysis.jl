@@ -24,7 +24,7 @@ end
 """
     variablemapping!(θ::Union{Vector, SubArray}, ω::Union{Vector, SubArray}, θranges::Tuple{T, T}, ωranges::Tuple{T, T}) where T <: UnitRange
 
-Modifies the array `θ` in place, mapping the variable values in the nuisance parameter array `ω` to their corresponding indexes in the parameter array `θ`, where the ranges are determined by [`PlaceholderLikelihood.variablemappingranges`](@ref). For one interest parameter.
+Modifies the array `θ` in place, mapping the variable values in the nuisance parameter array `ω` to their corresponding indexes in the parameter array `θ`, where the ranges are determined by [`LikelihoodBasedProfileWiseAnalysis.variablemappingranges`](@ref). For one interest parameter.
 """
 function variablemapping!(θ::Union{Vector, SubArray},
                             ω::Union{Vector, SubArray},
@@ -38,7 +38,7 @@ end
 """
     variablemapping!(θ::Union{Vector, SubArray}, ω::Union{Vector, SubArray}, θranges::Tuple{T,T,T}, ωranges::Tuple{T,T,T})) where T <: UnitRange
 
-Modifies the array `θ` in place, mapping the variable values in the nuisance parameter array `ω` to their corresponding indexes in the parameter array `θ`, where the ranges are determined by [`PlaceholderLikelihood.variablemappingranges`](@ref). For two interest parameters.
+Modifies the array `θ` in place, mapping the variable values in the nuisance parameter array `ω` to their corresponding indexes in the parameter array `θ`, where the ranges are determined by [`LikelihoodBasedProfileWiseAnalysis.variablemappingranges`](@ref). For two interest parameters.
 """
 function variablemapping!(θ::Union{Vector, SubArray},
                             ω::Union{Vector, SubArray},
@@ -76,7 +76,7 @@ end
 """
     init_nuisance_parameters(model::LikelihoodModel, index::Int)
 
-Initialises the lower and upper bounds, and initial guess for nuisance parameters using [`PlaceholderLikelihood.boundsmapping!`](@ref) and ranges that map variables between nuisance parameter and parameter space using [`PlaceholderLikelihood.variablemappingranges`](@ref), given an interest parameter at `index`. The initial guess for nuisance parameters is their corresponding value at the maximum likelihood estimate (`model.core.θmle`).
+Initialises the lower and upper bounds, and initial guess for nuisance parameters using [`LikelihoodBasedProfileWiseAnalysis.boundsmapping!`](@ref) and ranges that map variables between nuisance parameter and parameter space using [`LikelihoodBasedProfileWiseAnalysis.variablemappingranges`](@ref), given an interest parameter at `index`. The initial guess for nuisance parameters is their corresponding value at the maximum likelihood estimate (`model.core.θmle`).
 """
 function init_nuisance_parameters(model::LikelihoodModel, index::Int, θlb_nuisance::AbstractVector{<:Float64}, θub_nuisance::AbstractVector{<:Float64})
     newLb     = zeros(model.core.num_pars-1) 
@@ -95,7 +95,7 @@ end
 """
     init_nuisance_parameters(model::LikelihoodModel, index::Int)
 
-Initialises the lower and upper bounds, and initial guess for nuisance parameters using [`PlaceholderLikelihood.boundsmapping!`](@ref) and ranges that map variables between nuisance parameter and parameter space using [`PlaceholderLikelihood.variablemappingranges`](@ref), given interest parameters at `index1` and `index2` where `index1 < index2`. The initial guess for nuisance parameters is their corresponding value at the maximum likelihood estimate (`model.core.θmle`).
+Initialises the lower and upper bounds, and initial guess for nuisance parameters using [`LikelihoodBasedProfileWiseAnalysis.boundsmapping!`](@ref) and ranges that map variables between nuisance parameter and parameter space using [`LikelihoodBasedProfileWiseAnalysis.variablemappingranges`](@ref), given interest parameters at `index1` and `index2` where `index1 < index2`. The initial guess for nuisance parameters is their corresponding value at the maximum likelihood estimate (`model.core.θmle`).
 """
 function init_nuisance_parameters(model::LikelihoodModel, index1::Int, index2::Int, θlb_nuisance::AbstractVector{<:Float64}, θub_nuisance::AbstractVector{<:Float64})
     newLb     = zeros(model.core.num_pars - 2)

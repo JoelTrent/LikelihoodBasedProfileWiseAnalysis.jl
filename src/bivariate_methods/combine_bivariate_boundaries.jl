@@ -52,7 +52,7 @@ end
     combine_bivariate_boundaries!(model::LikelihoodModel;
         <keyword arguments>)
 
-Combines the `confidence_level` bivariate boundaries at `dof` of `profile_type` found using `methods` into a single [`CombinedBivariateMethod`](@ref) boundary for each set of interest parameters, modifying `model` destructively in place. Rows of `model.biv_profiles_df` to combine are found using the bivariate method of [`PlaceholderLikelihood.desired_df_subset`](@ref). Dictionary entries and dataframe rows of boundaries that have beeen combined will be deleted and the datastructures will be rebuilt according to the new row indices of `model.biv_profiles_df`. 
+Combines the `confidence_level` bivariate boundaries at `dof` of `profile_type` found using `methods` into a single [`CombinedBivariateMethod`](@ref) boundary for each set of interest parameters, modifying `model` destructively in place. Rows of `model.biv_profiles_df` to combine are found using the bivariate method of [`LikelihoodBasedProfileWiseAnalysis.desired_df_subset`](@ref). Dictionary entries and dataframe rows of boundaries that have beeen combined will be deleted and the datastructures will be rebuilt according to the new row indices of `model.biv_profiles_df`. 
 
 # Arguments
 - `model`: a [`LikelihoodModel`](@ref) containing model information, saved profiles and predictions.

@@ -175,7 +175,7 @@ end
 
 Implementation of finding pairs of points that bracket the bivariate confidence boundary for [`RadialRandomMethod`](@ref).
 
-Distorts uniformly spaced anticlockwise angles on a circle using [`PlaceholderLikelihood.find_m_spaced_radialdirections`](@ref) to angles on an ellipse representative of the relative magnitude of each parameter. If the magnitude of a parameter is a NaN value (i.e. either bound is Inf), then the relative magnitude is set to 1.0, as no information is known about its magnitude.
+Distorts uniformly spaced anticlockwise angles on a circle using [`LikelihoodBasedProfileWiseAnalysis.find_m_spaced_radialdirections`](@ref) to angles on an ellipse representative of the relative magnitude of each parameter. If the magnitude of a parameter is a NaN value (i.e. either bound is Inf), then the relative magnitude is set to 1.0, as no information is known about its magnitude.
 """
 function findNpointpairs_radialrandom!(q::NamedTuple, 
                                     bivariate_optimiser::Function, 

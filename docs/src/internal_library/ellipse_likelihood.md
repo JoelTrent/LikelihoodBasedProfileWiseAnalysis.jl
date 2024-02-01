@@ -5,15 +5,15 @@ Pages = ["ellipse_likelihood.md"]
 ```
 
 ```@docs
-PlaceholderLikelihood.getMLE_hessian_and_covariance
-PlaceholderLikelihood.test_hessian_identifiability
+LikelihoodBasedProfileWiseAnalysis.getMLE_hessian_and_covariance
+LikelihoodBasedProfileWiseAnalysis.test_hessian_identifiability
 ```
 
 ## Likelihood
 
 ```@docs
-PlaceholderLikelihood.analytic_ellipse_loglike
-PlaceholderLikelihood.analytic_ellipse_loglike_1D_soln
-PlaceholderLikelihood.ellipse_loglike
-PlaceholderLikelihood.ellipse_like
+LikelihoodBasedProfileWiseAnalysis.analytic_ellipse_loglike
+LikelihoodBasedProfileWiseAnalysis.analytic_ellipse_loglike_1D_soln
+LikelihoodBasedProfileWiseAnalysis.ellipse_loglike
+LikelihoodBasedProfileWiseAnalysis.ellipse_like
 ```

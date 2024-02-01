@@ -304,7 +304,7 @@ Finds `num_points` `profile_type` boundary points at a specified `confidence_lev
 
 # Keyword Arguments
 - `confidence_level`: a number ∈ (0.0, 1.0) for the confidence level on which to find the `profile_type` boundary. Default is `0.95` (95%).
-- `dof`: an integer ∈ [2, `model.core.num_pars`] for the degrees of freedom used to define the asymptotic threshold ([`PlaceholderLikelihood.get_target_loglikelihood`](@ref)) which defines the boundary of the bivariate profile. For bivariate profiles that are considered individually, it should be set to `2`. For profiles that are considered simultaneously, it should be set to `model.core.num_pars`. Default is `2`. Setting it to `model.core.num_pars` should be reasonable when making predictions for well-identified models with `<10` parameters. Note: values other than `2` and `model.core.num_pars` may not have a clear statistical interpretation.
+- `dof`: an integer ∈ [2, `model.core.num_pars`] for the degrees of freedom used to define the asymptotic threshold ([`LikelihoodBasedProfileWiseAnalysis.get_target_loglikelihood`](@ref)) which defines the boundary of the bivariate profile. For bivariate profiles that are considered individually, it should be set to `2`. For profiles that are considered simultaneously, it should be set to `model.core.num_pars`. Default is `2`. Setting it to `model.core.num_pars` should be reasonable when making predictions for well-identified models with `<10` parameters. Note: values other than `2` and `model.core.num_pars` may not have a clear statistical interpretation.
 - `profile_type`: whether to use the true log-likelihood function or an ellipse approximation of the log-likelihood function centred at the MLE (with optional use of parameter bounds). Available profile types are [`LogLikelihood`](@ref), [`EllipseApprox`](@ref) and [`EllipseApproxAnalytical`](@ref). Default is `LogLikelihood()` ([`LogLikelihood`](@ref)).
 - `method`: a method of type [`AbstractBivariateMethod`](@ref). For a list of available methods use `bivariate_methods()` ([`bivariate_methods`](@ref)). Default is `RadialRandomMethod(5)` ([`RadialRandomMethod`](@ref)).
 - `θlb_nuisance`: a vector of lower bounds on nuisance parameters, require `θlb_nuisance .≤ model.core.θmle`. Default is `model.core.θlb`. 
@@ -329,7 +329,7 @@ Finds `num_points` `profile_type` boundary points at a specified `confidence_lev
 
 # Details
 
-Using [`PlaceholderLikelihood.bivariate_confidenceprofile`](@ref) this function calls the algorithm/method specified by `method` for each interest parameter combination in `θcombinations` (depending on the setting for `existing_profiles` and `num_points` if these profiles already exist). Nuisance parameters of each point in bivariate interest parameter space are found by maximising the log-likelihood function given by `profile_type`. Updates `model.biv_profiles_df` for each successful profile and saves their results as a [`BivariateConfidenceStruct`](@ref) in `model.biv_profiles_dict`, where the keys for the dictionary is the row number in `model.biv_profiles_df` of the corresponding profile. `model.biv_profiles_df.num_points` is the number of points found on the bivariate boundary (it does not include the number of saved internal points).
+Using [`LikelihoodBasedProfileWiseAnalysis.bivariate_confidenceprofile`](@ref) this function calls the algorithm/method specified by `method` for each interest parameter combination in `θcombinations` (depending on the setting for `existing_profiles` and `num_points` if these profiles already exist). Nuisance parameters of each point in bivariate interest parameter space are found by maximising the log-likelihood function given by `profile_type`. Updates `model.biv_profiles_df` for each successful profile and saves their results as a [`BivariateConfidenceStruct`](@ref) in `model.biv_profiles_dict`, where the keys for the dictionary is the row number in `model.biv_profiles_df` of the corresponding profile. `model.biv_profiles_df.num_points` is the number of points found on the bivariate boundary (it does not include the number of saved internal points).
 
 # Extended help
 
@@ -388,7 +388,7 @@ function bivariate_confidenceprofiles!(model::LikelihoodModel,
         (dof ≥ 2) || throw(DomainError("dof must be greater than or equal to 2. Setting to 2 is recommended"))
 
         (!use_distributed && use_threads && timeit_debug_enabled()) &&
-            throw(ArgumentError("use_threads cannot be true when debug timings from TimerOutputs are enabled and use_distributed is false. Either set use_threads to false or disable debug timings using `PlaceholderLikelihood.TimerOutputs.disable_debug_timings(PlaceholderLikelihood)`"))
+            throw(ArgumentError("use_threads cannot be true when debug timings from TimerOutputs are enabled and use_distributed is false. Either set use_threads to false or disable debug timings using `LikelihoodBasedProfileWiseAnalysis.TimerOutputs.disable_debug_timings(LikelihoodBasedProfileWiseAnalysis)`"))
         return nothing
     end
     

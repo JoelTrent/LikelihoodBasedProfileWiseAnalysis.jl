@@ -11,8 +11,8 @@ using Random, Distributions
 using DataFrames
 using Combinatorics
 using TimerOutputs
-using PlaceholderLikelihood
-using PlaceholderLikelihood.TimerOutputs: TimerOutputs as TO
+using LikelihoodBasedProfileWiseAnalysis
+using LikelihoodBasedProfileWiseAnalysis.TimerOutputs: TimerOutputs as TO
 
 @everywhere function solvedmodel(t, θ)
     return (θ[2]*θ[3]) ./ ((θ[2]-θ[3]) .* (exp.(-θ[1] .* t)) .+ θ[3])
@@ -71,8 +71,8 @@ model = initialise_LikelihoodModel(loglhood, data, θnames, θG, lb, ub, par_mag
 To time the number of likelihood and optimisation function evaluations required to find each 95% parameter confidence interval and find 20 points within the interval we use:
 
 ```julia
-TO.enable_debug_timings(PlaceholderLikelihood)
-TO.reset_timer!(PlaceholderLikelihood.timer)
+TO.enable_debug_timings(LikelihoodBasedProfileWiseAnalysis)
+TO.reset_timer!(LikelihoodBasedProfileWiseAnalysis.timer)
 timer_df = DataFrame(parameter=zeros(Int, model.core.num_pars), 
                         optimisation_calls=zeros(Int, model.core.num_pars),
                         likelihood_calls=zeros(Int, model.core.num_pars))
@@ -83,27 +83,27 @@ opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-
 for i in 1:model.core.num_pars
     univariate_confidenceintervals!(model, [i], num_points_in_interval=20, optimizationsettings=opt_settings)
     timer_df[i, :] .= i, TO.ncalls(
-                PlaceholderLikelihood.timer["Univariate confidence interval"]["Likelihood nuisance parameter optimisation"]),
+                LikelihoodBasedProfileWiseAnalysis.timer["Univariate confidence interval"]["Likelihood nuisance parameter optimisation"]),
             TO.ncalls(
-                PlaceholderLikelihood.timer["Univariate confidence interval"]["Likelihood nuisance parameter optimisation"]["Likelihood evaluation"])
+                LikelihoodBasedProfileWiseAnalysis.timer["Univariate confidence interval"]["Likelihood nuisance parameter optimisation"]["Likelihood evaluation"])
 
-    TO.reset_timer!(PlaceholderLikelihood.timer)
+    TO.reset_timer!(LikelihoodBasedProfileWiseAnalysis.timer)
 end
 
-TO.disable_debug_timings(PlaceholderLikelihood)
+TO.disable_debug_timings(LikelihoodBasedProfileWiseAnalysis)
 ```
 
 You can also print the timer results, which can be useful for identifying the strings that represent the different sections timed (e.g. `"Univariate confidence interval"`) as well as providing the amount of time taken.
 
 ```julia
-print_timer(PlaceholderLikelihood.timer)
+print_timer(LikelihoodBasedProfileWiseAnalysis.timer)
 ```
 
 Similarly, if we wish to use asymptotic confidence intervals as the starting guess for the parameter confidence intervals we can first evaluate them using the [`EllipseApproxAnalytical`](@ref) profile type and set the keyword argument `use_ellipse_approx_analytical_start` to true.
 
 ```julia
-TO.enable_debug_timings(PlaceholderLikelihood)
-TO.reset_timer!(PlaceholderLikelihood.timer)
+TO.enable_debug_timings(LikelihoodBasedProfileWiseAnalysis)
+TO.reset_timer!(LikelihoodBasedProfileWiseAnalysis.timer)
 timer_df = DataFrame(parameter=zeros(Int, model.core.num_pars), 
                         optimisation_calls=zeros(Int, model.core.num_pars),
                         likelihood_calls=zeros(Int, model.core.num_pars))
@@ -113,19 +113,19 @@ opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-
 
 univariate_confidenceintervals!(model, profile_type=EllipseApproxAnalytical())
 for i in 1:model.core.num_pars
-    TO.reset_timer!(PlaceholderLikelihood.timer)
+    TO.reset_timer!(LikelihoodBasedProfileWiseAnalysis.timer)
 
     univariate_confidenceintervals!(model, [i], num_points_in_interval=20, 
         use_ellipse_approx_analytical_start=true, optimizationsettings=opt_settings)
     timer_df[i, :] .= i, TO.ncalls(
-                PlaceholderLikelihood.timer["Univariate confidence interval"]["Likelihood nuisance parameter optimisation"]),
+                LikelihoodBasedProfileWiseAnalysis.timer["Univariate confidence interval"]["Likelihood nuisance parameter optimisation"]),
             TO.ncalls(
-                PlaceholderLikelihood.timer["Univariate confidence interval"]["Likelihood nuisance parameter optimisation"]["Likelihood evaluation"])
+                LikelihoodBasedProfileWiseAnalysis.timer["Univariate confidence interval"]["Likelihood nuisance parameter optimisation"]["Likelihood evaluation"])
 
-    TO.reset_timer!(PlaceholderLikelihood.timer)
+    TO.reset_timer!(LikelihoodBasedProfileWiseAnalysis.timer)
 end
 
-TO.disable_debug_timings(PlaceholderLikelihood)
+TO.disable_debug_timings(LikelihoodBasedProfileWiseAnalysis)
 ```
 
 If we wish to evaluate the average (mean) number of function evaluations required during a simulation (such as our coverage simulations) we need to define additional functions. For comparison to coverage simulations it is recommended that a random seed is set prior to training data generation here and prior to calling e.g. [`check_univariate_parameter_coverage`](@ref). This ensures that the training data used is consistent between the two simulations. 
@@ -149,15 +149,15 @@ function record_CI_LL_evaluations!(N)
 
         opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
         for i in 1:model.core.num_pars
-            TO.reset_timer!(PlaceholderLikelihood.timer)
+            TO.reset_timer!(LikelihoodBasedProfileWiseAnalysis.timer)
 
             univariate_confidenceintervals!(model, [i], existing_profiles=:overwrite, optimizationsettings=opt_settings)
 
             total_opt_calls[i] += TO.ncalls(
-                PlaceholderLikelihood.timer["Univariate confidence interval"]["Likelihood nuisance parameter optimisation"])
+                LikelihoodBasedProfileWiseAnalysis.timer["Univariate confidence interval"]["Likelihood nuisance parameter optimisation"])
 
             total_ll_calls[i] += TO.ncalls(
-                PlaceholderLikelihood.timer["Univariate confidence interval"]["Likelihood nuisance parameter optimisation"]["Likelihood evaluation"])
+                LikelihoodBasedProfileWiseAnalysis.timer["Univariate confidence interval"]["Likelihood nuisance parameter optimisation"]["Likelihood evaluation"])
         end
     end
     
@@ -172,12 +172,12 @@ function record_CI_LL_evaluations!(N)
     return timer_df
 end
 
-TO.enable_debug_timings(PlaceholderLikelihood)
-TO.reset_timer!(PlaceholderLikelihood.timer)
+TO.enable_debug_timings(LikelihoodBasedProfileWiseAnalysis)
+TO.reset_timer!(LikelihoodBasedProfileWiseAnalysis.timer)
 
 timer_df = record_CI_LL_evaluations!(N)
 
-TO.disable_debug_timings(PlaceholderLikelihood)
+TO.disable_debug_timings(LikelihoodBasedProfileWiseAnalysis)
 ```
 
 ### Bivariate Profile Timing
@@ -185,8 +185,8 @@ TO.disable_debug_timings(PlaceholderLikelihood)
 We can do the same with bivariate profiles by modifying the string used to access the relevant timer section.
 
 ```julia
-TO.enable_debug_timings(PlaceholderLikelihood)
-TO.reset_timer!(PlaceholderLikelihood.timer)
+TO.enable_debug_timings(LikelihoodBasedProfileWiseAnalysis)
+TO.reset_timer!(LikelihoodBasedProfileWiseAnalysis.timer)
 
 len = length(combinations(1:model.core.num_pars, 2))
 timer_df = DataFrame(parameter=zeros(Int, len), 
@@ -198,14 +198,14 @@ opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-
 for (i, pars) in enumerate(collect(combinations(1:model.core.num_pars, 2)))
     bivariate_confidenceprofiles!(model, [pars], 50, method=IterativeBoundaryMethod(20, 5, 5, 0.15, 1.0, use_ellipse=true), optimizationsettings=opt_settings)
     timer_df[i, :] .= i, TO.ncalls(
-                PlaceholderLikelihood.timer["Bivariate confidence boundary"]["Likelihood nuisance parameter optimisation"]),
+                LikelihoodBasedProfileWiseAnalysis.timer["Bivariate confidence boundary"]["Likelihood nuisance parameter optimisation"]),
             TO.ncalls(
-                PlaceholderLikelihood.timer["Bivariate confidence boundary"]["Likelihood nuisance parameter optimisation"]["Likelihood evaluation"])
+                LikelihoodBasedProfileWiseAnalysis.timer["Bivariate confidence boundary"]["Likelihood nuisance parameter optimisation"]["Likelihood evaluation"])
 
-    TO.reset_timer!(PlaceholderLikelihood.timer)
+    TO.reset_timer!(LikelihoodBasedProfileWiseAnalysis.timer)
 end
 
-TO.disable_debug_timings(PlaceholderLikelihood)
+TO.disable_debug_timings(LikelihoodBasedProfileWiseAnalysis)
 ```
 
 ### Dimensional Samples
@@ -213,8 +213,8 @@ TO.disable_debug_timings(PlaceholderLikelihood)
 And similarly for dimensional samples. Note, these are just sampled versions of profiles with interest parameter dimension ``\in [1, |\theta|]`` where ``|\theta|`` is the total number of model parameters, `model.core.num_pars`. For example, for bivariate dimensional samples (2D):
 
 ```julia
-TO.enable_debug_timings(PlaceholderLikelihood)
-TO.reset_timer!(PlaceholderLikelihood.timer)
+TO.enable_debug_timings(LikelihoodBasedProfileWiseAnalysis)
+TO.reset_timer!(LikelihoodBasedProfileWiseAnalysis.timer)
 
 len = length(combinations(1:model.core.num_pars, 2))
 timer_df = DataFrame(parameter=zeros(Int, len), 
@@ -226,12 +226,12 @@ opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-
 for (i, pars) in enumerate(collect(combinations(1:model.core.num_pars, 2)))
     dimensional_likelihood_samples!(model, [pars], 1000, optimizationsettings=opt_settings)
     timer_df[i, :] .= i, TO.ncalls(
-                PlaceholderLikelihood.timer["Dimensional likelihood sample"]["Likelihood nuisance parameter optimisation"]),
+                LikelihoodBasedProfileWiseAnalysis.timer["Dimensional likelihood sample"]["Likelihood nuisance parameter optimisation"]),
             TO.ncalls(
-                PlaceholderLikelihood.timer["Dimensional likelihood sample"]["Likelihood nuisance parameter optimisation"]["Likelihood evaluation"])
+                LikelihoodBasedProfileWiseAnalysis.timer["Dimensional likelihood sample"]["Likelihood nuisance parameter optimisation"]["Likelihood evaluation"])
 
-    TO.reset_timer!(PlaceholderLikelihood.timer)
+    TO.reset_timer!(LikelihoodBasedProfileWiseAnalysis.timer)
 end
 
-TO.disable_debug_timings(PlaceholderLikelihood)
+TO.disable_debug_timings(LikelihoodBasedProfileWiseAnalysis)
 ```

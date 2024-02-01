@@ -37,7 +37,7 @@ struct ConvexHullMethod <: AbstractBivariateHullMethod end
 """
     ConcaveHullMethod()
 
-Constructs a 2D polygon hull to sample internal points from by applying a heuristic implementation of a heuristic concave hull algorithm from [ConcaveHull.jl](https://github.com/lstagner/ConcaveHull.jl) on the collection of points given by both the boundary and saved internal points (see [`PlaceholderLikelihood.bivariate_concave_hull`](@ref)). 
+Constructs a 2D polygon hull to sample internal points from by applying a heuristic implementation of a heuristic concave hull algorithm from [ConcaveHull.jl](https://github.com/lstagner/ConcaveHull.jl) on the collection of points given by both the boundary and saved internal points (see [`LikelihoodBasedProfileWiseAnalysis.bivariate_concave_hull`](@ref)). 
 
 # Details 
 
@@ -60,7 +60,7 @@ struct ConcaveHullMethod <: AbstractBivariateHullMethod end
 """
     MPPHullMethod()
 
-Constructs a 2D polygon hull to sample internal points from by applying a minimum perimeter polygon (MPP) traveling salesman problem algorithm to the boundary points (see [`PlaceholderLikelihood.minimum_perimeter_polygon!`](@ref)). 
+Constructs a 2D polygon hull to sample internal points from by applying a minimum perimeter polygon (MPP) traveling salesman problem algorithm to the boundary points (see [`LikelihoodBasedProfileWiseAnalysis.minimum_perimeter_polygon!`](@ref)). 
 
 # Details
 

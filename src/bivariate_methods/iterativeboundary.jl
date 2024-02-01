@@ -118,7 +118,7 @@ end
 """
     internal_angle_from_pi(index::Int, boundary, edge_clock, edge_anti, relative_magnitude)
 
-Alternate method of [`PlaceholderLikelihood.internal_angle_from_pi`](@ref) for the internal angle at only one vertex.
+Alternate method of [`LikelihoodBasedProfileWiseAnalysis.internal_angle_from_pi`](@ref) for the internal angle at only one vertex.
 """
 function internal_angle_from_pi(index::Int, boundary, edge_clock, edge_anti, relative_magnitude)
     if index == edge_clock[index] && index == edge_anti[index]
@@ -149,7 +149,7 @@ end
 
 Finds the initial boundary of [`IterativeBoundaryMethod`](@ref), containing `initial_num_points`, returning it and initialised parameter values. 
 
-If `initial_num_points` is equal to `num_points` then the desired number of boundary points have been found. If `use_ellipse = true` the boundary will be equivalent to the boundary found by [`RadialMLEMethod`](@ref) with the same parameter settings - it's value informs the method of [`PlaceholderLikelihood.findNpointpairs_radialMLE!`](@ref) used.
+If `initial_num_points` is equal to `num_points` then the desired number of boundary points have been found. If `use_ellipse = true` the boundary will be equivalent to the boundary found by [`RadialMLEMethod`](@ref) with the same parameter settings - it's value informs the method of [`LikelihoodBasedProfileWiseAnalysis.findNpointpairs_radialMLE!`](@ref) used.
 """
 function iterativeboundary_init(bivariate_optimiser::Function, 
                                 model::LikelihoodModel, 

@@ -64,7 +64,7 @@ end
         target_ll::Float64, 
         sample_type::AbstractSampleType)
 
-Method which unpacks a `sampled_struct` into the format required to call the other method of [`PlaceholderLikelihood.bivariate_concave_hull`](@ref).
+Method which unpacks a `sampled_struct` into the format required to call the other method of [`LikelihoodBasedProfileWiseAnalysis.bivariate_concave_hull`](@ref).
 """
 function bivariate_concave_hull(sampled_struct::SampledConfidenceStruct, 
                                 θindices::Vector{Int},

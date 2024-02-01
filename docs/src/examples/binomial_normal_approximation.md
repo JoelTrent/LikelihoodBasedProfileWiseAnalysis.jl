@@ -17,7 +17,7 @@ The true parameter values are ``\theta =(100, 0.2)``. The corresponding lower an
 
 ```julia
 using Random, Distributions
-using PlaceholderLikelihood
+using LikelihoodBasedProfileWiseAnalysis
 ```
 
 ## Model and Likelihood Function Definition

@@ -7,6 +7,7 @@ using Reexport
 @reexport using OptimizationNLopt, ADTypes
 
 using Roots
+# global find_zero_algo = Roots.Brent()
 using ForwardDiff, LinearAlgebra, LogExpFunctions
 using EllipseSampling
 using LatinHypercubeSampling

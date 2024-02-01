@@ -24,7 +24,7 @@ Here we add three worker processes, which matches the number of univariate and b
 using Distributed
 if nprocs()==1; addprocs(3, env=["JULIA_NUM_THREADS"=>"1"]) end
 @everywhere using Random, Distributions
-@everywhere using PlaceholderLikelihood
+@everywhere using LikelihoodBasedProfileWiseAnalysis
 using Combinatorics
 ```
 

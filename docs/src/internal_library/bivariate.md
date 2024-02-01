@@ -7,38 +7,38 @@ Pages = ["bivariate.md"]
 ## Likelihood Optimisation
 
 ```@docs
-PlaceholderLikelihood.bivariateψ!
-PlaceholderLikelihood.bivariateψ_vectorsearch!
-PlaceholderLikelihood.bivariateψ_continuation!
-PlaceholderLikelihood.bivariateψ_ellipse_analytical
-PlaceholderLikelihood.bivariateψ_ellipse_analytical_vectorsearch
-PlaceholderLikelihood.bivariateψ_ellipse_analytical_continuation
-PlaceholderLikelihood.bivariateψ_ellipse_unbounded
+LikelihoodBasedProfileWiseAnalysis.bivariateψ!
+LikelihoodBasedProfileWiseAnalysis.bivariateψ_vectorsearch!
+LikelihoodBasedProfileWiseAnalysis.bivariateψ_continuation!
+LikelihoodBasedProfileWiseAnalysis.bivariateψ_ellipse_analytical
+LikelihoodBasedProfileWiseAnalysis.bivariateψ_ellipse_analytical_vectorsearch
+LikelihoodBasedProfileWiseAnalysis.bivariateψ_ellipse_analytical_continuation
+LikelihoodBasedProfileWiseAnalysis.bivariateψ_ellipse_unbounded
 ```
 
 ## Finding Points on 2D bounds
 
 ```@docs
-PlaceholderLikelihood.findpointonbounds
+LikelihoodBasedProfileWiseAnalysis.findpointonbounds
 ```
 
 ## Main Confidence Boundary Logic 
 
-Note: [`AnalyticalEllipseMethod`](@ref) is calculated using [`generate_N_clustered_points`](https://joeltrent.github.io/EllipseSampling.jl/stable/user_interface/#EllipseSampling.generate_N_clustered_points) from [EllipseSampling.jl](https://github.com/JoelTrent/EllipseSampling.jl) within [`PlaceholderLikelihood.bivariate_confidenceprofile`](@ref).
+Note: [`AnalyticalEllipseMethod`](@ref) is calculated using [`generate_N_clustered_points`](https://joeltrent.github.io/EllipseSampling.jl/stable/user_interface/#EllipseSampling.generate_N_clustered_points) from [EllipseSampling.jl](https://github.com/JoelTrent/EllipseSampling.jl) within [`LikelihoodBasedProfileWiseAnalysis.bivariate_confidenceprofile`](@ref).
 
 ```@docs
-PlaceholderLikelihood.add_biv_profiles_rows!
-PlaceholderLikelihood.set_biv_profiles_row!
-PlaceholderLikelihood.get_bivariate_opt_func
-PlaceholderLikelihood.get_ωs_bivariate_ellipse_analytical!
-PlaceholderLikelihood.bivariate_confidenceprofile
+LikelihoodBasedProfileWiseAnalysis.add_biv_profiles_rows!
+LikelihoodBasedProfileWiseAnalysis.set_biv_profiles_row!
+LikelihoodBasedProfileWiseAnalysis.get_bivariate_opt_func
+LikelihoodBasedProfileWiseAnalysis.get_ωs_bivariate_ellipse_analytical!
+LikelihoodBasedProfileWiseAnalysis.bivariate_confidenceprofile
 Base.merge(::BivariateConfidenceStruct, ::BivariateConfidenceStruct)
 ```
 
 ## Minimum Perimeter Polygon
 
 ```@docs
-PlaceholderLikelihood.minimum_perimeter_polygon!
+LikelihoodBasedProfileWiseAnalysis.minimum_perimeter_polygon!
 ```
 
 ## Iterative Boundary Method
@@ -46,16 +46,16 @@ PlaceholderLikelihood.minimum_perimeter_polygon!
 For [`IterativeBoundaryMethod`](@ref).
 
 ```@docs
-PlaceholderLikelihood.findNpointpairs_radialMLE!
-PlaceholderLikelihood.edge_length
-PlaceholderLikelihood.internal_angle_from_pi!
-PlaceholderLikelihood.internal_angle_from_pi
-PlaceholderLikelihood.iterativeboundary_init
-PlaceholderLikelihood.newboundarypoint!
-PlaceholderLikelihood.heapupdates_success!
-PlaceholderLikelihood.heapupdates_failure!
-PlaceholderLikelihood.polygon_break_and_rejoin!
-PlaceholderLikelihood.bivariate_confidenceprofile_iterativeboundary
+LikelihoodBasedProfileWiseAnalysis.findNpointpairs_radialMLE!
+LikelihoodBasedProfileWiseAnalysis.edge_length
+LikelihoodBasedProfileWiseAnalysis.internal_angle_from_pi!
+LikelihoodBasedProfileWiseAnalysis.internal_angle_from_pi
+LikelihoodBasedProfileWiseAnalysis.iterativeboundary_init
+LikelihoodBasedProfileWiseAnalysis.newboundarypoint!
+LikelihoodBasedProfileWiseAnalysis.heapupdates_success!
+LikelihoodBasedProfileWiseAnalysis.heapupdates_failure!
+LikelihoodBasedProfileWiseAnalysis.polygon_break_and_rejoin!
+LikelihoodBasedProfileWiseAnalysis.bivariate_confidenceprofile_iterativeboundary
 ```
 
 ## Vectorsearch Methods
@@ -63,11 +63,11 @@ PlaceholderLikelihood.bivariate_confidenceprofile_iterativeboundary
 For the [`RadialRandomMethod`](@ref), [`RadialMLEMethod`](@ref) and [`SimultaneousMethod`](@ref).
 
 ```@docs
-PlaceholderLikelihood.generatepoint
-PlaceholderLikelihood.findNpointpairs_simultaneous!
-PlaceholderLikelihood.find_m_spaced_radialdirections
-PlaceholderLikelihood.findNpointpairs_radialrandom!
-PlaceholderLikelihood.bivariate_confidenceprofile_vectorsearch
+LikelihoodBasedProfileWiseAnalysis.generatepoint
+LikelihoodBasedProfileWiseAnalysis.findNpointpairs_simultaneous!
+LikelihoodBasedProfileWiseAnalysis.find_m_spaced_radialdirections
+LikelihoodBasedProfileWiseAnalysis.findNpointpairs_radialrandom!
+LikelihoodBasedProfileWiseAnalysis.bivariate_confidenceprofile_vectorsearch
 ```
 
 ## Fix1Axis Method
@@ -75,8 +75,8 @@ PlaceholderLikelihood.bivariate_confidenceprofile_vectorsearch
 For [`Fix1AxisMethod`](@ref).
 
 ```@docs
-PlaceholderLikelihood.findNpointpairs_fix1axis!
-PlaceholderLikelihood.bivariate_confidenceprofile_fix1axis
+LikelihoodBasedProfileWiseAnalysis.findNpointpairs_fix1axis!
+LikelihoodBasedProfileWiseAnalysis.bivariate_confidenceprofile_fix1axis
 ```
 
 ## Continuation Method
@@ -84,31 +84,31 @@ PlaceholderLikelihood.bivariate_confidenceprofile_fix1axis
 For [`ContinuationMethod`](@ref).
 
 ```@docs
-PlaceholderLikelihood.update_targetll!
-PlaceholderLikelihood.normal_vector_i_2d!
-PlaceholderLikelihood.continuation_line_search!
-PlaceholderLikelihood.continuation_inwards_radial_search!
-PlaceholderLikelihood.initial_continuation_solution!
-PlaceholderLikelihood.bivariate_confidenceprofile_continuation
-PlaceholderLikelihood.star_obj
-PlaceholderLikelihood.boundary_smoother!
-PlaceholderLikelihood.refine_search_directions!
+LikelihoodBasedProfileWiseAnalysis.update_targetll!
+LikelihoodBasedProfileWiseAnalysis.normal_vector_i_2d!
+LikelihoodBasedProfileWiseAnalysis.continuation_line_search!
+LikelihoodBasedProfileWiseAnalysis.continuation_inwards_radial_search!
+LikelihoodBasedProfileWiseAnalysis.initial_continuation_solution!
+LikelihoodBasedProfileWiseAnalysis.bivariate_confidenceprofile_continuation
+LikelihoodBasedProfileWiseAnalysis.star_obj
+LikelihoodBasedProfileWiseAnalysis.boundary_smoother!
+LikelihoodBasedProfileWiseAnalysis.refine_search_directions!
 ```
 
 ## Sampling Internal Points From Boundaries
 
 ```@docs
-PlaceholderLikelihood.construct_polygon_hull
-PlaceholderLikelihood.bivariate_concave_hull
-PlaceholderLikelihood.update_biv_dict_internal!
-PlaceholderLikelihood.sample_internal_points_LHC
-PlaceholderLikelihood.sample_internal_points_uniform_random
-PlaceholderLikelihood.sample_internal_points_single_row
+LikelihoodBasedProfileWiseAnalysis.construct_polygon_hull
+LikelihoodBasedProfileWiseAnalysis.bivariate_concave_hull
+LikelihoodBasedProfileWiseAnalysis.update_biv_dict_internal!
+LikelihoodBasedProfileWiseAnalysis.sample_internal_points_LHC
+LikelihoodBasedProfileWiseAnalysis.sample_internal_points_uniform_random
+LikelihoodBasedProfileWiseAnalysis.sample_internal_points_single_row
 ```
 
 ## Merging Boundaries From Multiple Methods
 
 ```@docs
-PlaceholderLikelihood.predictions_can_be_merged
-PlaceholderLikelihood.rebuild_bivariate_datastructures!
+LikelihoodBasedProfileWiseAnalysis.predictions_can_be_merged
+LikelihoodBasedProfileWiseAnalysis.rebuild_bivariate_datastructures!
 ```

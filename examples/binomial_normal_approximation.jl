@@ -6,7 +6,7 @@
 # Initial Setup 
 ##############################################################################
 using Random, Distributions, StaticArrays
-using PlaceholderLikelihood
+using LikelihoodBasedProfileWiseAnalysis
 
 ## Model and Likelihood Function Definition
 ##############################################################################

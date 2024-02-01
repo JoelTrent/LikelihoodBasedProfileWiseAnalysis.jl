@@ -67,7 +67,7 @@ end
         ind2::Int,
         returnboundindex::Bool=false)
 
-Alternate method for [`PlaceholderLikelihood.findpointonbounds`](@ref) which specifies the direction from `internalpoint` as a vector rather than an angle in radians. 
+Alternate method for [`LikelihoodBasedProfileWiseAnalysis.findpointonbounds`](@ref) which specifies the direction from `internalpoint` as a vector rather than an angle in radians. 
 """
 function findpointonbounds(model::LikelihoodModel, 
                             internalpoint::Vector{<:Float64}, 

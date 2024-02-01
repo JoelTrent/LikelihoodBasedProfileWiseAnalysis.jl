@@ -7,23 +7,23 @@ Pages = ["univariate.md"]
 ## Likelihood Optimisation
 
 ```@docs
-PlaceholderLikelihood.univariateψ_ellipse_unbounded
-PlaceholderLikelihood.univariateψ
+LikelihoodBasedProfileWiseAnalysis.univariateψ_ellipse_unbounded
+LikelihoodBasedProfileWiseAnalysis.univariateψ
 ```
 
 ## Get Points in Confidence Interval
 
 ```@docs
-PlaceholderLikelihood.update_uni_dict_internal!
-PlaceholderLikelihood.get_points_in_interval_single_row
+LikelihoodBasedProfileWiseAnalysis.update_uni_dict_internal!
+LikelihoodBasedProfileWiseAnalysis.get_points_in_interval_single_row
 ```
 
 ## Main Confidence Interval Logic 
 
 ```@docs
-PlaceholderLikelihood.get_interval_brackets
-PlaceholderLikelihood.add_uni_profiles_rows!
-PlaceholderLikelihood.set_uni_profiles_row!
-PlaceholderLikelihood.get_univariate_opt_func
-PlaceholderLikelihood.univariate_confidenceinterval
+LikelihoodBasedProfileWiseAnalysis.get_interval_brackets
+LikelihoodBasedProfileWiseAnalysis.add_uni_profiles_rows!
+LikelihoodBasedProfileWiseAnalysis.set_uni_profiles_row!
+LikelihoodBasedProfileWiseAnalysis.get_univariate_opt_func
+LikelihoodBasedProfileWiseAnalysis.univariate_confidenceinterval
 ```

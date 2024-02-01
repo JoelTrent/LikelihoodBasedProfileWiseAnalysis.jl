@@ -106,7 +106,7 @@ end
 
 Computes the negative hessian of function `f` at `θmle` using [ForwardDiff.jl](https://juliadiff.org/ForwardDiff.jl/stable/user/api/#ForwardDiff.hessian) and it's pseudoinverse, returning both matrices.
 
-Hessian identifiability is tested using [`PlaceholderLikelihood.test_hessian_identifiability`](@ref).
+Hessian identifiability is tested using [`LikelihoodBasedProfileWiseAnalysis.test_hessian_identifiability`](@ref).
 """
 function getMLE_hessian_and_covariance(f::Function, θmle::Vector{<:Float64})
 

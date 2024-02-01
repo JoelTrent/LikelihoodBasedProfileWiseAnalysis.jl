@@ -55,7 +55,7 @@ struct CombinedBivariateMethod <: AbstractBivariateMethod end
         ellipse_sqrt_distortion::Float64=1.0;
         use_ellipse::Bool=false)
 
-Method for iteratively improving an initial boundary of `initial_num_points`, found by pushing out from the MLE point in directions defined by either [`RadialMLEMethod`](@ref), when `use_ellipse=true`, or [`RadialRandomMethod`](@ref), when `use_ellipse=false` (see [`PlaceholderLikelihood.findNpointpairs_radialMLE!`](@ref), [`PlaceholderLikelihood.iterativeboundary_init`](@ref) and [`PlaceholderLikelihood.bivariate_confidenceprofile_iterativeboundary`](@ref)).
+Method for iteratively improving an initial boundary of `initial_num_points`, found by pushing out from the MLE point in directions defined by either [`RadialMLEMethod`](@ref), when `use_ellipse=true`, or [`RadialRandomMethod`](@ref), when `use_ellipse=false` (see [`LikelihoodBasedProfileWiseAnalysis.findNpointpairs_radialMLE!`](@ref), [`LikelihoodBasedProfileWiseAnalysis.iterativeboundary_init`](@ref) and [`LikelihoodBasedProfileWiseAnalysis.bivariate_confidenceprofile_iterativeboundary`](@ref)).
 
 # Arguments
 - `initial_num_points`: a positive integer number of initial boundary points to find. 
@@ -79,8 +79,8 @@ Once an initial boundary is found by pushing out from the MLE point in direction
 
 Regions we define as needing improvement are those with:
 
-1. Internal angles between adjacent edges that are far from being straight (180 degrees or π radians). The region defined by these edges is not well explored as the real boundary edge in this region likely has some degree of smooth curvature. It may also indicate that one of these edges cuts our boundary into a enclosed region and an unexplored region on the other side of the edge. In the event that a vertex is on a user-provided bound for a parameter, this objective is set to zero, as this angle region is a byproduct of user input and not the actual log-likelihood region. This objective is defined in [`PlaceholderLikelihood.internal_angle_from_pi!`](@ref).
-2. Edges between adjacent vertices that have a large euclidean distance. The regions between these vertices is not well explored as it is unknown whether the boundary actually is straight between these vertices. On average the closer two vertices are, the more likely the edge between the two points is well approximated by a straight line, and thus our mesh is a good representation of the true log-likelihood boundary. This objective is defined in [`PlaceholderLikelihood.edge_length`](@ref).
+1. Internal angles between adjacent edges that are far from being straight (180 degrees or π radians). The region defined by these edges is not well explored as the real boundary edge in this region likely has some degree of smooth curvature. It may also indicate that one of these edges cuts our boundary into a enclosed region and an unexplored region on the other side of the edge. In the event that a vertex is on a user-provided bound for a parameter, this objective is set to zero, as this angle region is a byproduct of user input and not the actual log-likelihood region. This objective is defined in [`LikelihoodBasedProfileWiseAnalysis.internal_angle_from_pi!`](@ref).
+2. Edges between adjacent vertices that have a large euclidean distance. The regions between these vertices is not well explored as it is unknown whether the boundary actually is straight between these vertices. On average the closer two vertices are, the more likely the edge between the two points is well approximated by a straight line, and thus our mesh is a good representation of the true log-likelihood boundary. This objective is defined in [`LikelihoodBasedProfileWiseAnalysis.edge_length`](@ref).
 
 The method is implemented as follows:
 1. Create edges between adjacent vertices on the intial boundary. Calculate angle and edge length objectives for these edges and vertices and place them into tracked heaps.
@@ -89,7 +89,7 @@ The method is implemented as follows:
     1. Peek at the top vertex of the angle heap.
     2. Place a candidate point in the middle of the edge connected to this vertex that has the larger angle at the vertex the edge connects to. This is so we explore the worse defined region of the boundary.
     3. Use this candidate to find a new boundary point (see below).
-    4. If found a new boundary point, break edge we placed candidate on and replace with edges to the new boundary point, updating angle and edge length objectives in the tracked heap (see [`PlaceholderLikelihood.heapupdates_success!`](@ref)). Else break our polygon into multiple polygons (see [`PlaceholderLikelihood.heapupdates_failure!`](@ref)).
+    4. If found a new boundary point, break edge we placed candidate on and replace with edges to the new boundary point, updating angle and edge length objectives in the tracked heap (see [`LikelihoodBasedProfileWiseAnalysis.heapupdates_success!`](@ref)). Else break our polygon into multiple polygons (see [`LikelihoodBasedProfileWiseAnalysis.heapupdates_failure!`](@ref)).
 4. For `edge_points_per_iter` points:
     1. Peek at the top edge of the edge heap.
     2. Place a candidate point in the middle of this edge.
@@ -102,7 +102,7 @@ The method is implemented as follows:
 
 !!! note "Using a candidate point to find a new boundary point"
 
-    Uses [`PlaceholderLikelihood.newboundarypoint!`](@ref).
+    Uses [`LikelihoodBasedProfileWiseAnalysis.newboundarypoint!`](@ref).
 
     If a candidate point is on the log-likelihood threshold boundary, we accept the point.
 
@@ -162,7 +162,7 @@ end
     RadialMLEMethod(ellipse_start_point_shift::Float64=rand(), 
         ellipse_sqrt_distortion::Float64=0.01)
 
-Method for finding the bivariate boundary of a confidence profile by bracketing between the MLE point and points on the provided bounds in directions given by points found on the boundary of a ellipse approximation of the log-likelihood function around the MLE, `e`, using [EllipseSampling.jl](https://joeltrent.github.io/EllipseSampling.jl/stable) (see [`PlaceholderLikelihood.findNpointpairs_radialMLE!`](@ref) and [`PlaceholderLikelihood.bivariate_confidenceprofile_vectorsearch`](@ref)). 
+Method for finding the bivariate boundary of a confidence profile by bracketing between the MLE point and points on the provided bounds in directions given by points found on the boundary of a ellipse approximation of the log-likelihood function around the MLE, `e`, using [EllipseSampling.jl](https://joeltrent.github.io/EllipseSampling.jl/stable) (see [`LikelihoodBasedProfileWiseAnalysis.findNpointpairs_radialMLE!`](@ref) and [`LikelihoodBasedProfileWiseAnalysis.bivariate_confidenceprofile_vectorsearch`](@ref)). 
 
 # Arguments
 - `ellipse_start_point_shift`: a number ∈ [0.0,1.0]. Default is `rand()` (defined on [0.0,1.0]), meaning that by default a different set of points will be found each time.
@@ -219,7 +219,7 @@ end
 """
     RadialRandomMethod(num_radial_directions::Int, use_MLE_point::Bool=true)
 
-Method for finding the bivariate boundary of a confidence profile by finding internal boundary points using a uniform random distribution on provided bounds and choosing `num_radial_directions` to explore from these points (see [`PlaceholderLikelihood.findNpointpairs_radialrandom!`](@ref) and [`PlaceholderLikelihood.bivariate_confidenceprofile_vectorsearch`](@ref)).
+Method for finding the bivariate boundary of a confidence profile by finding internal boundary points using a uniform random distribution on provided bounds and choosing `num_radial_directions` to explore from these points (see [`LikelihoodBasedProfileWiseAnalysis.findNpointpairs_radialrandom!`](@ref) and [`LikelihoodBasedProfileWiseAnalysis.bivariate_confidenceprofile_vectorsearch`](@ref)).
 
 # Arguments
 - `num_radial_directions`: an integer greater than zero. 
@@ -271,7 +271,7 @@ end
 """
     SimultaneousMethod(min_proportion_unique::Real=0.5, include_MLE_point::Bool=true)
 
-Method for finding the bivariate boundary of a confidence profile by finding internal and external boundary points using a uniform random distribution on provided bounds, pairing these points in the order they're found and bracketing between each pair (see [`PlaceholderLikelihood.findNpointpairs_simultaneous!`](@ref) and [`PlaceholderLikelihood.bivariate_confidenceprofile_vectorsearch`](@ref)). Values of `min_proportion_unique` lower than zero may improve performance if finding either internal points or external points is difficult given the specified bounds on interest parameters.
+Method for finding the bivariate boundary of a confidence profile by finding internal and external boundary points using a uniform random distribution on provided bounds, pairing these points in the order they're found and bracketing between each pair (see [`LikelihoodBasedProfileWiseAnalysis.findNpointpairs_simultaneous!`](@ref) and [`LikelihoodBasedProfileWiseAnalysis.bivariate_confidenceprofile_vectorsearch`](@ref)). Values of `min_proportion_unique` lower than zero may improve performance if finding either internal points or external points is difficult given the specified bounds on interest parameters.
     
 
 # Arguments
@@ -330,7 +330,7 @@ end
 """
     Fix1AxisMethod()
 
-Method for finding the bivariate boundary of a confidence profile by using uniform random distributions on provided bounds to draw a value for one interest parameter, fix it, and draw two values for the other interest parameter, using the pair to find a boundary point using a bracketing method if the pair are a valid bracket (see [`PlaceholderLikelihood.findNpointpairs_fix1axis!`](@ref) and [`PlaceholderLikelihood.bivariate_confidenceprofile_fix1axis`](@ref)).
+Method for finding the bivariate boundary of a confidence profile by using uniform random distributions on provided bounds to draw a value for one interest parameter, fix it, and draw two values for the other interest parameter, using the pair to find a boundary point using a bracketing method if the pair are a valid bracket (see [`LikelihoodBasedProfileWiseAnalysis.findNpointpairs_fix1axis!`](@ref) and [`LikelihoodBasedProfileWiseAnalysis.bivariate_confidenceprofile_fix1axis`](@ref)).
 
 # Details
 
@@ -431,7 +431,7 @@ Presently this continuation is done by finding a point inside the boundary that 
 
 If we find a star point we then, for every point on the current boundary, push out in the direction defined by the line segment connecting the star point and the boundary to find the next confidence level boundary. If we do not find a star point, we assign each of the boundary points to the Kmeans point they are closest to (using a Euclidean distance metric), and use the direction defined by the line segments between a boundary point and it's associated Kmeans point to find the next confidence level boundary. This direction heuristic is carried out by [`refine_search_directions!`](@ref). 
 
-A traveling salesman heuristic is used to reorder the boundary points into a new minimum perimeter polygon, [`PlaceholderLikelihood.minimum_perimeter_polygon!`](@ref), if the continuation of one boundary to the next causes the mapping of adjacent vertices to change (expected if a star point is not found). 
+A traveling salesman heuristic is used to reorder the boundary points into a new minimum perimeter polygon, [`LikelihoodBasedProfileWiseAnalysis.minimum_perimeter_polygon!`](@ref), if the continuation of one boundary to the next causes the mapping of adjacent vertices to change (expected if a star point is not found). 
 
 For additional information on the `ellipse_start_point_shift` and `ellipse_sqrt_distortion` arguments see the keyword arguments for [`generate_N_clustered_points`](https://joeltrent.github.io/EllipseSampling.jl/stable/user_interface/#EllipseSampling.generate_N_clustered_points) in [EllipseSampling.jl](https://joeltrent.github.io/EllipseSampling.jl/stable).
 

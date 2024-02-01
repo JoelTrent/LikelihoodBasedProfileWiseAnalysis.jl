@@ -82,7 +82,7 @@ end
 """
     bivariateψ_ellipse_analytical(ψ::Real, p::NamedTuple)
 
-Returns the approximated log-likelihood value minus the confidence boundary target threshold, given an analytic ellipse approximation of a log-likelihood function ([`PlaceholderLikelihood.analytic_ellipse_loglike`](@ref)) which is unbounded in parameter space, for values of the interest parameters `p.ψ_x[1]` and `ψ`. The returned function value will be zero at the locations of the approximate confidence boundary for `p.ψ_x[1]` and `ψ`, which correspond to locations found by [`PlaceholderLikelihood.AnalyticalEllipseMethod`](@ref). Used by [`Fix1AxisMethod`](@ref). 
+Returns the approximated log-likelihood value minus the confidence boundary target threshold, given an analytic ellipse approximation of a log-likelihood function ([`LikelihoodBasedProfileWiseAnalysis.analytic_ellipse_loglike`](@ref)) which is unbounded in parameter space, for values of the interest parameters `p.ψ_x[1]` and `ψ`. The returned function value will be zero at the locations of the approximate confidence boundary for `p.ψ_x[1]` and `ψ`, which correspond to locations found by [`LikelihoodBasedProfileWiseAnalysis.AnalyticalEllipseMethod`](@ref). Used by [`Fix1AxisMethod`](@ref). 
 """
 function bivariateψ_ellipse_analytical(ψ::Real, p::NamedTuple)
     @timeit_debug timer "Likelihood evaluation" begin 
@@ -93,7 +93,7 @@ end
 """
     bivariateψ_ellipse_analytical_vectorsearch(ψ::Real, p::NamedTuple)
 
-Returns the approximated log-likelihood value minus the confidence boundary target threshold, given an analytic ellipse approximation of a log-likelihood function ([`PlaceholderLikelihood.analytic_ellipse_loglike`](@ref)) which is unbounded in parameter space, for values of the interest parameters `ψxy = p.pointa + ψ*p.uhat`. The returned function value will be zero at the locations of the approximate confidence boundary for `ψxy = p.pointa + ψ*p.uhat`, which correspond to locations found by [`PlaceholderLikelihood.AnalyticalEllipseMethod`](@ref). Used by [`AbstractBivariateVectorMethod`](@ref).
+Returns the approximated log-likelihood value minus the confidence boundary target threshold, given an analytic ellipse approximation of a log-likelihood function ([`LikelihoodBasedProfileWiseAnalysis.analytic_ellipse_loglike`](@ref)) which is unbounded in parameter space, for values of the interest parameters `ψxy = p.pointa + ψ*p.uhat`. The returned function value will be zero at the locations of the approximate confidence boundary for `ψxy = p.pointa + ψ*p.uhat`, which correspond to locations found by [`LikelihoodBasedProfileWiseAnalysis.AnalyticalEllipseMethod`](@ref). Used by [`AbstractBivariateVectorMethod`](@ref).
 """
 function bivariateψ_ellipse_analytical_vectorsearch(ψ::Real, p::NamedTuple)
     @timeit_debug timer "Likelihood evaluation" begin 
@@ -104,7 +104,7 @@ end
 """
     bivariateψ_ellipse_analytical_continuation(ψ::Real, p::NamedTuple)
 
-Returns the approximated log-likelihood value minus the confidence boundary target threshold, given an analytic ellipse approximation of a log-likelihood function ([`PlaceholderLikelihood.analytic_ellipse_loglike`](@ref)) which is unbounded in parameter space, for values of the interest parameters `ψxy = p.pointa + ψ*p.uhat`. The returned function value will be zero at the locations of the approximate confidence boundary for `ψxy = p.pointa + ψ*p.uhat`, which correspond to locations found by [`PlaceholderLikelihood.AnalyticalEllipseMethod`](@ref). Used by [`ContinuationMethod`](@ref).
+Returns the approximated log-likelihood value minus the confidence boundary target threshold, given an analytic ellipse approximation of a log-likelihood function ([`LikelihoodBasedProfileWiseAnalysis.analytic_ellipse_loglike`](@ref)) which is unbounded in parameter space, for values of the interest parameters `ψxy = p.pointa + ψ*p.uhat`. The returned function value will be zero at the locations of the approximate confidence boundary for `ψxy = p.pointa + ψ*p.uhat`, which correspond to locations found by [`LikelihoodBasedProfileWiseAnalysis.AnalyticalEllipseMethod`](@ref). Used by [`ContinuationMethod`](@ref).
 """
 function bivariateψ_ellipse_analytical_continuation(ψ::Real, p::NamedTuple)
     @timeit_debug timer "Likelihood evaluation" begin 
@@ -115,7 +115,7 @@ end
 """
     bivariateψ_ellipse_unbounded(ψ::Vector, p::NamedTuple)
 
-Given an ellipse approximation of a log-likelihood function ([`PlaceholderLikelihood.ellipse_loglike`](@ref)) which is unbounded in parameter space, this function finds the values of the nuisance parameters ω that optimise the function at fixed values of the two interest parameters in `ψ` and returns the approximated log-likelihood value minus the confidence boundary target threshold. The returned function value will be zero at the locations of the approximate confidence boundary for `ψ`, which correspond to the locations found by [`PlaceholderLikelihood.AnalyticalEllipseMethod`](@ref). Nuisance parameter values are stored in the NamedTuple `p`. 
+Given an ellipse approximation of a log-likelihood function ([`LikelihoodBasedProfileWiseAnalysis.ellipse_loglike`](@ref)) which is unbounded in parameter space, this function finds the values of the nuisance parameters ω that optimise the function at fixed values of the two interest parameters in `ψ` and returns the approximated log-likelihood value minus the confidence boundary target threshold. The returned function value will be zero at the locations of the approximate confidence boundary for `ψ`, which correspond to the locations found by [`LikelihoodBasedProfileWiseAnalysis.AnalyticalEllipseMethod`](@ref). Nuisance parameter values are stored in the NamedTuple `p`. 
 """
 function bivariateψ_ellipse_unbounded(ψ::Vector, p::NamedTuple)
 
