@@ -195,24 +195,25 @@ using EllipseSampling
             m = initialise_LikelihoodModel(LikelihoodBasedProfileWiseAnalysis.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes, show_progress=false)
 
             setbounds!(m, lb=[-10000000.0, -10000000.0], ub=[10000000.0, 10000000.0])
+            dof=1
 
-            univariate_confidenceintervals!(m, [:x], confidence_level=0.90)
-            lb1, ub1 = LikelihoodBasedProfileWiseAnalysis.get_interval_brackets(m, 1, 0.9, LogLikelihood())
+            univariate_confidenceintervals!(m, [:x], confidence_level=0.90, dof=dof)
+            lb1, ub1 = LikelihoodBasedProfileWiseAnalysis.get_interval_brackets(m, 1, 0.9, dof, LogLikelihood())
             @test isempty(lb1) && isempty(ub1)
 
-            t1 = @elapsed univariate_confidenceintervals!(m, [:x], confidence_level=0.90, existing_profiles=:overwrite)
+            t1 = @elapsed univariate_confidenceintervals!(m, [:x], confidence_level=0.90, dof=dof, existing_profiles=:overwrite)
 
-            univariate_confidenceintervals!(m, [:x], confidence_level=0.95)
-            lb2, ub2 = LikelihoodBasedProfileWiseAnalysis.get_interval_brackets(m, 1, 0.9, LogLikelihood())
+            univariate_confidenceintervals!(m, [:x], confidence_level=0.95, dof=dof)
+            lb2, ub2 = LikelihoodBasedProfileWiseAnalysis.get_interval_brackets(m, 1, 0.9, dof, LogLikelihood())
             @test isapprox(lb2[2], m.core.θmle[1]) && isapprox(ub2[1], m.core.θmle[2])
             @test lb2[1] > m.core.θlb[1] && ub2[2] < m.core.θub[2]
 
-            univariate_confidenceintervals!(m, [:x], confidence_level=0.70)
-            lb3, ub3 = LikelihoodBasedProfileWiseAnalysis.get_interval_brackets(m, 1, 0.9, LogLikelihood())
+            univariate_confidenceintervals!(m, [:x], confidence_level=0.70, dof=dof)
+            lb3, ub3 = LikelihoodBasedProfileWiseAnalysis.get_interval_brackets(m, 1, 0.9, dof, LogLikelihood())
             @test lb3[1] < m.core.θmle[1] && ub3[1] > m.core.θmle[2]
 
-            univariate_confidenceintervals!(m, [:x], confidence_level=0.90, use_existing_profiles=true, existing_profiles=:overwrite)
-            t2 = @elapsed univariate_confidenceintervals!(m, [:x], confidence_level=0.90, use_existing_profiles=true, existing_profiles=:overwrite)
+            univariate_confidenceintervals!(m, [:x], confidence_level=0.90, dof=dof, use_existing_profiles=true, existing_profiles=:overwrite)
+            t2 = @elapsed univariate_confidenceintervals!(m, [:x], confidence_level=0.90, dof=dof, use_existing_profiles=true, existing_profiles=:overwrite)
             # @test t2 < t1
         end
 
