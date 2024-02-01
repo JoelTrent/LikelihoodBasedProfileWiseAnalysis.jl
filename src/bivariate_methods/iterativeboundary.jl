@@ -417,7 +417,7 @@ function newboundarypoint!(p::NamedTuple,
             while current_vertex != ve1
                 edge_segment = Segment(Point(boundary[:,current_vertex]...), Point(boundary[:, edge_anti[current_vertex]]...))
 
-                if intersection(candidate_line, edge_segment).type != IntersectionType(9)
+                if intersection(candidate_line, edge_segment).type != IntersectionType(0)
                     break
                 end
                 current_vertex = edge_anti[current_vertex] * 1
