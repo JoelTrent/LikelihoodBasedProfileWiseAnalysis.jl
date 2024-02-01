@@ -71,6 +71,7 @@ We can visualise the progress of the [`IterativeBoundaryMethod`](@ref) using [`p
 
 ```julia
 using Plots; gr()
+Plots.reset_defaults(); Plots.scalefontsizes(0.75)
 
 format = (size=(450, 300), dpi=150, title="",
     legend_position=:topright, palette=:Paired)

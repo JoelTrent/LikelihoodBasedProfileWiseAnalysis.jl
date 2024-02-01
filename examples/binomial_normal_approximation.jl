@@ -47,7 +47,8 @@ bivariate_confidenceprofiles!(model, 200,
 
 ## Visualising the Progress of the IterativeBoundaryMethod
 ##############################################################################
-using Plots; gr()
+using Plots, Plots.PlotMeasures; gr()
+Plots.reset_defaults(); Plots.scalefontsizes(0.75)
 
 format = (size=(450, 300), dpi=150, title="",
     legend_position=:topright, palette=:Paired)
@@ -89,4 +90,4 @@ using Plots; gr()
 
 plts = plot_bivariate_profiles(model, 0.2, 0.2; include_internal_points=true, markeralpha=0.9, format...)
 display(plts[1])
-# savefig(plts[1], joinpath("docs", "src", "assets", "figures", "binomial", "binomial_bivariate_plot.png"))
+savefig(plts[1], joinpath("docs", "src", "assets", "figures", "binomial", "binomial_bivariate_plot.png"))

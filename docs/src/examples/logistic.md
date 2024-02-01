@@ -184,13 +184,6 @@ using Plots, Plots.PlotMeasures; gr()
 Plots.reset_defaults(); Plots.scalefontsizes(0.75)
 ```
 
-
-plts = plot_univariate_profiles_comparison(model, 0.1, 0.1, confidence_levels=[0.95], dofs=[1])
-plt = plot(plts..., layout=(1,3),
-    legend=:outertop, title="", dpi=150, size=(550,300), margin=1mm)
-display(plt)
-savefig(plt, joinpath("docs", "src", "assets", "figures", "logistic", "logistic_univariate_plots.png"))
-
 Univariate and bivariate profiles can either be visualised individually or in comparison to profiles at the same confidence level and degrees of freedom. 
 
 Here we compare the univariate profiles formed at a 95% confidence level and 1 degree of freedom. The first two arguments scale the limits of the x and y axis, respectively, away from the found confidence interval at the specified threshold.
@@ -207,9 +200,10 @@ display(plt)
 
 Similarly, here we compare the bivariate profiles formed at a 95% confidence level and 2 degrees of freedom.
 ```julia
-plts = plot_bivariate_profiles_comparison(model, confidence_level=0.95, dof=2)
+plts = plot_bivariate_profiles_comparison(model, 0.1, 0.1, confidence_levels=[0.95], dofs=[2])
 
-plt = plot(plts..., layout=(1,3))
+plt = plot(plts..., layout=(1,3),
+    legend=:outertop, title="", dpi=150, size=(550,300), margin=1mm)
 display(plt)
 ```
 

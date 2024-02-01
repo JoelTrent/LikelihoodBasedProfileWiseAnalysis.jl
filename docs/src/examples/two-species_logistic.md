@@ -15,7 +15,7 @@ where ``\theta^M = (\lambda_1, \lambda_2, K, \delta, C_1(0), C_2(0))``, ``\theta
 
 This model uses real data, so no 'true' parameter values exist. Instead, the MLE values of parameters are used for coverage simulations ``\hat{\theta} =(0.00293, 0.00315, 0.00164, 78.8, 0.289, 0.0293, 1.83)``. The corresponding lower and upper parameter bounds are ``a = (0.0001, 0.0001, 0, 60, 0.01, 0.001, 0.1)`` and ``b = (0.01, 0.01, 0.01, 90, 1, 1, 3)``; the lower bounds for all the parameters apart from ``\delta`` were zero [simpsonprofile2023](@cite) but were increased slightly to increase stability. Observation times are ``t_{1:I} = (0, 769, 1140, 1488, 1876, 2233, 2602, 2889, 3213, 3621, 4028)``. Smaller nuisance parameter bounds are used for univariate profiles, although they are wider than those used in [simpsonprofile2023](@cite): ``a_{\text{nuisance},j} =\max(a_j,\, \hat{\theta}_j\div2.5 ), \, j \in 1,2,...,7`` and ``b_{\text{nuisance},j} =\min(b_j,\, \hat{\theta}_j\times2.5 ), \, j \in 1,2,...,7``. The original implementation can be found at [https://github.com/ProfMJSimpson/profile_predictions](https://github.com/ProfMJSimpson/profile_predictions).
 
-Real observations, the MLE model trajectory and the MLE 95% population reference set under this parameterisation can be seen in the figure below:
+Real observations, the MLE model trajectory and the MLE 95% population reference set under this parameterisation can be seen in the figure below (site 2 data is used):
 
 ![](../assets/figures/two-species_logistic/two-species_gaussian_example.png)
 

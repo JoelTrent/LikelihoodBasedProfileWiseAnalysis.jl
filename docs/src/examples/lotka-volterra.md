@@ -69,7 +69,7 @@ end
 θ_true=[α_true, β_true, x0_true, y0_true]
 
 t=LinRange(0,7,15)
-y_true = ODEmodel(θ_true, t)
+y_true = hcat(ODEmodel(t, θ_true)...)
 y_obs = [0.99 0.22; 1.02 0.26; 1.28 0.38; 1.92 0.36; 2.03 0.80; 1.41 1.78;
          1.54 2.04; 0.67 1.63; 0.18 1.45; 0.44 1.13; 0.74 0.94; 0.37 0.86;
          0.01 0.16; 0.65 0.52; 0.54 0.32]
@@ -135,7 +135,7 @@ To evaluate the bivariate boundaries for all six bivariate parameter combination
 ```julia
 opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
 bivariate_confidenceprofiles!(model, 30, 
-    method=IterativeBoundaryMethod(10, 5, 5, 0.15, 1.0, use_ellipse=true), 
+    method=IterativeBoundaryMethod(20, 5, 5, 0.15, 1.0, use_ellipse=true), 
     optimizationsettings=opt_settings)
 ```
 
@@ -144,7 +144,7 @@ Similarly, if we wish to evaluate simultaneous 95% bivariate profiles we set the
 ```julia
 opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
 bivariate_confidenceprofiles!(model, 30, 
-    method=IterativeBoundaryMethod(10, 5, 5, 0.15, 1.0, use_ellipse=true), 
+    method=IterativeBoundaryMethod(20, 5, 5, 0.15, 1.0, use_ellipse=true), 
     dof=model.core.num_pars,
     optimizationsettings=opt_settings)
 ```
@@ -280,7 +280,7 @@ opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-
 biv_coverage_df = check_bivariate_parameter_coverage(data_generator,
     training_gen_args, model, 1000, 50, θ_true, 
     collect(combinations(1:model.core.num_pars, 2)),
-    method = IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, use_ellipse=true), 
+    method = IterativeBoundaryMethod(20, 5, 5, 0.15, 0.1, use_ellipse=true), 
     optimizationsettings=opt_settings)
 ```
 
@@ -367,6 +367,6 @@ biv_reference_coverage_df = check_bivariate_prediction_realisations_coverage(dat
     reference_set_generator, training_gen_args, testing_gen_args, t_pred, model, 1000, 20, θ_true, 
     collect(combinations(1:model.core.num_pars, 2)),
     dof=model.core.num_pars,
-    method=IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, use_ellipse=true),
+    method=IterativeBoundaryMethod(20, 5, 5, 0.15, 0.1, use_ellipse=true),
     optimizationsettings=opt_settings)
 ```
