@@ -66,7 +66,7 @@ function init_dim_samples_row_exists!(model::LikelihoodModel,
                                         sample_type::AbstractSampleType)
     for θvec in θindices
         if !haskey(model.dim_samples_row_exists, (θvec, length(θvec), sample_type))
-            model.dim_samples_row_exists[(θvec, dof, sample_type)] = DefaultDict{Float64, Int}(0)
+            model.dim_samples_row_exists[(θvec, length(θvec), sample_type)] = DefaultDict{Float64,Int}(0)
         end
     end
     return nothing

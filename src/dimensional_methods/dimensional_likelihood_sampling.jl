@@ -531,7 +531,7 @@ function dimensional_likelihood_samples!(model::LikelihoodModel,
     # check if profile has already been evaluated
     # in this case we only have :ignore and :overwrite
     for (i, θs) in enumerate(θindices)
-        if model.dim_samples_row_exists[(θs, sample_type)][confidence_level] != 0
+        if model.dim_samples_row_exists[(θs, length(θs), sample_type)][confidence_level] != 0
             θs_to_keep[i] = false
             θs_to_overwrite[i] = true
             num_to_overwrite += 1
