@@ -30,8 +30,6 @@ using Combinatorics
 
 ## Model and Likelihood Function Definition
 
-`data` is a named tuple...
-
 ```julia
 @everywhere function solvedmodel(t, θ)
     return (θ[2]*θ[3]) ./ ((θ[2]-θ[3]) .* (exp.(-θ[1] .* t)) .+ θ[3])

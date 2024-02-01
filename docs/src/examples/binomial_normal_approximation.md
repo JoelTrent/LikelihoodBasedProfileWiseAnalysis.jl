@@ -22,16 +22,14 @@ using PlaceholderLikelihood
 
 ## Model and Likelihood Function Definition
 
-`data` is a named tuple...
-
 ```julia
-distrib_θ(θ) = Normal(θ[1] * θ[2], sqrt(θ[1] * θ[2] * (1 - θ[2])))
+distrib(θ) = Normal(θ[1] * θ[2], sqrt(θ[1] * θ[2] * (1 - θ[2])))
 
-function loglhood_θ(θ, data)
-    return sum(logpdf.(distrib_θ(θ), data.samples))
+function loglhood(θ, data)
+    return sum(logpdf.(distrib(θ), data.samples))
 end
 
-function predictfunction_θ(θ, data, t=["n*p"]); [prod(θ)] end
+function predictfunction(θ, data, t=["n*p"]); [prod(θ)] end
 ```
 
 ## Initial Data and Parameter Definition
@@ -63,7 +61,8 @@ model = initialise_LikelihoodModel(loglhood, data, θnames, θG, lb, ub, par_mag
 This example is particularly interesting because it contains a very concave bivariate boundary - the [`IterativeBoundaryMethod`](@ref) thus becomes very appropriate to use. However, evaluting this many points may be prohibitive on higher dimensional models.
 
 ```julia
-bivariate_confidenceprofiles!(model, 200, method=IterativeBoundaryMethod(3,1,1, 0.15, 1.0, use_ellipse=true))
+bivariate_confidenceprofiles!(model, 200, 
+    method=IterativeBoundaryMethod(20,20,20, 0.5, 0.1, use_ellipse=true))
 ```
 
 ## Visualising the Progress of the IterativeBoundaryMethod
@@ -73,10 +72,13 @@ We can visualise the progress of the [`IterativeBoundaryMethod`](@ref) using [`p
 ```julia
 using Plots; gr()
 
-format = (size=(600, 400), dpi=300, title="",
+format = (size=(450, 300), dpi=150, title="",
     legend_position=:topright, palette=:Paired)
-plot_bivariate_profiles_iterativeboundary_gif(model, 0.2, 0.2; markeralpha=0.5, color=2, save_as_separate_plots=false, format...)
+plot_bivariate_profiles_iterativeboundary_gif(model, 0.2, 0.2; 
+    markeralpha=0.5, color=2, save_as_separate_plots=false, save_folder=joinpath("docs", "src", "assets", "figures", "binomial"), format...)
 ```
+
+![](../assets/figures/binomial/iterative_boundary_n_p.gif)
 
 ## Coordinate Transformation
 
@@ -88,7 +90,7 @@ Here we define the new log-likelihood and prediction functions which define the 
 
 ```julia
 function loglhood_Θ(Θ, data)
-    return loglhood_Θ(exp.(Θ), data)
+    return loglhood(exp.(Θ), data)
 end
 
 function predictfunctions_Θ(Θ, data, t=["n*p"]); [prod(exp.(Θ))] end
@@ -121,10 +123,12 @@ model = initialise_LikelihoodModel(loglhood_Θ, data, Θnames, ΘG, lb_Θ, ub_Θ
 Re-evaluating the bivariate boundary of the log-likelihood function after the transformation reveals a much more convex shape.
 
 ```julia
-bivariate_confidenceprofiles!(model, 40, method=RadialMLEMethod())
+bivariate_confidenceprofiles!(model, 40, method=RadialMLEMethod(0.15, 1.))
 
 using Plots; gr()
 
-plots = plot_bivariate_profiles(model, 0.2, 0.2, include_internal_points=true, markeralpha=0.9)
+plots = plot_bivariate_profiles(model, 0.2, 0.2; include_internal_points=true, markeralpha=0.9, format...)
 display(plots[1])
 ```
+
+![](../assets/figures/binomial/binomial_bivariate_plot.png)

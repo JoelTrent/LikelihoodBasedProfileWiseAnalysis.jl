@@ -135,7 +135,7 @@ plt = plot_predictions_union(model, t_pred, 1, dof=model.core.num_pars,
 plot!(plt, t_pred, solvedmodel(t_pred, θ_true), 
     label="True model trajectory", lw=3, color=:turquoise4, linestyle=:dash,
     dpi=150, size=(450,300), rightmargin=3mm)
-savefig(plt, joinpath("docs", "src", "assets", "figures", "logistic", "logistic_univariate_trajectory.png"))
+# savefig(plt, joinpath("docs", "src", "assets", "figures", "logistic", "logistic_univariate_trajectory.png"))
 
 plt = plot_predictions_union(model, t_pred, 2, dof=model.core.num_pars,
     compare_to_full_sample_type=LatinHypercubeSamples(), xlims=(t_pred[1], t_pred[end]), linealpha=0.2, title="") # bivariate profiles
@@ -278,4 +278,3 @@ biv_reference_coverage_df = check_bivariate_prediction_realisations_coverage(dat
     dof=model.core.num_pars,
     method=IterativeBoundaryMethod(10, 5, 5, 0.15, 0.1, use_ellipse=true),
     optimizationsettings=opt_settings)
-```
