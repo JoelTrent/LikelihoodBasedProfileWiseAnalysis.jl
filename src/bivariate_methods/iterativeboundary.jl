@@ -208,7 +208,7 @@ function iterativeboundary_init(bivariate_optimiser::Function,
     mle_point = model.core.θmle[[ind1,ind2]]
 
     ex = use_threads ? ThreadedEx() : ThreadedEx(basesize=initial_num_points)
-    let external=external, external_all=external_all, point_is_on_bounds=point_is_on_bounds
+    let external=external, external_all=external_all, point_is_on_bounds=point_is_on_bounds, internal=internal
         @floop ex for i in 1:initial_num_points
             FLoops.@init pointa = zeros(2)
             FLoops.@init uhat = zeros(2)
