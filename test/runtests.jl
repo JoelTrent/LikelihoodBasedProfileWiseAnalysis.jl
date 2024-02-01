@@ -1,9 +1,9 @@
-using PlaceholderLikelihood
+using LikelihoodBasedProfileWiseAnalysis
 using Test
 using Distributions, Random
 using EllipseSampling
 
-@testset "PlaceholderLikelihood.jl" begin
+@testset "LikelihoodBasedProfileWiseAnalysis.jl" begin
 
     # ELLIPSE LIKELIHOOD
     begin
@@ -31,7 +31,7 @@ using EllipseSampling
             N = 8
             expected_points = generate_N_equally_spaced_points(N, a, b, α, Cx, Cy, start_point_shift=0.0)
     
-            m = initialise_LikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub,  par_magnitudes, show_progress=false, 
+            m = initialise_LikelihoodModel(LikelihoodBasedProfileWiseAnalysis.ellipse_loglike, data, θnames, θG, lb, ub,  par_magnitudes, show_progress=false, 
                 find_zero_atol=0.0)
             getMLE_ellipse_approximation!(m)
         
@@ -47,13 +47,13 @@ using EllipseSampling
         end
 
         @testset "GetIntervalPoints_EllipseLikelihood" begin
-            m1 = initialise_LikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes, show_progress=false, 
+            m1 = initialise_LikelihoodModel(LikelihoodBasedProfileWiseAnalysis.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes, show_progress=false, 
                 find_zero_atol=0.0)
 
             N=20
             univariate_confidenceintervals!(m1, [1], num_points_in_interval=N, additional_width=0.2)
 
-            m2 = initialise_LikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes, 
+            m2 = initialise_LikelihoodModel(LikelihoodBasedProfileWiseAnalysis.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes, 
                 find_zero_atol=0.0)
 
             univariate_confidenceintervals!(m2, [1])
@@ -61,7 +61,7 @@ using EllipseSampling
 
             @test isapprox(m1.uni_profiles_dict[1].interval_points.boundary_col_indices, m2.uni_profiles_dict[1].interval_points.boundary_col_indices)
 
-            targetll = PlaceholderLikelihood.get_target_loglikelihood(m1, 0.95, EllipseApprox(), 1)
+            targetll = LikelihoodBasedProfileWiseAnalysis.get_target_loglikelihood(m1, 0.95, EllipseApprox(), 1)
 
             for m0 in (m1, m2)
                 boundary_col_indices = m0.uni_profiles_dict[1].interval_points.boundary_col_indices
@@ -69,7 +69,7 @@ using EllipseSampling
 
                 @test diff(boundary_col_indices .- [1, 0])[1] == m0.uni_profiles_df[1, :num_points]
 
-                lls = [PlaceholderLikelihood.ellipse_loglike(m0.uni_profiles_dict[1].interval_points.points[:, j], m0.core.data) for j in boundary_col_indices]
+                lls = [LikelihoodBasedProfileWiseAnalysis.ellipse_loglike(m0.uni_profiles_dict[1].interval_points.points[:, j], m0.core.data) for j in boundary_col_indices]
                 @test isapprox(lls .- targetll, zeros(2), atol=1e-14)
 
                 @test isapprox(m0.uni_profiles_dict[1].interval_points.ll[boundary_col_indices] .- targetll, zeros(2), atol=1e-14)
@@ -79,7 +79,7 @@ using EllipseSampling
         @testset "BoundaryIsAZero_EllipseLikelihood" begin        
             N = 50
     
-            m = initialise_LikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes, show_progress=false, 
+            m = initialise_LikelihoodModel(LikelihoodBasedProfileWiseAnalysis.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes, show_progress=false, 
                 find_zero_atol=0.0)
             getMLE_ellipse_approximation!(m)
 
@@ -88,10 +88,10 @@ using EllipseSampling
                 univariate_confidenceintervals!(m, profile_type=profile_type)
             end
 
-            targetll = PlaceholderLikelihood.get_target_loglikelihood(m, 0.95, EllipseApprox(), 1)
+            targetll = LikelihoodBasedProfileWiseAnalysis.get_target_loglikelihood(m, 0.95, EllipseApprox(), 1)
 
             for i in 1:6
-                lls = [PlaceholderLikelihood.ellipse_loglike(m.uni_profiles_dict[i].interval_points.points[:, j], m.core.data) for j in 1:2]
+                lls = [LikelihoodBasedProfileWiseAnalysis.ellipse_loglike(m.uni_profiles_dict[i].interval_points.points[:, j], m.core.data) for j in 1:2]
                 @test isapprox(lls .- targetll, zeros(2), atol=1e-14)
 
                 @test isapprox(m.uni_profiles_dict[i].interval_points.ll .- targetll, zeros(2), atol=1e-14)
@@ -104,27 +104,27 @@ using EllipseSampling
                 end
             end
     
-            targetll = PlaceholderLikelihood.get_target_loglikelihood(m, 0.95, EllipseApprox(), 2)
+            targetll = LikelihoodBasedProfileWiseAnalysis.get_target_loglikelihood(m, 0.95, EllipseApprox(), 2)
     
             for i in 1:15
-                lls = [PlaceholderLikelihood.ellipse_loglike(m.biv_profiles_dict[i].confidence_boundary[:,j], m.core.data) for j in 1:N] 
+                lls = [LikelihoodBasedProfileWiseAnalysis.ellipse_loglike(m.biv_profiles_dict[i].confidence_boundary[:,j], m.core.data) for j in 1:N] 
                 @test isapprox(lls .- targetll, zeros(N), atol=1e-12)
             end
         end
 
-        function PlaceholderLikelihood.ellipse_loglike(θ::Tuple{T,T}, mleTuple::@NamedTuple{θmle::Vector{T}, Hmle::Matrix{T}}) where {T<:Float64}
-            return PlaceholderLikelihood.ellipse_loglike([θ...], mleTuple)
+        function LikelihoodBasedProfileWiseAnalysis.ellipse_loglike(θ::Tuple{T,T}, mleTuple::@NamedTuple{θmle::Vector{T}, Hmle::Matrix{T}}) where {T<:Float64}
+            return LikelihoodBasedProfileWiseAnalysis.ellipse_loglike([θ...], mleTuple)
         end
 
         @testset "ValidDimensionalPoints_EllipseLikelihood" begin
-            m = initialise_LikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes, show_progress=false)
+            m = initialise_LikelihoodModel(LikelihoodBasedProfileWiseAnalysis.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes, show_progress=false)
 
             # UNIVARIATE
             dimensional_likelihood_samples!(m, 1, 100, sample_type=UniformGridSamples())
             dimensional_likelihood_samples!(m, 1, 100, sample_type=UniformRandomSamples())
             dimensional_likelihood_samples!(m, 1, 100, sample_type=LatinHypercubeSamples())
 
-            targetll_standardised = PlaceholderLikelihood.get_target_loglikelihood(m, 0.95, EllipseApprox(), 1)
+            targetll_standardised = LikelihoodBasedProfileWiseAnalysis.get_target_loglikelihood(m, 0.95, EllipseApprox(), 1)
 
             for i in 1:6
                 @test all(m.dim_samples_dict[i].ll .≥ targetll_standardised)
@@ -135,7 +135,7 @@ using EllipseSampling
             dimensional_likelihood_samples!(m, 2, 100, sample_type=UniformRandomSamples())
             dimensional_likelihood_samples!(m, 2, 100, sample_type=LatinHypercubeSamples())
 
-            targetll_standardised = PlaceholderLikelihood.get_target_loglikelihood(m, 0.95, EllipseApprox(), 2)
+            targetll_standardised = LikelihoodBasedProfileWiseAnalysis.get_target_loglikelihood(m, 0.95, EllipseApprox(), 2)
 
             for i in 7:9
                 @test all(m.dim_samples_dict[i].ll .≥ targetll_standardised)
@@ -145,70 +145,70 @@ using EllipseSampling
         @testset "BoundaryIsAZeroMethodExtensions_EllipseLikelihood" begin        
             N = 50
     
-            m = initialise_LikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes, show_progress=false, 
+            m = initialise_LikelihoodModel(LikelihoodBasedProfileWiseAnalysis.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes, show_progress=false, 
                 find_zero_atol=0.0)
 
             # UNIVARIATE
-            targetll = PlaceholderLikelihood.get_target_loglikelihood(m, 0.95, EllipseApprox(), 1)
+            targetll = LikelihoodBasedProfileWiseAnalysis.get_target_loglikelihood(m, 0.95, EllipseApprox(), 1)
             univariate_confidenceintervals!(m, [:x])
 
             for i in 1:1
-                lls = [PlaceholderLikelihood.ellipse_loglike(m.uni_profiles_dict[i].interval_points.points[:, j], m.core.data) for j in 1:2]
+                lls = [LikelihoodBasedProfileWiseAnalysis.ellipse_loglike(m.uni_profiles_dict[i].interval_points.points[:, j], m.core.data) for j in 1:2]
                 @test isapprox(lls .- targetll, zeros(2), atol=1e-14)
                 @test isapprox(m.uni_profiles_dict[i].interval_points.ll .- targetll, zeros(2), atol=1e-14)
                 @test m.num_uni_profiles == 1
             end
 
-            m = initialise_LikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes, show_progress=false, 
+            m = initialise_LikelihoodModel(LikelihoodBasedProfileWiseAnalysis.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes, show_progress=false, 
                 find_zero_atol=0.0)
             univariate_confidenceintervals!(m, 1)
 
             for i in 1:1
-                lls = [PlaceholderLikelihood.ellipse_loglike(m.uni_profiles_dict[i].interval_points.points[:, j], m.core.data) for j in 1:2]
+                lls = [LikelihoodBasedProfileWiseAnalysis.ellipse_loglike(m.uni_profiles_dict[i].interval_points.points[:, j], m.core.data) for j in 1:2]
                 @test isapprox(lls .- targetll, zeros(2), atol=1e-14)
                 @test isapprox(m.uni_profiles_dict[i].interval_points.ll .- targetll, zeros(2), atol=1e-14)
                 @test m.num_uni_profiles == 1
             end
     
             # BIVARIATE
-            targetll = PlaceholderLikelihood.get_target_loglikelihood(m, 0.95, EllipseApprox(), 2)
+            targetll = LikelihoodBasedProfileWiseAnalysis.get_target_loglikelihood(m, 0.95, EllipseApprox(), 2)
             bivariate_confidenceprofiles!(m, [[:x, :y]], N)
     
             for i in 1:1
-                lls = [PlaceholderLikelihood.ellipse_loglike(m.biv_profiles_dict[i].confidence_boundary[:,j], m.core.data) for j in 1:N] 
+                lls = [LikelihoodBasedProfileWiseAnalysis.ellipse_loglike(m.biv_profiles_dict[i].confidence_boundary[:,j], m.core.data) for j in 1:N] 
                 @test isapprox(lls .- targetll, zeros(N), atol=1e-14)
                 @test m.num_biv_profiles == 1
             end
 
-            m = initialise_LikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes, show_progress=false, 
+            m = initialise_LikelihoodModel(LikelihoodBasedProfileWiseAnalysis.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes, show_progress=false, 
                 find_zero_atol=0.0)
             bivariate_confidenceprofiles!(m, 2, N) # will get set to 1
 
             for i in 1:1
-                lls = [PlaceholderLikelihood.ellipse_loglike(m.biv_profiles_dict[i].confidence_boundary[:, j], m.core.data) for j in 1:N]
+                lls = [LikelihoodBasedProfileWiseAnalysis.ellipse_loglike(m.biv_profiles_dict[i].confidence_boundary[:, j], m.core.data) for j in 1:N]
                 @test isapprox(lls .- targetll, zeros(N), atol=1e-14)
                 @test m.num_biv_profiles == 1
             end
         end
 
         @testset "UseExistingProfilesBehaviour_EllipseLikelihood" begin
-            m = initialise_LikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes, show_progress=false)
+            m = initialise_LikelihoodModel(LikelihoodBasedProfileWiseAnalysis.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes, show_progress=false)
 
             setbounds!(m, lb=[-10000000.0, -10000000.0], ub=[10000000.0, 10000000.0])
 
             univariate_confidenceintervals!(m, [:x], confidence_level=0.90)
-            lb1, ub1 = PlaceholderLikelihood.get_interval_brackets(m, 1, 0.9, LogLikelihood())
+            lb1, ub1 = LikelihoodBasedProfileWiseAnalysis.get_interval_brackets(m, 1, 0.9, LogLikelihood())
             @test isempty(lb1) && isempty(ub1)
 
             t1 = @elapsed univariate_confidenceintervals!(m, [:x], confidence_level=0.90, existing_profiles=:overwrite)
 
             univariate_confidenceintervals!(m, [:x], confidence_level=0.95)
-            lb2, ub2 = PlaceholderLikelihood.get_interval_brackets(m, 1, 0.9, LogLikelihood())
+            lb2, ub2 = LikelihoodBasedProfileWiseAnalysis.get_interval_brackets(m, 1, 0.9, LogLikelihood())
             @test isapprox(lb2[2], m.core.θmle[1]) && isapprox(ub2[1], m.core.θmle[2])
             @test lb2[1] > m.core.θlb[1] && ub2[2] < m.core.θub[2]
 
             univariate_confidenceintervals!(m, [:x], confidence_level=0.70)
-            lb3, ub3 = PlaceholderLikelihood.get_interval_brackets(m, 1, 0.9, LogLikelihood())
+            lb3, ub3 = LikelihoodBasedProfileWiseAnalysis.get_interval_brackets(m, 1, 0.9, LogLikelihood())
             @test lb3[1] < m.core.θmle[1] && ub3[1] > m.core.θmle[2]
 
             univariate_confidenceintervals!(m, [:x], confidence_level=0.90, use_existing_profiles=true, existing_profiles=:overwrite)
@@ -217,7 +217,7 @@ using EllipseSampling
         end
 
         @testset "ExistingProfilesBehaviour_EllipseLikelihood" begin 
-            m = initialise_LikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes, show_progress=false)
+            m = initialise_LikelihoodModel(LikelihoodBasedProfileWiseAnalysis.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes, show_progress=false)
 
             # UNIVARIATE
             univariate_confidenceintervals!(m, [:x])
@@ -268,7 +268,7 @@ using EllipseSampling
         end
 
         @testset "SetMagnitudes_EllipseLikelihood" begin
-            m = initialise_LikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes)
+            m = initialise_LikelihoodModel(LikelihoodBasedProfileWiseAnalysis.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes)
 
             @test isapprox(m.core.θmagnitudes, par_magnitudes)
 
@@ -278,7 +278,7 @@ using EllipseSampling
         end
         
         @testset "SetBounds_EllipseLikelihood" begin
-            m = initialise_LikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes)
+            m = initialise_LikelihoodModel(LikelihoodBasedProfileWiseAnalysis.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes)
 
             setbounds!(m, lb=[-100.0, -50.0], ub=[2.0, 4.0])
 
@@ -288,7 +288,7 @@ using EllipseSampling
 
         @testset "combine_bivariate_boundaries_EllipseLikelihood" begin
             function predict_func(θ, data, t=[1.5]); return sum(θ) .* t end # exact output is not important here
-            m = initialise_LikelihoodModel(PlaceholderLikelihood.ellipse_loglike, predict_func, data, θnames, θG, lb, ub, par_magnitudes, show_progress=false)
+            m = initialise_LikelihoodModel(LikelihoodBasedProfileWiseAnalysis.ellipse_loglike, predict_func, data, θnames, θG, lb, ub, par_magnitudes, show_progress=false)
 
             bivariate_confidenceprofiles!(m, 10)
             bivariate_confidenceprofiles!(m, 10, method=SimultaneousMethod())
@@ -321,7 +321,7 @@ using EllipseSampling
         end
 
         @testset "error_handling_EllipseLikelihood" begin
-            m = initialise_LikelihoodModel(PlaceholderLikelihood.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes, show_progress=false)
+            m = initialise_LikelihoodModel(LikelihoodBasedProfileWiseAnalysis.ellipse_loglike, data, θnames, θG, lb, ub, par_magnitudes, show_progress=false)
 
             @test_throws DomainError   univariate_confidenceintervals!(m, 0)
             @test_throws DomainError   univariate_confidenceintervals!(m, confidence_level=-0.1)
@@ -380,7 +380,7 @@ using EllipseSampling
             @test_throws ArgumentError full_likelihood_sample!(m, 10, lb=[1], ub=[2,2])
 
             function predict_func(θ, data, t=[1.5]); return sum(θ) .* t end # exact output is not important here
-            m = initialise_LikelihoodModel(PlaceholderLikelihood.ellipse_loglike, predict_func, data, θnames, θG, lb, ub, par_magnitudes, show_progress=false)
+            m = initialise_LikelihoodModel(LikelihoodBasedProfileWiseAnalysis.ellipse_loglike, predict_func, data, θnames, θG, lb, ub, par_magnitudes, show_progress=false)
             
             @test_throws DomainError generate_predictions_univariate!(m,  [1, 2], -0.1)
             @test_throws DomainError generate_predictions_bivariate!(m,   [1, 2], -0.1)
@@ -424,14 +424,14 @@ using EllipseSampling
             @test_throws ArgumentError check_bivariate_boundary_coverage(data_gen, data, m, 10, 3, [10, 10], [1.0, 2.0], [[1, 2]], sample_type=LatinHypercubeSamples())
             @test_throws ArgumentError check_bivariate_boundary_coverage(data_gen, data, m, 10, 3, [10], [1.0, 2.0], [[1, 2]], sample_type=UniformGridSamples())
 
-            PlaceholderLikelihood.TimerOutputs.enable_debug_timings(PlaceholderLikelihood)
+            LikelihoodBasedProfileWiseAnalysis.TimerOutputs.enable_debug_timings(LikelihoodBasedProfileWiseAnalysis)
             @test_throws ArgumentError univariate_confidenceintervals!(m; use_distributed=false, use_threads=true)
             @test_throws ArgumentError get_points_in_intervals!(m, 1; use_threads=true)
             @test_throws ArgumentError bivariate_confidenceprofiles!(m, [[1, 2]], 10; use_distributed=false, use_threads=true)
             @test_throws ArgumentError sample_bivariate_internal_points!(m, 10; use_distributed=false, use_threads=true)
             @test_throws ArgumentError dimensional_likelihood_samples!(m, 1, 10; use_distributed=false, use_threads=true)
             @test_throws ArgumentError full_likelihood_sample!(m, 10; use_distributed=false, use_threads=true)
-            PlaceholderLikelihood.TimerOutputs.disable_debug_timings(PlaceholderLikelihood)
+            LikelihoodBasedProfileWiseAnalysis.TimerOutputs.disable_debug_timings(LikelihoodBasedProfileWiseAnalysis)
 
             univariate_confidenceintervals!(m)
             @test_throws ArgumentError get_points_in_intervals!(m, 1, θlb_nuisance=[1.0])
@@ -489,8 +489,8 @@ using EllipseSampling
             # UNIVARIATE
             univariate_confidenceintervals!(m)
 
-            targetll = PlaceholderLikelihood.get_target_loglikelihood(m, 0.95, LogLikelihood(), 1)
-            targetll_standardised = PlaceholderLikelihood.get_target_loglikelihood(m, 0.95, EllipseApprox(), 1)
+            targetll = LikelihoodBasedProfileWiseAnalysis.get_target_loglikelihood(m, 0.95, LogLikelihood(), 1)
+            targetll_standardised = LikelihoodBasedProfileWiseAnalysis.get_target_loglikelihood(m, 0.95, EllipseApprox(), 1)
 
             for i in 1:3
                 lls = [loglhood(m.uni_profiles_dict[i].interval_points.points[:, j], m.core.data) for j in 1:2]
@@ -504,7 +504,7 @@ using EllipseSampling
                 bivariate_confidenceprofiles!(m, N, method=method)
             end
 
-            targetll = PlaceholderLikelihood.get_target_loglikelihood(m, 0.95, LogLikelihood(), 2)
+            targetll = LikelihoodBasedProfileWiseAnalysis.get_target_loglikelihood(m, 0.95, LogLikelihood(), 2)
 
             for i in 1:6
                 lls = [loglhood(m.biv_profiles_dict[i].confidence_boundary[:,j], m.core.data) for j in 1:N]
@@ -520,7 +520,7 @@ using EllipseSampling
             dimensional_likelihood_samples!(m, 1, 100, sample_type=UniformRandomSamples())
             dimensional_likelihood_samples!(m, 1, 100, sample_type=LatinHypercubeSamples())
 
-            targetll_standardised = PlaceholderLikelihood.get_target_loglikelihood(m, 0.95, EllipseApprox(), 1)
+            targetll_standardised = LikelihoodBasedProfileWiseAnalysis.get_target_loglikelihood(m, 0.95, EllipseApprox(), 1)
 
             for i in 1:9
                 @test all(m.dim_samples_dict[i].ll .≥ targetll_standardised)
@@ -531,7 +531,7 @@ using EllipseSampling
             dimensional_likelihood_samples!(m, 2, 100, sample_type=UniformRandomSamples())
             dimensional_likelihood_samples!(m, 2, 100, sample_type=LatinHypercubeSamples())
 
-            targetll_standardised = PlaceholderLikelihood.get_target_loglikelihood(m, 0.95, EllipseApprox(), 2)
+            targetll_standardised = LikelihoodBasedProfileWiseAnalysis.get_target_loglikelihood(m, 0.95, EllipseApprox(), 2)
 
             for i in 10:18
                 @test all(m.dim_samples_dict[i].ll .≥ targetll_standardised)
@@ -542,7 +542,7 @@ using EllipseSampling
             dimensional_likelihood_samples!(m, 3, 1000, sample_type=UniformRandomSamples())
             dimensional_likelihood_samples!(m, 3, 1000, sample_type=LatinHypercubeSamples())
 
-            targetll_standardised = PlaceholderLikelihood.get_target_loglikelihood(m, 0.95, EllipseApprox(), 3)
+            targetll_standardised = LikelihoodBasedProfileWiseAnalysis.get_target_loglikelihood(m, 0.95, EllipseApprox(), 3)
 
             for i in 19:21
                 @test all(m.dim_samples_dict[i].ll .≥ targetll_standardised)
