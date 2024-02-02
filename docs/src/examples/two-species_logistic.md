@@ -118,7 +118,7 @@ par_magnitudes = [0.001, 0.001, 0.001, 10, 1, 1, 1]
 
 ## LikelihoodModel Initialisation
 
-Here we define a single [`LikelihoodModel`](@ref) for sampling and profiling of parameter confidence sets. We will use [`setbounds!`](@ref) to switch between the bounds for profiling and sampling.
+Here we define a single [`LikelihoodModel`](@ref) for sampling and profiling of parameter confidence sets. 
 
 ```julia
 opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5,))
@@ -127,12 +127,10 @@ model = initialise_LikelihoodModel(loglhood, data, θnames, θG, lb, ub, par_mag
 
 ## Full Parameter Vector Confidence Set Evaluation
 
-To evaluate the full parameter vector confidence set at a 95% confidence level we use the following. Note the use of [`setbounds!`](@ref) to adjust the bounds contained in `model` from those used for sampling back to those appropriate for profiling. 
+To evaluate the full parameter vector confidence set at a 95% confidence level we use the following. Note the use of the `lb` and `ub` keyword arguments to specify the parameter ranges to sample points across.
 
 ```julia
-setbounds!(model, lb=lb_sample, ub=ub_sample)
-full_likelihood_sample!(model, Int(1e7), use_distributed=true)
-setbounds!(model, lb=lb, ub=ub)
+full_likelihood_sample!(model, Int(1e7), use_distributed=true, lb=lb_sample, ub=ub_sample)
 ```
 
 ## Profiling
@@ -177,28 +175,36 @@ bivariate_confidenceprofiles!(model, 20,
 To visualise plots of these profiles we load [Plots](https://docs.juliaplots.org/stable/) alongside a plotting backend. Here we use [GR](https://github.com/jheinen/GR.jl).
 
 ```julia
-using Plots; gr()
+using Plots, Plots.PlotMeasures; gr()
+Plots.reset_defaults(); Plots.scalefontsizes(0.75)
 ```
 
 Univariate and bivariate profiles can either be visualised individually or in comparison to profiles at the same confidence level and degrees of freedom. 
 
-Here we plot the first three univariate profiles formed at a 95% confidence level and 1 degree of freedom.
+Here we plot the first two univariate profiles formed at a 95% confidence level and 1 degree of freedom.
 ```julia
-plts = plot_univariate_profiles(model, θs_to_plot=[1,2,3],
-    confidence_level=0.95, dof=1)
+plts = plot_univariate_profiles(model, θs_to_plot=[1,2],
+    confidence_levels=[0.95], dofs=[1])
 
-plt = plot(plts..., layout=(1,3))
+plt = plot(plts..., layout=(1,2),
+    legend=:outertop, title="", dpi=150, size=(550,300), margin=1mm)
 display(plt)
 ```
 
-Similarly, here we plot the first three simultaneous bivariate profiles formed at a 95% confidence level and 7 degrees of freedom.
-```julia
-plts = plot_bivariate_profiles(model, θcombinations_to_plot=[[1,2], [1,3], [1,4]],
-    confidence_level=0.95, dof=model.core.num_pars)
+![](../assets/figures/two-species_logistic/two-species_logistic_univariate_plots.png)
 
-plt = plot(plts..., layout=(1,3))
+
+Similarly, here we plot the first two simultaneous bivariate profiles formed at a 95% confidence level and 7 degrees of freedom.
+```julia
+plts = plot_bivariate_profiles(model, θcombinations_to_plot=[[1,2], [1,3]],
+    confidence_levels=[0.95], dofs=[model.core.num_pars])
+
+plt = plot(plts..., layout=(1,2),
+    legend=:outertop, title="", dpi=150, size=(550,300), margin=1mm)
 display(plt)
 ```
+
+![](../assets/figures/two-species_logistic/two-species_logistic_bivariate_plots.png)
 
 ## Predictions
 
@@ -239,27 +245,65 @@ We can plot the predictions of individual profiles or the union of all profiles 
 
 ```julia
 using Plots; gr()
-plot_predictions_union(model, t_pred, 1, dof=model.core.num_pars,
-    compare_to_full_sample_type=LatinHypercubeSamples()) # univariate profiles
+model_trajectory = ODEmodel(t_pred, θ_true)
 ```
 
 ```julia
-plot_predictions_union(model, t_pred, 2, dof=model.core.num_pars,
-    compare_to_full_sample_type=LatinHypercubeSamples()) # bivariate profiles
+plt = plot_predictions_union(model, t_pred, 1, dof=model.core.num_pars,
+    compare_to_full_sample_type=LatinHypercubeSamples(), plot_title="") # univariate profiles
+
+plot!(plt; dpi=150, size=(450, 300), xlims=(t_pred[1], t_pred[end]))
+plot!(plt[1], t_pred, model_trajectory[1],
+    lw=3, color=:turquoise4, linestyle=:dash)
+plot!(plt[2], t_pred, model_trajectory[2],
+    label="True model trajectory", lw=3, color=:turquoise4, linestyle=:dash)
 ```
+
+![](../assets/figures/two-species_logistic/two-species_logistic_univariate_trajectory.png)
+
+```julia
+plt = plot_predictions_union(model, t_pred, 2, dof=model.core.num_pars,
+    compare_to_full_sample_type=LatinHypercubeSamples(), plot_title="") # bivariate profiles
+
+plot!(plt; dpi=150, size=(450, 300), xlims=(t_pred[1], t_pred[end]))
+plot!(plt[1], t_pred, model_trajectory[1],
+    lw=3, color=:turquoise4, linestyle=:dash)
+plot!(plt[2], t_pred, model_trajectory[2],
+    label="True model trajectory", lw=3, color=:turquoise4, linestyle=:dash)
+```
+
+![](../assets/figures/two-species_logistic/two-species_logistic_bivariate_trajectory.png)
 
 #### ``1-\delta`` Population Reference Set 
 
 ```julia
 using Plots; gr()
-plot_realisations_union(model, t_pred, 1, dof=model.core.num_pars,
-    compare_to_full_sample_type=LatinHypercubeSamples()) # univariate profiles
+lq, uq = errorfunction(hcat(ODEmodel(t_pred, θ_true)...), θ_true, 0.95)
 ```
 
 ```julia
-plot_realisations_union(model, t_pred, 2, dof=model.core.num_pars, 
-    compare_to_full_sample_type=LatinHypercubeSamples()) # bivariate profiles
+plt = plot_realisations_union(model, t_pred, 1, dof=model.core.num_pars,
+    compare_to_full_sample_type=LatinHypercubeSamples(), plot_title="") # univariate profiles
+
+plot!(plt, t_pred, lq, fillrange=uq, fillalpha=0.3, linealpha=0,
+    label="95% population reference set", color=palette(:Paired)[1])
+scatter!(plt, data.t, data.y_obs, label="Observations", msw=0, ms=7, color=palette(:Paired)[3],
+    xlims=(t_pred[1], t_pred[end]), dpi=150, size=(450, 300))
 ```
+
+![](../assets/figures/two-species_logistic/two-species_logistic_univariate_reference_tolerance.png)
+
+```julia
+plt = plot_realisations_union(model, t_pred, 2, dof=model.core.num_pars, 
+    compare_to_full_sample_type=LatinHypercubeSamples(), plot_title="") # bivariate profiles
+
+plot!(plt, t_pred, lq, fillrange=uq, fillalpha=0.3, linealpha=0,
+    label="95% population reference set", color=palette(:Paired)[1])
+scatter!(plt, data.t, data.y_obs, label="Observations", msw=0, ms=7, color=palette(:Paired)[3],
+    xlims=(t_pred[1], t_pred[end]), dpi=150, size=(450, 300))
+```
+
+![](../assets/figures/two-species_logistic/two-species_logistic_bivariate_reference_tolerance.png)
 
 ## Coverage Testing
 
@@ -345,11 +389,9 @@ To test the coverage of the true model trajectory we can use [`check_dimensional
 ```julia
 opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
 
-setbounds!(model, lb=lb_sample, ub=ub_sample)
 full_trajectory_coverage_df = check_dimensional_prediction_coverage(data_generator, 
     training_gen_args, t_pred, model, 200, Int(1e7), 
-    θ_true, [collect(1:model.core.num_pars)])
-setbounds!(model, lb=lb, ub=ub)
+    θ_true, [collect(1:model.core.num_pars)], lb=lb_sample, ub=ub_sample)
 
 uni_trajectory_coverage_df = check_univariate_prediction_coverage(data_generator, 
     training_gen_args, t_pred, model, 1000, 
@@ -390,7 +432,7 @@ To test the coverage of the ``1-\delta`` population reference set as well as obs
 ```julia
 full_reference_coverage_df = check_dimensional_prediction_realisations_coverage(data_generator,
     reference_set_generator, training_gen_args, testing_gen_args, t_pred, model, 200, Int(1e7), 
-    θ_true, [collect(1:model.core.num_pars)])
+    θ_true, [collect(1:model.core.num_pars)], lb=lb_sample, ub=ub_sample)
 
 uni_reference_coverage_df = check_univariate_prediction_realisations_coverage(data_generator,
     reference_set_generator, training_gen_args, testing_gen_args, t_pred, model, 1000, 

@@ -267,11 +267,14 @@ plot!(plt, t_pred, solvedmodel(t_pred, θ_true),
 SRTBs ``(\approx)`` here refer to approximate simultaneous reference tolerance bands for the ``1-\delta`` population reference tolerance set.
 
 ```julia
+lq, uq = errorfunction(solvedmodel(t_pred, θ_true), θ_true, 0.95)
+```
+
+```julia
 using Plots; gr()
 plt = plot_realisations_union(model, t_pred, 1, dof=model.core.num_pars,
     compare_to_full_sample_type=LatinHypercubeSamples(), title="") # univariate profiles
 
-lq, uq = errorfunction(solvedmodel(t_pred, θ_true), θ_true, 0.95)
 plot!(plt, t_pred, lq, fillrange=uq, fillalpha=0.3, linealpha=0,
     label="95% population reference set", color=palette(:Paired)[1])
 scatter!(plt, data.t, data.y_obs, label="Observations", msw=0, ms=7, color=palette(:Paired)[3])

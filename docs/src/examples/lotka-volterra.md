@@ -128,6 +128,12 @@ Similarly, if we wish to find simultaneous 95% confidence intervals for the para
 univariate_confidenceintervals!(model, dof=model.core.num_pars) # model.core.num_pars=4
 ```
 
+We also evaluate some points within the intervals for the purposes of profile visualisation.
+
+```julia
+get_points_in_intervals!(model, 20, additional_width=0.2)
+```
+
 ### Bivariate Profiles
 
 To evaluate the bivariate boundaries for all six bivariate parameter combinations, here we use the [`IterativeBoundaryMethod`](@ref), which uses a 10 point ellipse approximation of the boundary as a starting guess using [`RadialMLEMethod`](@ref). The boundaries in this example are reasonably convex, which makes this starting guess appropriate. To speed up computation we provide stronger optimization settings.
@@ -154,26 +160,33 @@ bivariate_confidenceprofiles!(model, 30,
 To visualise plots of these profiles we load [Plots](https://docs.juliaplots.org/stable/) alongside a plotting backend. Here we use [GR](https://github.com/jheinen/GR.jl).
 
 ```julia
-using Plots; gr()
+using Plots, Plots.PlotMeasures; gr()
+Plots.reset_defaults(); Plots.scalefontsizes(0.75)
 ```
 
 Univariate and bivariate profiles can either be visualised individually or in comparison to profiles at the same confidence level and degrees of freedom. 
 
 Here we plot the univariate profiles formed at a 95% confidence level and 1 degree of freedom.
 ```julia
-plts = plot_univariate_profiles(model, confidence_level=0.95, dof=1)
+plts = plot_univariate_profiles(model, confidence_levels=[0.95], dofs=[1])
 
-plt = plot(plts..., layout=(1,4))
+plt = plot(plts..., layout=(2,2),
+    legend=:outertop, title="", dpi=150, size=(550,300), margin=1mm)
 display(plt)
 ```
+
+![](../assets/figures/lotka-volterra/lotka-volterra_univariate_plots.png)
 
 Similarly, here we plot the simultaneous bivariate profiles formed at a 95% confidence level and 4 degrees of freedom.
 ```julia
-plts = plot_bivariate_profiles(model, confidence_level=0.95, dof=model.core.num_pars)
+plts = plot_bivariate_profiles(model, confidence_levels=[0.95], dofs=[model.core.num_pars])
 
-plt = plot(plts..., layout=(2,3))
+plt = plot(plts..., layout=(2,3),
+    legend=:outertop, title="", dpi=150, size=(550,300), margin=1mm)
 display(plt)
 ```
+
+![](../assets/figures/lotka-volterra/lotka-volterra_bivariate_plots.png)
 
 ## Predictions
 
@@ -209,28 +222,66 @@ We can plot the predictions of individual profiles or the union of all profiles 
 #### Model Trajectory
 
 ```julia
-using Plots; gr()
-plot_predictions_union(model, t_pred, 1, dof=model.core.num_pars,
-    compare_to_full_sample_type=LatinHypercubeSamples()) # univariate profiles
+model_trajectory = ODEmodel(t_pred, θ_true)
 ```
 
 ```julia
-plot_predictions_union(model, t_pred, 2, dof=model.core.num_pars,
-    compare_to_full_sample_type=LatinHypercubeSamples()) # bivariate profiles
+using Plots; gr()
+plt=plot_predictions_union(model, t_pred, 1, dof=model.core.num_pars,
+    compare_to_full_sample_type=LatinHypercubeSamples(), plot_title="") # univariate profiles
+
+plot!(plt; dpi=150, size=(450, 300), xlims=(t_pred[1], t_pred[end]))
+plot!(plt[1], t_pred, model_trajectory[1],
+    lw=3, color=:turquoise4, linestyle=:dash)
+plot!(plt[2], t_pred, model_trajectory[2],
+    label="True model trajectory", lw=3, color=:turquoise4, linestyle=:dash)
 ```
+
+![](../assets/figures/lotka-volterra/lotka-volterra_univariate_trajectory.png)
+
+```julia
+plt=plot_predictions_union(model, t_pred, 2, dof=model.core.num_pars,
+    compare_to_full_sample_type=LatinHypercubeSamples(), plot_title="") # bivariate profiles
+
+plot!(plt; dpi=150, size=(450, 300), xlims=(t_pred[1], t_pred[end]))
+plot!(plt[1], t_pred, model_trajectory[1],
+    lw=3, color=:turquoise4, linestyle=:dash)
+plot!(plt[2], t_pred, model_trajectory[2],
+    label="True model trajectory", lw=3, color=:turquoise4, linestyle=:dash)
+```
+
+![](../assets/figures/lotka-volterra/lotka-volterra_bivariate_trajectory.png)
 
 #### ``1-\delta`` Population Reference Set 
 
 ```julia
-using Plots; gr()
-plot_realisations_union(model, t_pred, 1, dof=model.core.num_pars,
-    compare_to_full_sample_type=LatinHypercubeSamples()) # univariate profiles
+lq, uq = errorfunction(hcat(ODEmodel(t_pred, θ_true)...), θ_true, 0.95)
 ```
 
 ```julia
-plot_realisations_union(model, t_pred, 2, dof=model.core.num_pars, 
-    compare_to_full_sample_type=LatinHypercubeSamples()) # bivariate profiles
+using Plots; gr()
+plt = plot_realisations_union(model, t_pred, 1, dof=model.core.num_pars,
+    compare_to_full_sample_type=LatinHypercubeSamples(), plot_title="") # univariate profiles
+
+plot!(plt, t_pred, lq, fillrange=uq, fillalpha=0.3, linealpha=0,
+    label="95% population reference set", color=palette(:Paired)[1])
+scatter!(plt, data.t, data.y_obs, label="Observations", msw=0, ms=7, color=palette(:Paired)[3],
+    xlims=(t_pred[1], t_pred[end]), dpi=150, size=(450, 300))
 ```
+
+![](../assets/figures/lotka-volterra/lotka-volterra_univariate_reference_tolerance.png)
+
+```julia
+plt = plot_realisations_union(model, t_pred, 2, dof=model.core.num_pars, 
+    compare_to_full_sample_type=LatinHypercubeSamples(), plot_title="") # bivariate profiles
+
+plot!(plt, t_pred, lq, fillrange=uq, fillalpha=0.3, linealpha=0,
+    label="95% population reference set", color=palette(:Paired)[1])
+scatter!(plt, data.t, data.y_obs, label="Observations", msw=0, ms=7, color=palette(:Paired)[3],
+    xlims=(t_pred[1], t_pred[end]), dpi=150, size=(450, 300))
+```
+
+![](../assets/figures/lotka-volterra/lotka-volterra_bivariate_reference_tolerance.png)
 
 ## Coverage Testing
 
