@@ -34,6 +34,8 @@ The prediction coverage from combining the prediction sets of multiple confidenc
 # Keyword Arguments
 - `confidence_level`: a number ∈ (0.0, 1.0) for the confidence level to find samples within and evaluate coverage at. Default is `0.95` (95%).
 - `sample_type`: the sampling method used to sample parameter space. Available sample types are [`UniformGridSamples`](@ref), [`UniformRandomSamples`](@ref) and [`LatinHypercubeSamples`](@ref). Default is `LatinHypercubeSamples()` ([`LatinHypercubeSamples`](@ref)).
+- `lb`: optional vector of lower bounds on parameters. Use to specify parameter lower bounds to sample over that are different than those contained in `model.core`. Default is `Float64[]` (use lower bounds from `model.core`).
+- `ub`: optional vector of upper bounds on parameters. Use to specify parameter upper bounds to sample over that are different than those contained in `model.core`. Default is `Float64[]` (use upper bounds from `model.core`).
 - `θlb_nuisance`: a vector of lower bounds on nuisance parameters, require `θlb_nuisance .≤ model.core.θmle`. Default is `model.core.θlb`. 
 - `θub_nuisance`: a vector of upper bounds on nuisance parameters, require `θub_nuisance .≥ model.core.θmle`. Default is `model.core.θub`.
 - `coverage_estimate_confidence_level`: a number ∈ (0.0, 1.0) for the level of a confidence interval of the estimated coverage. Default is `0.95` (95%).
@@ -67,6 +69,8 @@ function check_dimensional_prediction_coverage(data_generator::Function,
     θinitialguess::AbstractVector{<:Real}=θtrue;
     confidence_level::Float64=0.95, 
     sample_type::AbstractSampleType=LatinHypercubeSamples(),
+    lb::AbstractVector{<:Real}=Float64[],
+    ub::AbstractVector{<:Real}=Float64[],
     θlb_nuisance::AbstractVector{<:Real}=model.core.θlb,
     θub_nuisance::AbstractVector{<:Real}=model.core.θub,
     coverage_estimate_confidence_level::Float64=0.95,
@@ -120,6 +124,7 @@ function check_dimensional_prediction_coverage(data_generator::Function,
         return nothing
     end
     argument_handling!()
+    lb, ub = check_if_bounds_supplied(model, lb, ub)
 
     y_true = model.core.predictfunction(θtrue, model.core.data, t)
     multiple_outputs = ndims(y_true) == 2
@@ -149,7 +154,8 @@ function check_dimensional_prediction_coverage(data_generator::Function,
 
             dimensional_likelihood_samples!(m_new, deepcopy(θindices), num_points_to_sample,
                 confidence_level=confidence_level, sample_type=sample_type,
-                θlb_nuisance=lb, θub_nuisance=ub, use_distributed=!use_threads, use_threads=use_threads,
+                lb=lb, ub=ub, θlb_nuisance=lb, θub_nuisance=ub, 
+                use_distributed=!use_threads, use_threads=use_threads,
                 optimizationsettings=optimizationsettings)
 
             generate_predictions_dim_samples!(m_new, t, 0.0)
@@ -189,7 +195,8 @@ function check_dimensional_prediction_coverage(data_generator::Function,
 
                     dimensional_likelihood_samples!(m_new, deepcopy(θindices), num_points_to_sample,
                         confidence_level=confidence_level, sample_type=sample_type,
-                        θlb_nuisance=lb, θub_nuisance=ub, use_distributed=false, use_threads=false,
+                        lb=lb, ub=ub, θlb_nuisance=lb, θub_nuisance=ub, 
+                        use_distributed=false, use_threads=false,
                         optimizationsettings=optimizationsettings)
         
                     generate_predictions_dim_samples!(m_new, t, 0.0, use_distributed=false)
@@ -274,6 +281,8 @@ The prediction coverage from combining the prediction sets of multiple confidenc
 - `confidence_level`: a number ∈ (0.0, 1.0) for the confidence level to find samples within and evaluate coverage at. Default is `0.95` (95%).
 - `region`: a `Real` number ∈ [0, 1] specifying the proportion of the density of the error model from which to evaluate the highest density region. Default is `0.95`.
 - `sample_type`: the sampling method used to sample parameter space. Available sample types are [`UniformGridSamples`](@ref), [`UniformRandomSamples`](@ref) and [`LatinHypercubeSamples`](@ref). Default is `LatinHypercubeSamples()` ([`LatinHypercubeSamples`](@ref)).
+- `lb`: optional vector of lower bounds on parameters. Use to specify parameter lower bounds to sample over that are different than those contained in `model.core`. Default is `Float64[]` (use lower bounds from `model.core`).
+- `ub`: optional vector of upper bounds on parameters. Use to specify parameter upper bounds to sample over that are different than those contained in `model.core`. Default is `Float64[]` (use upper bounds from `model.core`).
 - `θlb_nuisance`: a vector of lower bounds on nuisance parameters, require `θlb_nuisance .≤ model.core.θmle`. Default is `model.core.θlb`. 
 - `θub_nuisance`: a vector of upper bounds on nuisance parameters, require `θub_nuisance .≥ model.core.θmle`. Default is `model.core.θub`.
 - `coverage_estimate_confidence_level`: a number ∈ (0.0, 1.0) for the level of a confidence interval of the estimated coverage. Default is `0.95` (95%).
@@ -311,6 +320,8 @@ function check_dimensional_prediction_realisations_coverage(data_generator::Func
     confidence_level::Float64=0.95,
     region::Float64=0.95,
     sample_type::AbstractSampleType=LatinHypercubeSamples(),
+    lb::AbstractVector{<:Real}=Float64[],
+    ub::AbstractVector{<:Real}=Float64[],
     θlb_nuisance::AbstractVector{<:Real}=model.core.θlb,
     θub_nuisance::AbstractVector{<:Real}=model.core.θub,
     coverage_estimate_confidence_level::Float64=0.95,
@@ -371,6 +382,7 @@ function check_dimensional_prediction_realisations_coverage(data_generator::Func
         return nothing
     end
     argument_handling!()
+    lb, ub = check_if_bounds_supplied(model, lb, ub)
 
     y_true = model.core.predictfunction(θtrue, model.core.data, t)
     multiple_outputs = ndims(y_true) == 2
@@ -407,7 +419,8 @@ function check_dimensional_prediction_realisations_coverage(data_generator::Func
 
             dimensional_likelihood_samples!(m_new, deepcopy(θindices), num_points_to_sample,
                 confidence_level=confidence_level, sample_type=sample_type,
-                θlb_nuisance=lb, θub_nuisance=ub, use_distributed=!use_threads, use_threads=use_threads,
+                lb=lb, ub=ub, θlb_nuisance=lb, θub_nuisance=ub, 
+                use_distributed=!use_threads, use_threads=use_threads,
                 optimizationsettings=optimizationsettings)
 
             generate_predictions_dim_samples!(m_new, t, 0.0, region=region)
@@ -462,7 +475,7 @@ function check_dimensional_prediction_realisations_coverage(data_generator::Func
 
                     dimensional_likelihood_samples!(m_new, deepcopy(θindices), num_points_to_sample,
                         confidence_level=confidence_level, sample_type=sample_type,
-                        θlb_nuisance=lb, θub_nuisance=ub,
+                        lb=lb, ub=ub, θlb_nuisance=lb, θub_nuisance=ub,
                         use_distributed=false, use_threads=false,
                         optimizationsettings=optimizationsettings)
 
