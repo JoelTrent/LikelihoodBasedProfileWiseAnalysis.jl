@@ -1,6 +1,6 @@
 # Logistic Model
 
-The code included in this example is compiled into a single file [here](../../../examples/logistic.jl).
+The code included in this example is compiled into a single file [here](https://github.com/JoelTrent/LikelihoodBasedProfileWiseAnalysis.jl/-/tree/main/examples/logistic.jl).
 
 The logistic model with a normal data distribution [simpsonprofilewise2023](@cite) has the following differential equation for the population density ``C(t)\geq0``:
 ```math
@@ -119,7 +119,7 @@ If we want to visualise the univariate profiles across the range defined by each
 get_points_in_intervals!(model, 20, additional_width=0.2)
 ```
 
-This can also be done within [`univariate_confidenceintervals`](@ref) using the `num_points_in_interval` and `additional_width` keyword arguments.
+This can also be done within [`univariate_confidenceintervals!`](@ref) using the `num_points_in_interval` and `additional_width` keyword arguments.
 
 #### Initial Guesses
 

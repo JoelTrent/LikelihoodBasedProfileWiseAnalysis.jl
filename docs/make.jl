@@ -51,7 +51,8 @@ makedocs(;
             "Bivariate Functions" => "internal_library/bivariate.md",
             "Dimensional Functions" => "internal_library/dimensional.md",
             "Prediction Functions" => "internal_library/predictions.md",
-            "Plotting Functions" => "internal_library/plots.md"],
+            "Plotting Functions" => "internal_library/plots.md",
+            "Coverage Functions" => "internal_library/coverage.md"],
         "References" => "references.md"
     ],
     plugins=[bib],

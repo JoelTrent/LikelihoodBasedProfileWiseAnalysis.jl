@@ -21,6 +21,7 @@ LikelihoodBasedProfileWiseAnalysis.addMLEandLLstar!
 LikelihoodBasedProfileWiseAnalysis.plot2Dboundary!
 LikelihoodBasedProfileWiseAnalysis.addMLE!
 LikelihoodBasedProfileWiseAnalysis.plotprediction!
+LikelihoodBasedProfileWiseAnalysis.plotrealisation!
 LikelihoodBasedProfileWiseAnalysis.add_yMLE!
 LikelihoodBasedProfileWiseAnalysis.add_extrema!
 ```

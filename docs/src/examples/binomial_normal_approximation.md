@@ -1,5 +1,7 @@
 # Gaussian Approximation of a Binomial Distribution
 
+The code included in this example is compiled into a single file [here](https://github.com/JoelTrent/LikelihoodBasedProfileWiseAnalysis.jl/-/tree/main/examples/binomial_normal_approximation.jl).
+
 This model is taken from an unreleased paper by the authors of the workflow [simpsonprofilewise2023](@cite). The Binomial distribution is defined as:
 
 ```math

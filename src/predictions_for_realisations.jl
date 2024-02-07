@@ -224,7 +224,7 @@ end
         θ::AbstractVector,
         region::Float64)
 
-
+Uses `errorfunction` to make prediction for realisations; it forms `region` reference intervals for `region` population reference intervals. Returns two arrays of the same dimension as `predictions`, one containing the lower quantile and one containing the upper quantile (the extrema) of the reference interval.
 """
 function predict_realisations(errorfunction::Function, predictions::AbstractArray, θ::AbstractVector, region::Float64)
     lq, uq = errorfunction(predictions, θ, region)

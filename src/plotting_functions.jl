@@ -1,5 +1,7 @@
 """
     profilecolor(profile_type::Union{AbstractProfileType, AbstractSampleType})
+
+Colors of profile types and sample types as integers between 1 and 6.
 """
 function profilecolor(profile_type::Union{AbstractProfileType, AbstractSampleType})
     if profile_type isa EllipseApproxAnalytical
@@ -16,6 +18,11 @@ function profilecolor(profile_type::Union{AbstractProfileType, AbstractSampleTyp
     return 3
 end
 
+"""
+    profile1Dlinestyle(profile_type::AbstractProfileType)
+
+Linestyle of each `profile_type`. [`EllipseApproxAnalytical`](@ref) - :dash, [`EllipseApprox`](@ref) - :dashdot, [`LogLikelihood`](@ref) - :solid, 
+"""
 function profile1Dlinestyle(profile_type::AbstractProfileType)
     if profile_type isa EllipseApproxAnalytical
         return :dash
@@ -25,6 +32,11 @@ function profile1Dlinestyle(profile_type::AbstractProfileType)
     return :solid
 end
 
+"""
+    profile2Dmarkershape(profile_type::Union{AbstractProfileType, AbstractSampleType}, on_boundary::Bool)
+
+Marker shapes of bivariate profiles depending on profile type or sample type and whether or not the point is on the profile's boundary.
+"""
 function profile2Dmarkershape(profile_type::Union{AbstractProfileType, AbstractSampleType}, on_boundary::Bool)
     if profile_type isa EllipseApproxAnalytical
         return on_boundary ? :diamond : :hexagon
@@ -36,6 +48,11 @@ function profile2Dmarkershape(profile_type::Union{AbstractProfileType, AbstractS
     return on_boundary ? :circle : :rect
 end
 
+"""
+    θs_to_plot_typeconversion(model::LikelihoodModel, θs_to_plot::Union{Vector{<:Symbol}, Vector{<:Int64}})
+
+Converts `θs_to_plot` to integer index values with [`LikelihoodBasedProfileWiseAnalysis.convertθnames_toindices`](@ref) if they are supplied as a vector of symbols.
+"""
 function θs_to_plot_typeconversion(model::LikelihoodModel,
                                     θs_to_plot::Union{Vector{<:Symbol}, Vector{<:Int64}})
     if θs_to_plot isa Vector{<:Symbol}
@@ -44,6 +61,12 @@ function θs_to_plot_typeconversion(model::LikelihoodModel,
     return θs_to_plot
 end
 
+"""
+    θcombinations_to_plot_typeconversion(model::LikelihoodModel,
+        θcombinations_to_plot::Union{Vector{Vector{Symbol}}, Vector{Tuple{Symbol, Symbol}}, Vector{Vector{Int}}, Vector{Tuple{Int,Int}}})
+
+Converts `θcombinations_to_plot` to a vector of tuples of integer index values with [`LikelihoodBasedProfileWiseAnalysis.convertθnames_toindices`](@ref) if they are supplied as a vector of vectors/tuples containing symbols. The index elements in each vector/tuple will be sorted in ascending order. 
+"""
 function θcombinations_to_plot_typeconversion(model::LikelihoodModel,
                                                 θcombinations_to_plot::Union{Vector{Vector{Symbol}}, Vector{Tuple{Symbol, Symbol}}, Vector{Vector{Int}}, Vector{Tuple{Int,Int}}})
     if θcombinations_to_plot isa Vector{Vector{Symbol}} || θcombinations_to_plot isa Vector{Tuple{Symbol, Symbol}}
@@ -58,19 +81,32 @@ end
 
 # plotting functions #################
 
-# 1D
+"""
+    plot1Dprofile!(plt, parRange, parProfile, label="profile"; kwargs...)
+
+Plots a univariate profile at ψ locations `parRange`, with normalised profile log-likelihood function values `parProfile`.
+"""
 function plot1Dprofile!(plt, parRange, parProfile, label="profile"; kwargs...)
     plot!(plt, parRange, parProfile, lw=3, label=label; kwargs...)
     return plt
 end
 
+"""
+    addMLEandLLstar!(plt, llstar, parMLE, MLE_color, llstar_color; kwargs...)
+
+On a univariate profile, adds the MLE location as a vertical line and the asymptotic confidence threshold as a horizontal line. The intersection between the horizontal asymptotic confidence threshold and the univariate profile gives the location of the corresponding confidence interval for that parameter. 
+"""
 function addMLEandLLstar!(plt, llstar, parMLE, MLE_color, llstar_color; kwargs...)
     vline!(plt, [parMLE], lw=3, color=MLE_color, label="MLE point", linestyle=:dot)
     hline!(plt, [llstar], lw=3, color=llstar_color, label=L"\ell_{c}", linestyle=:dot; kwargs...)
     return plt
 end
 
-# 2D
+"""
+    plot2Dboundary!(plt, parBoundarySamples, label="boundary"; use_lines=false, kwargs...)
+
+Plots the boundary of a bivariate profile at 2D locations `parBoundarySamples`. If `use_lines=false` then it will use a scatter plot, otherwise it will connect the boundary in the order of the `parBoundarySamples`.
+"""
 function plot2Dboundary!(plt, parBoundarySamples, label="boundary"; use_lines=false, kwargs...)
     
     plot_func! = use_lines ? plot! : scatter!
@@ -81,6 +117,11 @@ function plot2Dboundary!(plt, parBoundarySamples, label="boundary"; use_lines=fa
     return plt
 end
 
+"""
+    addMLE!(plt, parMLEs; kwargs...)
+
+On a bivariate profile, adds the MLE location as a scatter point.
+"""
 function addMLE!(plt, parMLEs; kwargs...)
     scatter!(plt, [parMLEs[1]], [parMLEs[2]],
             markershape=:circle,
@@ -90,6 +131,12 @@ function addMLE!(plt, parMLEs; kwargs...)
 end
 
 # Predictions
+
+"""
+    plotprediction!(plt, t, predictions, extrema, linealpha, layout; extremacolor=:red, kwargs...)
+
+Plots the profile-wise confidence set for the model trajectory using the same format as in the profile-wise analysis workflow paper [simpsonprofilewise2023](@cite). The extrema of the profile-wise trajectory confidence set is labelled as approximate profile-wise simultaneous confidence bands (SCBs).
+"""
 function plotprediction!(plt, t, predictions, extrema, linealpha, layout; extremacolor=:red, kwargs...)
     if layout > 1
         for i in 1:(layout-1)
@@ -105,6 +152,11 @@ function plotprediction!(plt, t, predictions, extrema, linealpha, layout; extrem
     return plt
 end
 
+"""
+    plotrealisation!(plt, t, extrema, linealpha, layout; extremacolor=:red, kwargs...)
+
+Plots the extrema of the profile-wise reference tolerance set for the (1-δ) population reference set. The (1-δ) population reference set refers to a set containing the (1-δ) reference region of the population at each time point; i.e. the smallest region at each time point which contains (1-δ) of possible realisations. The extrema of the profile-wise reference tolerance set is labelled as approximate profile-wise simultaneous reference tolerance bands (SRTBs).
+"""
 function plotrealisation!(plt, t, extrema, linealpha, layout; extremacolor=:red, kwargs...)
     if layout > 1
         for i in 1:(layout-1)
@@ -117,6 +169,11 @@ function plotrealisation!(plt, t, extrema, linealpha, layout; extremacolor=:red,
     return plt
 end
 
+"""
+    add_yMLE!(plt, t, yMLE, layout; kwargs...)
+
+Adds the model trajectory obtained from simulating the model at times `t` using the maximum likelihood estimate for parameters. 
+"""
 function add_yMLE!(plt, t, yMLE, layout; kwargs...)
     if layout > 1
         for i in 1:layout
@@ -128,6 +185,12 @@ function add_yMLE!(plt, t, yMLE, layout; kwargs...)
     return plt
 end
 
+
+"""
+    add_extrema!(plt, t, extrema, layout; extremacolor=:gold, label=["Sampled SCBs (≈)" ""])
+
+Adds additional extrema to plots for the model trajectory and population reference sets. Typically for comparing the extrema of profile-wise predictions sets from profiles with sets from dimensional samples (often the full parameter confidence set).
+"""
 function add_extrema!(plt, t, extrema, layout; extremacolor=:gold, label=["Sampled SCBs (≈)" ""])
     if layout > 1
         for i in 1:layout
@@ -151,6 +214,13 @@ end
         palette_to_use::Symbol=:Paired_6, 
         kwargs...)
 
+Returns a vector of plots of univariate profiles contained with the `model` struct that meet the requirements of the univariate method of [`LikelihoodBasedProfileWiseAnalysis.desired_df_subset`](@ref) (see Keyword Arguments). 
+
+The profiles plotted are based on the specified `θs_to_plot`, `confidence_levels`, `dofs` and `profile_types`. By default, will plot all univariate profiles generated.
+
+If `num_points_in_interval` is greater than 0 then [`get_points_in_interval!`](@ref) will be called - use to obtain smoother profile plots.
+
+`xlim_scaler` and `ylim_scaler` are used to uniformly push the `xlimits` and `ylimits` away from the location of the confidence interval - if they are zero, then the confidence interval gives the location of the `xlimits` and the lower of the `ylimits`. If they are `1` then the corresponding limits have a range 100% wider than the confidence interval.
 """
 function plot_univariate_profiles(model::LikelihoodModel,
                                     xlim_scaler::Real=0.2,
@@ -210,6 +280,29 @@ function plot_univariate_profiles(model::LikelihoodModel,
     return profile_plots
 end
 
+"""
+    plot_univariate_profiles_comparison(model::LikelihoodModel, 
+        xlim_scaler::Real=0.2,
+        ylim_scaler::Real=0.2;
+        θs_to_plot::Vector=Int[],
+        confidence_levels::Vector{<:Float64}=Float64[],
+        dofs::Vector{<:Int}=Int[],
+        profile_types::Vector{<:AbstractProfileType}=AbstractProfileType[], 
+        num_points_in_interval::Int=0,
+        palette_to_use::Symbol=:Paired_6,
+        label_only_lines::Bool=false,
+        kwargs...)
+
+Returns a vector of comparison plots of univariate profiles contained with the `model` struct that meet the requirements of the univariate method of [`LikelihoodBasedProfileWiseAnalysis.desired_df_subset`](@ref) (see Keyword Arguments). Comparisons are between `profile_types` at the same `confidence_level` and `dof` for a given parameter.
+
+The profiles plotted are based on the specified `θs_to_plot`, `confidence_levels`, `dofs` and `profile_types`. By default, will plot all univariate profiles generated.
+
+If `num_points_in_interval` is greater than 0 then [`get_points_in_interval!`](@ref) will be called - use to obtain smoother profile plots.
+
+If `label_only_lines=true` then only the vertical and horizontal MLE point and confidence threshold lines will be labelled in the legend. Otherwise, profiles will be labelled by their `profile_type`.
+
+`xlim_scaler` and `ylim_scaler` are used to uniformly push the `xlimits` and `ylimits` away from the location of the confidence interval - if they are zero, then the confidence interval gives the location of the `xlimits` and the lower of the `ylimits`. If they are `1` then the corresponding limits have a range 100% wider than the confidence interval.
+"""
 function plot_univariate_profiles_comparison(model::LikelihoodModel, 
                                     xlim_scaler::Real=0.2,
                                     ylim_scaler::Real=0.2;
@@ -304,6 +397,31 @@ function plot_univariate_profiles_comparison(model::LikelihoodModel,
     return profile_plots
 end
 
+"""
+    plot_bivariate_profiles(model::LikelihoodModel,
+        xlim_scaler::Real=0.2,
+        ylim_scaler::Real=0.2;
+        for_dim_samples::Bool=false,
+        θcombinations_to_plot::Vector=Tuple{Int,Int}[],
+        confidence_levels::Vector{<:Float64}=Float64[],
+        dofs::Vector{<:Int}=Int[],
+        profile_types::Vector{<:AbstractProfileType}=AbstractProfileType[],
+        methods::Vector{<:AbstractBivariateMethod}=AbstractBivariateMethod[],
+        sample_types::Vector{<:AbstractSampleType}=AbstractSampleType[],
+        palette_to_use::Symbol=:Paired_6,
+        include_internal_points::Bool=true,
+        max_internal_points::Int=1000,
+        markeralpha=1.0,
+        kwargs...)
+
+Returns a vector of plots of bivariate profiles contained with the `model` struct that meet the requirements of the bivariate method of [`LikelihoodBasedProfileWiseAnalysis.desired_df_subset`](@ref) (see Keyword Arguments).
+
+The profiles plotted are based on the specified `θcombinations_to_plot`, `confidence_levels`, `dofs`, `profile_types`, `methods` and `sample_types`. By default, will plot all bivariate profiles generated. If `for_dim_samples=false` it will plot bivariate profiles generated by an [`AbstractBivariateMethod`](@ref). Otherwise, it will plot bivariate profiles generated by an [`AbstractSampleType`](@ref).
+
+If `include_internal_points=true` then points inside the boundary up to `max_internal_points` will be plotted (these are chosen randomly). Otherwise, only the boundary of the profile will be plotted. If plotting bivariate profiles from an [`AbstractSampleType`](@ref) this boundary will be estimated using [`LikelihoodBasedProfileWiseAnalysis.bivariate_concave_hull`](@ref).
+
+`xlim_scaler` and `ylim_scaler` are used to uniformly push the `xlimits` and `ylimits` away from the location of the confidence boundary - if they are zero, then the extrema of the confidence boundary gives the location of the `xlimits` and the `ylimits`. If they are `1` then the corresponding limits have a range 100% wider than the extrema of the confidence boundary.
+"""
 function plot_bivariate_profiles(model::LikelihoodModel,
                                     xlim_scaler::Real=0.2,
                                     ylim_scaler::Real=0.2;
@@ -407,6 +525,28 @@ function plot_bivariate_profiles(model::LikelihoodModel,
     return profile_plots
 end
 
+"""
+    plot_bivariate_profiles_iterativeboundary_gif(model::LikelihoodModel,
+        xlim_scaler::Real=0.2,
+        ylim_scaler::Real=0.2;
+        θcombinations_to_plot::Vector=Tuple{Int,Int}[],
+        confidence_levels::Vector{<:Float64}=Float64[],
+        dofs::Vector{<:Int}=Int[],
+        profile_types::Vector{<:AbstractProfileType}=AbstractProfileType[],
+        palette_to_use::Symbol=:Paired_6,
+        save_as_separate_plots::Bool=false,
+        markeralpha=1.0,
+        save_folder=nothing,
+        kwargs...)
+
+Saves a gif of the boundary of bivariate profiles generated using [`IterativeBoundaryMethod`](@ref) in `save_folder` that also meet the requirements of the bivariate method of [`LikelihoodBasedProfileWiseAnalysis.desired_df_subset`](@ref) (see Keyword Arguments).
+
+The profiles plotted are based on the specified `θcombinations_to_plot`, `confidence_levels`, `dofs` and `profile_types`.
+
+`xlim_scaler` and `ylim_scaler` are used to uniformly push the `xlimits` and `ylimits` away from the location of the final confidence boundary - if they are zero, then the extrema of the confidence boundary gives the location of the `xlimits` and the `ylimits`. If they are `1` then the corresponding limits have a range 100% wider than the extrema of the confidence boundary. 
+
+If `save_as_separate_plots=true` then alongside the saved gif, each frame of the gif will also be saved as a `.png`.
+"""
 function plot_bivariate_profiles_iterativeboundary_gif(model::LikelihoodModel,
                                     xlim_scaler::Real=0.2,
                                     ylim_scaler::Real=0.2;
@@ -520,6 +660,31 @@ function plot_bivariate_profiles_iterativeboundary_gif(model::LikelihoodModel,
     return nothing
 end
 
+"""
+    plot_bivariate_profiles_comparison(model::LikelihoodModel,
+        xlim_scaler::Real=0.2,
+        ylim_scaler::Real=0.2;
+        θcombinations_to_plot::Vector=Tuple{Int,Int}[],
+        confidence_levels::Vector{<:Float64}=Float64[],
+        dofs::Vector{<:Int}=Int[],
+        profile_types::Vector{<:AbstractProfileType}=AbstractProfileType[],
+        methods::Vector{<:AbstractBivariateMethod}=AbstractBivariateMethod[],
+        sample_types::Vector{<:AbstractSampleType}=AbstractSampleType[],
+        compare_within_methods::Bool=false,
+        include_dim_samples::Bool=false,
+        palette_to_use::Symbol=:Paired_6, 
+        markeralpha::Number=0.7,
+        label_only_MLE::Bool=false,
+        kwargs...)
+
+Returns a vector of comparison plots of bivariate profiles contained with the `model` struct that meet the requirements of the bivariate method of [`LikelihoodBasedProfileWiseAnalysis.desired_df_subset`](@ref) (see Keyword Arguments). Comparisons are between `profile_types` at the same `confidence_level` and `dof` for a given parameter combination; will also be within methods if `compare_within_methods=true`.
+
+The profiles plotted are based on the specified `θcombinations_to_plot`, `confidence_levels`, `dofs`, `profile_types`, `methods` and `sample_types`. By default, will plot all bivariate profiles generated. If `include_dim_samples=true` it will also include the concave hull boundary of bivariate profiles generated by an [`AbstractSampleType`](@ref) in the comparison (using [`LikelihoodBasedProfileWiseAnalysis.bivariate_concave_hull`](@ref)).
+
+If `label_only_MLE=true`, then only the MLE point will be labelled in the legend. Otherwise, profiles will be labelled by their `profile_type` or `sample_type`.
+
+`xlim_scaler` and `ylim_scaler` are used to uniformly push the `xlimits` and `ylimits` away from the location of the confidence boundary - if they are zero, then the extrema of the confidence boundary gives the location of the `xlimits` and the `ylimits`. If they are `1` then the corresponding limits have a range 100% wider than the extrema of the confidence boundary.
+"""
 function plot_bivariate_profiles_comparison(model::LikelihoodModel,
                                     xlim_scaler::Real=0.2,
                                     ylim_scaler::Real=0.2;
@@ -771,6 +936,35 @@ function plot_bivariate_profiles_comparison(model::LikelihoodModel,
     return profile_plots
 end
 
+"""
+    plot_predictions_individual(model::LikelihoodModel,
+        t::AbstractVector,
+        profile_dimension::Int=1;
+        xlabel::String="t",
+        ylabel::Union{Nothing,String,Vector{String}}=nothing,
+        for_dim_samples::Bool=false,
+        include_MLE::Bool=true,
+        θs_to_plot::Vector=Int[],
+        θcombinations_to_plot::Vector=Tuple{Int,Int}[],
+        θindices_to_plot::Vector=Vector{Int}[],
+        confidence_levels::Vector{<:Float64}=Float64[],
+        dofs::Vector{<:Int}=Int[],
+        profile_types::Vector{<:AbstractProfileType}=[LogLikelihood()],
+        methods::Vector{<:AbstractBivariateMethod}=AbstractBivariateMethod[],
+        sample_types::Vector{<:AbstractSampleType}=AbstractSampleType[],
+        linealpha=0.4, 
+        kwargs...)
+
+Returns a vector of plots of profile-wise predictions of the model trajectory formed from profiles with interest parameter dimension `profile_dimension` that meet the requirement of the relevant method of [`LikelihoodBasedProfileWiseAnalysis.desired_df_subset`](@ref) (see Keyword Arguments). 
+
+The plotted extrema are the extrema of approximate profile-wise `confidence_level` trajectory confidence set from each profile.
+
+`t` should be the same points used to generate predictions in [`generate_predictions_univariate!`](@ref), [`generate_prediction_bivariate!`](@ref) and [`generate_predictions_dim_samples!`](@ref). 
+
+The profiles plotted are based on the specified `θs_to_plot`, `θcombinations_to_plot`, `θs_to_plot`, `confidence_levels`, `dofs`, `profile_types`, `methods` and `sample_types`. By default, will plot all predictions generated from profiles with `profile_dimension`. If `for_dim_samples=true` then profile-wise trajectory confidence sets will be plotted from profiles sampled using an [`AbstractSampleType`](@ref).
+
+`linealpha` is the alpha value used for plotting each individual model trajectory line contained within a profile-wise trajectory confidence set. 
+"""
 function plot_predictions_individual(model::LikelihoodModel,
                             # prediction_type::Symbol=:union,
                             t::AbstractVector,
@@ -894,7 +1088,40 @@ function plot_predictions_individual(model::LikelihoodModel,
 end
 
 """
-include_lower_confidence_levels is only used for 2d bivariate boundaries
+    plot_predictions_union(model::LikelihoodModel,
+        t::AbstractVector,
+        profile_dimension::Int=1,
+        confidence_level::Float64=0.95;
+        dof::Int=profile_dimension,
+        xlabel::String="t",
+        ylabel::Union{Nothing,String,Vector{String}}=nothing,
+        for_dim_samples::Bool=false,
+        include_MLE::Bool=true,
+        θs_to_plot::Vector = Int[],
+        θcombinations_to_plot::Vector=Tuple{Int,Int}[],
+        θindices_to_plot::Vector=Vector{Int}[],
+        profile_types::Vector{<:AbstractProfileType}=[LogLikelihood()],
+        methods::Vector{<:AbstractBivariateMethod}=AbstractBivariateMethod[],
+        sample_types::Vector{<:AbstractSampleType}=AbstractSampleType[],
+        compare_to_full_sample_type::Union{Missing, AbstractSampleType}=missing,
+        include_lower_confidence_levels::Bool=false,
+        linealpha=0.4,
+        kwargs...)
+
+
+Returns a plot of the union of profile-wise predictions of the model trajectory formed from profiles with interest parameter dimension `profile_dimension` that meet the requirement of the relevant method of [`LikelihoodBasedProfileWiseAnalysis.desired_df_subset`](@ref) (see Keyword Arguments). 
+
+The plotted extrema are the extrema of the approximate profile-wise `confidence_level` trajectory confidence set. 
+
+`t` should be the same points used to generate predictions in [`generate_predictions_univariate!`](@ref), [`generate_prediction_bivariate!`](@ref) and [`generate_predictions_dim_samples!`](@ref). 
+
+The profiles plotted are based on the specified `θs_to_plot`, `θcombinations_to_plot`, `θs_to_plot`, `confidence_levels`, `dofs`, `profile_types`, `methods` and `sample_types`. By default, will plot all predictions generated from profiles with `profile_dimension`. If `for_dim_samples=true` then the profile-wise trajectory confidence set will be plotted from profiles sampled using an [`AbstractSampleType`](@ref).
+
+`include_lower_confidence_levels` is only relevant for profiles of dimension 2 evaluated using an [`AbstractBivariateMethod`](@ref).
+
+If `compare_to_full_sample_type isa AbstractSampleType` then will also plot the extrema of the trajectory confidence set from a full parameter confidence set evaluated using the specified [`AbstractSampleType`](@ref). For example use `compare_to_full_sample_type=LatinHypercubeSamples()`.
+
+`linealpha` is the alpha value used for plotting each individual model trajectory line contained within a profile-wise trajectory confidence set. 
 """
 function plot_predictions_union(model::LikelihoodModel,
                             t::AbstractVector,
@@ -1040,6 +1267,34 @@ function plot_predictions_union(model::LikelihoodModel,
     return prediction_plot
 end
 
+"""
+    plot_realisations_individual(model::LikelihoodModel,
+        t::AbstractVector,
+        profile_dimension::Int=1;
+        xlabel::String="t",
+        ylabel::Union{Nothing,String,Vector{String}}=nothing,
+        for_dim_samples::Bool=false
+        include_MLE::Bool=true,
+        θs_to_plot::Vector=Int[],
+        θcombinations_to_plot::Vector=Tuple{Int,Int}[],
+        θindices_to_plot::Vector=Vector{Int}[],
+        confidence_levels::Vector{<:Float64}=Float64[],
+        dofs::Vector{<:Int}=Int[],
+        regions::Vector{<:Real}=Float64[],
+        profile_types::Vector{<:AbstractProfileType}=[LogLikelihood()],
+        methods::Vector{<:AbstractBivariateMethod}=AbstractBivariateMethod[],
+        sample_types::Vector{<:AbstractSampleType}=AbstractSampleType[],
+        linealpha=0.4, 
+        kwargs...)
+
+Returns a vector of plots of profile-wise predictions of the `region` population reference set formed from profiles with interest parameter dimension `profile_dimension` that meet the requirement of the relevant method of [`LikelihoodBasedProfileWiseAnalysis.desired_df_subset`](@ref) (see Keyword Arguments). 
+
+The plotted extrema are the extrema of the approximate profile-wise (`region`, `confidence_level`) reference tolerance set from each profile. 
+
+`t` should be the same points used to generate predictions in [`generate_predictions_univariate!`](@ref), [`generate_prediction_bivariate!`](@ref) and [`generate_predictions_dim_samples!`](@ref). 
+
+The profiles plotted are based on the specified `θs_to_plot`, `θcombinations_to_plot`, `θs_to_plot`, `confidence_levels`, `dofs`, `regions`, `profile_types`, `methods` and `sample_types`. By default, will plot all predictions generated from profiles with `profile_dimension`. If `for_dim_samples=true` then profile-wise trajectory confidence sets will be plotted from profiles sampled using an [`AbstractSampleType`](@ref).
+"""
 function plot_realisations_individual(model::LikelihoodModel,
                             # prediction_type::Symbol=:union,
                             t::AbstractVector,
@@ -1171,7 +1426,38 @@ function plot_realisations_individual(model::LikelihoodModel,
 end
 
 """
-include_lower_confidence_levels is only used for 2d bivariate boundaries
+    plot_realisations_union(model::LikelihoodModel,
+        t::AbstractVector,
+        profile_dimension::Int=1,
+        confidence_level::Float64=0.95;
+        dof::Int=profile_dimension,
+        region::Real=0.95,
+        xlabel::String="t",
+        ylabel::Union{Nothing,String,Vector{String}}=nothing,
+        for_dim_samples::Bool=false,
+        include_MLE::Bool=true,
+        θs_to_plot::Vector = Int[],
+        θcombinations_to_plot::Vector=Tuple{Int,Int}[],
+        θindices_to_plot::Vector=Vector{Int}[],
+        profile_types::Vector{<:AbstractProfileType}=[LogLikelihood()],
+        methods::Vector{<:AbstractBivariateMethod}=AbstractBivariateMethod[],
+        sample_types::Vector{<:AbstractSampleType}=AbstractSampleType[],
+        compare_to_full_sample_type::Union{Missing, AbstractSampleType}=missing,
+        include_lower_confidence_levels::Bool=false,
+        linealpha=0.4,
+        kwargs...)
+
+Returns a plot of the union of profile-wise predictions of the `region` population reference set formed from profiles with interest parameter dimension `profile_dimension` that meet the requirement of the relevant method of [`LikelihoodBasedProfileWiseAnalysis.desired_df_subset`](@ref) (see Keyword Arguments). 
+
+The plotted extrema are the extrema of the approximate profile-wise (`region`, `confidence_level`) reference tolerance set. 
+
+`t` should be the same points used to generate predictions in [`generate_predictions_univariate!`](@ref), [`generate_prediction_bivariate!`](@ref) and [`generate_predictions_dim_samples!`](@ref). 
+
+The profiles plotted are based on the specified `θs_to_plot`, `θcombinations_to_plot`, `θs_to_plot`, `confidence_levels`, `dofs`, `regions`, `profile_types`, `methods` and `sample_types`. By default, will plot all predictions generated from profiles with `profile_dimension`. If `for_dim_samples=true` then the profile-wise reference tolerancce set will be plotted from profiles sampled using an [`AbstractSampleType`](@ref).
+
+`include_lower_confidence_levels` is only relevant for profiles of dimension 2 evaluated using an [`AbstractBivariateMethod`](@ref).
+
+If `compare_to_full_sample_type isa AbstractSampleType` then will also plot the extrema of the reference tolerance set from a full parameter confidence set evaluated using the specified [`AbstractSampleType`](@ref). For example use `compare_to_full_sample_type=LatinHypercubeSamples()`.
 """
 function plot_realisations_union(model::LikelihoodModel,
                             t::AbstractVector,

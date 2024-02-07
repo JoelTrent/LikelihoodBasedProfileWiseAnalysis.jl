@@ -53,9 +53,9 @@ end
         region::Real,
         channel::Union{RemoteChannel,Missing}=missing)
 
-Generates the predictions for response variables from a `predictfunction` which meets the requirements specified in [`add_prediction_function!`](@ref), given `data`, at time points `t` for each parameter combination in the columns of `parameter_points`. The extrema of all predictions is computed and `proportion_to_keep` of the individual predictions are kept. `errorfunction` is used to predict the lower and upper quartiles of realisations at each prediction point; the highest density `region` is returned.
+Generates the predictions for response variables from a `predictfunction` which meets the requirements specified in [`add_prediction_function!`](@ref), given `data`, at time points `t` for each parameter combination in the columns of `parameter_points`. The extrema of all predictions is computed and `proportion_to_keep` of the individual predictions are kept. `errorfunction` is used to predict the lower and upper quartiles of realisations at each prediction point; the highest density `region` is returned. In particular it's predicting the `region` populuation reference interval at each prediction point. When computed from a parameter confidence set like a profile, the extrema gives the extrema of the profile-wise (`region`, `confidence_level`) reference tolerance set.
     
-Returns a [`PredictionStruct`] containing the kept predictions, prediction extrema, lower and upper quartiles of realisations from the error model at `confidence_level` at each predicted point and the realisation extrema. 
+Returns a [`PredictionStruct`] containing the kept predictions, prediction extrema, lower and upper quartiles of realisations from the error model of `region` at each predicted point and the realisation extrema. 
 
 The prediction at each timepoint is stored in the corresponding row (1st dimension). The prediction for each parameter combination is stored in the corresponding column (2nd dimension). The prediction for multiple response variables is stored in the 3rd dimension.
 """

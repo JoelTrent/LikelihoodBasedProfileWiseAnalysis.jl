@@ -24,4 +24,6 @@ plot_bivariate_profiles_iterativeboundary_gif
 ```@docs
 plot_predictions_individual
 plot_predictions_union
+plot_realisations_individual
+plot_realisations_union
 ```
