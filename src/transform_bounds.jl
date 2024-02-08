@@ -20,18 +20,23 @@ end
         independentParameterIndexes::Vector{<:Int}=Int[], 
         dependentParameterIndexes::Vector{<:Int}=Int[])
 
-parameters are vectors of ints - i.e. call using vectors of ints directly or look up position of parameter
-from a symbol vector using a lookup table.
-Note. we assume that ordering remains the same.
-A 'independentParameter' is one where the new parameter `Θ[i]` depends only on `f(θ[i])`.
-A 'dependentParameter' is one where the new parameter `Θ[i]` depends on `f(θ[i], θ[j], j!=i)`.
+Given a monotonic (increasing or decreasing) function, `transformfun`, that describes a parameter transformation, return the lower and upper bounds in the transformed space that correspond to the lower and upper bounds in the original space. Uses a heuristic to evaluate the bound transformation. We assume that the ordering of parameters stay the same for the purposes of `independentParameterIndexes` and `dependentParameterIndexes`.
 
-I suspect that the dependentParameter heuristic may fail if there are multiple local minima - a binary integer programme may be required instead (however, integer requirement on variables can be relaxed)
+# Arguments
+- `transformfun`: a function describing the forward transformation between parameter space `θ` and `Θ`. Should take in a single argument, `θ`, a vector of parameter values in the original space and return `Θ`, a vector parameter values in the transformed space. These vectors need to be the same length as `lb` and `ub`.
+- `lb`: a vector of lower bounds on parameters. 
+- `ub`: a vector of upper bounds on parameters. 
+- `independentParameterIndexes`: a vector of parameter indexes where the new parameter `Θ[i]` depends only on `transformfun(θ[i])`.
+- `dependentParameterIndexes`: a vector of parameter indexes where the new parameter `Θ[i]` depends on `transformfun(θ[i], θ[j], j!=i)`.
 
-ONLY VALID FOR MONOTONIC (increasing or decreasing) TRANSFORMATIONS OF VARIABLES
+The heuristic used for dependent parameters may fail if there are multiple local minima for the appropriate bounds to use. In this case [`transformbounds_NLopt`](@ref) should be used.
+
+Warns if any of the returned bounds are `Inf` using [`LikelihoodBasedProfileWiseAnalysis.checkforInf`](@ref).
 """
 function transformbounds(transformfun::Function, lb::AbstractVector{<:Real}, ub::AbstractVector{<:Real},
     independentParameterIndexes::Vector{<:Int}=Int[], dependentParameterIndexes::Vector{<:Int}=Int[])
+
+    (length(transformfun(lb)) == length(lb) && length(lb) == length(ub)) || throw(ArgumentError("The length of lb must be the same as the length of ub and transformfun(lb)"))
 
     newlb, newub = zeros(length(lb)), zeros(length(lb))
 
@@ -94,53 +99,19 @@ function transformbounds(transformfun::Function, lb::AbstractVector{<:Real}, ub:
     return newlb, newub
 end
 
-# IS VALID FOR MONOTONIC (increasing or decreasing) TRANSFORMATIONS OF VARIABLES SO LONG
-# AS START POSITION OF x VARIABLES PUSHES IT TOWARDS THE GLOBAL MINIMA, RATHER THAN A LOCAL 
-# MINIMA
-# using JuMP
-# import Ipopt
-# function transformbounds_NLP_JuMP(transformfun::Function, lb::Vector{<:Float64}, ub::Vector{<:Float64})
-
-#     function bounds_transform(x...)
-#         bins = collect(x)
-#         bounds = (((1 .- bins) .* lb) .+ (bins .* ub)) 
-#         return transformfun(bounds)[NLP_transformIndex]
-#     end
-    
-#     num_vars = length(ub)
-    
-#     m = Model(Ipopt.Optimizer)
-#     set_silent(m)
-    
-#     register(m, :my_obj, num_vars, bounds_transform; autodiff = true)
-    
-#     # variables will be binary integer automatically due to how the obj function is setup
-#     # IF the transformation function applied to each θ[i] is monotonic between lb[i] and ub[i]
-#     @variable(m, x[1:num_vars], lower_bound=0.0, upper_bound=1.0, start=0.5)
-    
-#     newlb = zeros(num_vars)
-#     newub = zeros(num_vars)
-#     NLP_transformIndex=0
-#     for i in 1:num_vars
-#         NLP_transformIndex += 1
-        
-#         @NLobjective(m, Min, my_obj(x...) )
-#         JuMP.optimize!(m)
-#         newlb[i] = objective_value(m)
-    
-#         @NLobjective(m, Max, my_obj(x...) )
-#         JuMP.optimize!(m)
-#         newub[i] = objective_value(m)
-#     end
-    
-#     return newlb, newub
-# end
-
 """
     transformbounds_NLopt(transformfun::Function, 
         lb::AbstractVector{<:Real}, 
         ub::AbstractVector{<:Real})
 
+Given a monotonic (increasing or decreasing) function, `transformfun`, that describes a parameter transformation, return the lower and upper bounds in the transformed space that correspond to the lower and upper bounds in the original space. Uses a naturally binary integer programme if `transformfun` is monotonic on θ between `lb` and `ub`.
+
+# Arguments
+- `transformfun`: a function describing the forward transformation between parameter space `θ` and `Θ`. Should take in a single argument, `θ`, a vector of parameter values in the original space and return `Θ`, a vector parameter values in the transformed space. These vectors need to be the same length as `lb` and `ub`.
+- `lb`: a vector of lower bounds on parameters. 
+- `ub`: a vector of upper bounds on parameters. 
+
+Warns if any of the returned bounds are `Inf` using [`LikelihoodBasedProfileWiseAnalysis.checkforInf`](@ref).
 """
 function transformbounds_NLopt(transformfun::Function, lb::AbstractVector{<:Real}, ub::AbstractVector{<:Real})
 
