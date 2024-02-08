@@ -190,7 +190,7 @@ Initialises a [`LikelihoodModel`](@ref) struct, which contains all model informa
 - `biv_row_preallocation_size`: number of rows of `biv_profiles_df` to preallocate. Default is `missing` (a single row).
 - `dim_row_preallocation_size`: number of rows of `dim_samples_df` to preallocate. Default is `missing` (a single row).
 - `find_zero_atol`: a `Real` number greater than zero for the absolute tolerance of the log-likelihood function value from the target value to be used when searching for confidence intervals/boundaries. Default is `0.001`.
-- `show_progress`: Whether to show the progress of profiling across sets of interest parameters. 
+- `show_progress`: Whether to show the progress of profiling and predictions. 
 """
 function initialise_LikelihoodModel(loglikefunction::Function,
     predictfunction::Union{Function, Missing},

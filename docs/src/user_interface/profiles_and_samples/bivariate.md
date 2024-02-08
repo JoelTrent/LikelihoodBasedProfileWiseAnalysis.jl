@@ -10,6 +10,8 @@ bivariate_confidenceprofiles!
 
 ## Methods For Finding Boundaries
 
+We provide several heuristics for evaluating the boundaries of bivariate profiles; they're listed in order of computational efficiency. Available methods can be checked using [`bivariate_methods`](@ref). We recommend evaluating up to 50 points; 10-30 should be appropriate for getting a reasonable approximation of a bivariate boundary, particularly if it is relatively elliptical. Note: [`AnalyticalEllipseMethod`] exclusively works with the [`EllipseApproxAnalytical`] profile type; it is also highly recommended if that profile type is of interest.
+
 ```@docs
 AbstractBivariateMethod
 AbstractBivariateVectorMethod
@@ -24,6 +26,8 @@ ContinuationMethod
 ```
 
 ## Sampling Internal Points From Boundaries
+
+In order to cheaply sample interval points within the found boundary of a bivariate profile we use [`sample_bivariate_internal_points!`](@ref).
 
 ```@docs
 sample_bivariate_internal_points!

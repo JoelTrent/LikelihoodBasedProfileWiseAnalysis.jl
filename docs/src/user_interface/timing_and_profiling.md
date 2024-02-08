@@ -1,7 +1,6 @@
 # Timing and Profiling
 
-Progress meters are implemented using [`ProgressMeter.jl`](https://github.com/timholy/ProgressMeter.jl)....
-
+Progress meters are implemented using [`ProgressMeter.jl`](https://github.com/timholy/ProgressMeter.jl) and can be used to keep track of how much longer any profile or prediction evaluation has remaining. They can be disabled on a per function basis using the kwarg `show_progress` (which by default is `model.show_progress`). They can be disabled for all functions by setting it to `false` when calling [`initialise_LikelihoodModel`](@ref).
 
 ## TimerOutputs.jl
 
@@ -9,7 +8,7 @@ Timing and counting of the number of likelihood function evaluations (and other 
 
 The macro will only work correctly if distributed computing via [`Distributed.jl`](https://docs.julialang.org/en/v1/stdlib/Distributed/) is not used - the timer on the main worker will not record the timings made on other workers (i.e. `using Distributed; nworkers()` returns `1`). The macro cannot be used for dimensional and full likelihood sampling when their keyword argument `use_threads` is `true` - an exception will be raised.
 
-The exact timings extracted using this macro may not be quite true if function evaluation is very fast due to it's overhead. However, it's main value is in recording the number of function evaluations that are made. 
+The exact timings extracted using this macro may not be quite true if function evaluation is very fast due to it's overhead. However, it's main value is in recording the number of function evaluations that are made. An example of this can be seen in [Function Evaluation Timing - Logistic Model](@ref).
 
 ```julia
 using LikelihoodBasedProfileWiseAnalysis
