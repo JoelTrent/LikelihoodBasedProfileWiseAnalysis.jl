@@ -218,7 +218,7 @@ Returns a vector of plots of univariate profiles contained with the `model` stru
 
 The profiles plotted are based on the specified `θs_to_plot`, `confidence_levels`, `dofs` and `profile_types`. By default, will plot all univariate profiles generated.
 
-If `num_points_in_interval` is greater than 0 then [`get_points_in_interval!`](@ref) will be called - use to obtain smoother profile plots.
+If `num_points_in_interval` is greater than 0 then [`get_points_in_intervals!`](@ref) will be called - use to obtain smoother profile plots.
 
 `xlim_scaler` and `ylim_scaler` are used to uniformly push the `xlimits` and `ylimits` away from the location of the confidence interval - if they are zero, then the confidence interval gives the location of the `xlimits` and the lower of the `ylimits`. If they are `1` then the corresponding limits have a range 100% wider than the confidence interval.
 """
@@ -234,7 +234,7 @@ function plot_univariate_profiles(model::LikelihoodModel,
                                     kwargs...)
 
     if num_points_in_interval > 0
-        get_points_in_interval!(model, num_points_in_interval, 
+        get_points_in_intervals!(model, num_points_in_interval, 
                                 confidence_levels=confidence_levels, 
                                 dofs=dofs,
                                 profile_types=profile_types)
@@ -297,7 +297,7 @@ Returns a vector of comparison plots of univariate profiles contained with the `
 
 The profiles plotted are based on the specified `θs_to_plot`, `confidence_levels`, `dofs` and `profile_types`. By default, will plot all univariate profiles generated.
 
-If `num_points_in_interval` is greater than 0 then [`get_points_in_interval!`](@ref) will be called - use to obtain smoother profile plots.
+If `num_points_in_interval` is greater than 0 then [`get_points_in_intervals!`](@ref) will be called - use to obtain smoother profile plots.
 
 If `label_only_lines=true` then only the vertical and horizontal MLE point and confidence threshold lines will be labelled in the legend. Otherwise, profiles will be labelled by their `profile_type`.
 
@@ -316,7 +316,7 @@ function plot_univariate_profiles_comparison(model::LikelihoodModel,
                                     kwargs...)
 
     if num_points_in_interval > 0
-        get_points_in_interval!(model, num_points_in_interval, 
+        get_points_in_intervals!(model, num_points_in_interval, 
                                 confidence_levels=confidence_levels, 
                                 profile_types=profile_types)
     end
@@ -959,7 +959,7 @@ Returns a vector of plots of profile-wise predictions of the model trajectory fo
 
 The plotted extrema are the extrema of approximate profile-wise `confidence_level` trajectory confidence set from each profile.
 
-`t` should be the same points used to generate predictions in [`generate_predictions_univariate!`](@ref), [`generate_prediction_bivariate!`](@ref) and [`generate_predictions_dim_samples!`](@ref). 
+`t` should be the same points used to generate predictions in [`generate_predictions_univariate!`](@ref), [`generate_predictions_bivariate!`](@ref) and [`generate_predictions_dim_samples!`](@ref). 
 
 The profiles plotted are based on the specified `θs_to_plot`, `θcombinations_to_plot`, `θs_to_plot`, `confidence_levels`, `dofs`, `profile_types`, `methods` and `sample_types`. By default, will plot all predictions generated from profiles with `profile_dimension`. If `for_dim_samples=true` then profile-wise trajectory confidence sets will be plotted from profiles sampled using an [`AbstractSampleType`](@ref).
 
@@ -1113,7 +1113,7 @@ Returns a plot of the union of profile-wise predictions of the model trajectory 
 
 The plotted extrema are the extrema of the approximate profile-wise `confidence_level` trajectory confidence set. 
 
-`t` should be the same points used to generate predictions in [`generate_predictions_univariate!`](@ref), [`generate_prediction_bivariate!`](@ref) and [`generate_predictions_dim_samples!`](@ref). 
+`t` should be the same points used to generate predictions in [`generate_predictions_univariate!`](@ref), [`generate_predictions_bivariate!`](@ref) and [`generate_predictions_dim_samples!`](@ref). 
 
 The profiles plotted are based on the specified `θs_to_plot`, `θcombinations_to_plot`, `θs_to_plot`, `confidence_levels`, `dofs`, `profile_types`, `methods` and `sample_types`. By default, will plot all predictions generated from profiles with `profile_dimension`. If `for_dim_samples=true` then the profile-wise trajectory confidence set will be plotted from profiles sampled using an [`AbstractSampleType`](@ref).
 
@@ -1291,7 +1291,7 @@ Returns a vector of plots of profile-wise predictions of the `region` population
 
 The plotted extrema are the extrema of the approximate profile-wise (`region`, `confidence_level`) reference tolerance set from each profile. 
 
-`t` should be the same points used to generate predictions in [`generate_predictions_univariate!`](@ref), [`generate_prediction_bivariate!`](@ref) and [`generate_predictions_dim_samples!`](@ref). 
+`t` should be the same points used to generate predictions in [`generate_predictions_univariate!`](@ref), [`generate_predictions_bivariate!`](@ref) and [`generate_predictions_dim_samples!`](@ref). 
 
 The profiles plotted are based on the specified `θs_to_plot`, `θcombinations_to_plot`, `θs_to_plot`, `confidence_levels`, `dofs`, `regions`, `profile_types`, `methods` and `sample_types`. By default, will plot all predictions generated from profiles with `profile_dimension`. If `for_dim_samples=true` then profile-wise trajectory confidence sets will be plotted from profiles sampled using an [`AbstractSampleType`](@ref).
 """
@@ -1451,7 +1451,7 @@ Returns a plot of the union of profile-wise predictions of the `region` populati
 
 The plotted extrema are the extrema of the approximate profile-wise (`region`, `confidence_level`) reference tolerance set. 
 
-`t` should be the same points used to generate predictions in [`generate_predictions_univariate!`](@ref), [`generate_prediction_bivariate!`](@ref) and [`generate_predictions_dim_samples!`](@ref). 
+`t` should be the same points used to generate predictions in [`generate_predictions_univariate!`](@ref), [`generate_predictions_bivariate!`](@ref) and [`generate_predictions_dim_samples!`](@ref). 
 
 The profiles plotted are based on the specified `θs_to_plot`, `θcombinations_to_plot`, `θs_to_plot`, `confidence_levels`, `dofs`, `regions`, `profile_types`, `methods` and `sample_types`. By default, will plot all predictions generated from profiles with `profile_dimension`. If `for_dim_samples=true` then the profile-wise reference tolerancce set will be plotted from profiles sampled using an [`AbstractSampleType`](@ref).
 
