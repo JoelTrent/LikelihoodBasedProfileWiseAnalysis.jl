@@ -1,6 +1,6 @@
 # Logistic Model
 
-The code included in this example is compiled into a single file [here](https://github.com/JoelTrent/LikelihoodBasedProfileWiseAnalysis.jl/-/tree/main/examples/logistic.jl).
+The code included in this example is compiled into a single file [here](https://github.com/JoelTrent/LikelihoodBasedProfileWiseAnalysis.jl/blob/main/examples/logistic.jl).
 
 The logistic model with a normal data distribution [simpsonprofilewise2023](@cite) has the following differential equation for the population density ``C(t)\geq0``:
 ```math

@@ -1,9 +1,5 @@
 # Plots
 
-```@index
-Pages = ["plots.md"]
-```
-
 We provide functions for plotting univariate profiles, bivariate profiles and predictions of the model trajectory and ``(1-\delta)`` population reference set from evaluated parameter confidence sets (i.e. profiles).
 
 ## Univariate Profiles
@@ -28,4 +24,10 @@ plot_predictions_individual
 plot_predictions_union
 plot_realisations_individual
 plot_realisations_union
+```
+
+## Index
+
+```@index
+Pages = ["plots.md"]
 ```

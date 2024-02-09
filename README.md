@@ -7,7 +7,7 @@
 
 TO DO
 
-An implementation and exploration of the [likelihood-based profile-wise analysis workflow](https://doi.org/10.1371/journal.pcbi.1011515) from Matthew Simpson and Oliver Maclaren.
+This package is an implementation and exploration of the [likelihood-based profile-wise analysis workflow](https://doi.org/10.1371/journal.pcbi.1011515) from Matthew Simpson and Oliver Maclaren.
 
 The API is largely stable, but shouldn't be regarded as fixed until the first version is released; the package will be kept as v1.0.0-DEV until then. The main work remaining is in completing documentation. However, one of the bivariate boundary methods may be removed.
 

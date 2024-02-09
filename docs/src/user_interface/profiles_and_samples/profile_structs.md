@@ -1,10 +1,8 @@
 # Structs and Profile Types
 
-```@index
-Pages = ["profile_structs.md"]
-```
-
 ## Structs
+
+The following structs are used to contain information on computed univariate, bivariate and sampled dimensional profiles. After evaluation they are stored in the [`LikelihoodModel`](@ref).
 
 ```@docs
 PointsAndLogLikelihood
@@ -24,4 +22,10 @@ AbstractEllipseProfileType
 LogLikelihood
 EllipseApprox
 EllipseApproxAnalytical
+```
+
+## Index
+
+```@index
+Pages = ["profile_structs.md"]
 ```

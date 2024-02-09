@@ -1,9 +1,5 @@
 # Predictions
 
-```@index
-Pages = ["predictions.md"]
-```
-
 ## Adding a Prediction Function
 
 In the event that a prediction function has not been added to the [`LikelihoodModel`](@ref) struct yet, we can add one using [`add_prediction_function!`](@ref). This prediction function is for model solutions/trajectory and not the additional error we account for when predicting realisations.
@@ -53,4 +49,10 @@ Predictions are stored in a [`PredictionStruct`](@ref) which will also contain a
 AbstractPredictionStruct
 PredictionStruct
 PredictionRealisationsStruct
+```
+
+## Index
+
+```@index
+Pages = ["predictions.md"]
 ```

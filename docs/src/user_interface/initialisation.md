@@ -1,9 +1,5 @@
 # Initialisation
 
-```@index
-Pages = ["initialisation.md"]
-```
-
 ## Model Initialisation
 
 To initialise a model for profile likelihood evaluation we use [`initialise_LikelihoodModel`](@ref) which returns a struct of type [`LikelihoodModel`](@ref). This struct contains all the information we require for the PWA workflow and will also contain computed profiles and profile-wise predictions.
@@ -59,4 +55,10 @@ set_OptimizationSettings!
 OptimizationSettings
 optimise
 optimise_unbounded
+```
+
+## Index
+
+```@index
+Pages = ["initialisation.md"]
 ```

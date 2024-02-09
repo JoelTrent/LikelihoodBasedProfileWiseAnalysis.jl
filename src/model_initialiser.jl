@@ -191,6 +191,13 @@ Initialises a [`LikelihoodModel`](@ref) struct, which contains all model informa
 - `dim_row_preallocation_size`: number of rows of `dim_samples_df` to preallocate. Default is `missing` (a single row).
 - `find_zero_atol`: a `Real` number greater than zero for the absolute tolerance of the log-likelihood function value from the target value to be used when searching for confidence intervals/boundaries. Default is `0.001`.
 - `show_progress`: Whether to show the progress of profiling and predictions. 
+
+!!! note "Array initialisation within a log-likelihood function"
+    If you initialise an array within the provided log-likelihood function, e.g. using `zeros`, then for automatic differentiation methods to work you need to also initialise the type of the array to be based on the type of the input values of θ. Otherwise, zeros will by default create an array with element types `Float64` which will likely return errors. For example, use:
+    ```julia
+    my_new_array = zeros(eltype(θ), dimensions)
+    ``` 
+    where `eltype` passes the element type of the θ vector into the `zeros` function.
 """
 function initialise_LikelihoodModel(loglikefunction::Function,
     predictfunction::Union{Function, Missing},

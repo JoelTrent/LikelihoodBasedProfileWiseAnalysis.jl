@@ -1,6 +1,6 @@
 # Two-Species Logistic Model
 
-The code included in this example is compiled into a single file [here](https://github.com/JoelTrent/LikelihoodBasedProfileWiseAnalysis.jl/-/tree/main/examples/two-species_logistic.jl).
+The code included in this example is compiled into a single file [here](https://github.com/JoelTrent/LikelihoodBasedProfileWiseAnalysis.jl/blob/main/examples/two-species_logistic.jl).
 
 The two-species logistic model with a Gaussian data distribution [simpsonprofile2023](@cite) has the following differential equations for the population densities of the two species ``C_1(t)\geq0`` and ``C_2(t)\geq0`` :
 ```math

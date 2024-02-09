@@ -1,8 +1,6 @@
 # Bivariate Profiles
 
-```@index
-Pages = ["bivariate.md"]
-```
+The key function for evaluating bivariate profile boundaries is [`bivariate_confidenceprofiles!`](@ref). The evaluated bivariate profile(s) will be contained within a [`BivariateConfidenceStruct`](@ref) that is stored in the [`LikelihoodModel`](@ref).
 
 ```@docs
 bivariate_confidenceprofiles!
@@ -40,9 +38,15 @@ MPPHullMethod
 
 ## Merging Boundaries From Multiple Methods
 
-To improve the performance of internal point sampling, it may be worth finding bivariate boundaries using a combination of methods, where one method has more guaranteed boundary coverage and the other gives a more random search of interest parameter space, such as combining [`IterativeBoundaryMethod`](@ref) with [`SimultaneousMethod`](@ref) into a [`CombinedBivariateMethod`](@ref). 
+To improve the performance of internal point sampling, it may be worth finding bivariate boundaries using a combination of methods, where one method has more guaranteed boundary coverage and the other gives a more random search of interest parameter space. For example, combining [`IterativeBoundaryMethod`](@ref) and [`SimultaneousMethod`](@ref) into a [`CombinedBivariateMethod`](@ref). 
 
 ```@docs
 CombinedBivariateMethod
 combine_bivariate_boundaries!
+```
+
+## Index
+
+```@index
+Pages = ["bivariate.md"]
 ```
