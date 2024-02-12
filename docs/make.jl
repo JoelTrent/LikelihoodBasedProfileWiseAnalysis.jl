@@ -45,7 +45,7 @@ makedocs(;
                         "Function Evaluation Timing - Logistic Model" => "examples/logistic_timing_estimates.md"],
         "Internal Library" => 
             ["Common Functions" => "internal_library/common.md",
-            "Initialisation" => "internal_library/initialisation.md",
+            "Initialisation Internal" => "internal_library/initialisation.md",
             "Ellipse Functions" => "internal_library/ellipse_likelihood.md",
             "Univariate Functions" => "internal_library/univariate.md",
             "Bivariate Functions" => "internal_library/bivariate.md",
