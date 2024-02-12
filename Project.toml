@@ -45,7 +45,9 @@ UnivariateUnimodalHighestDensityRegion = "accfcff7-0a28-4262-8a91-e6d956268142"
 
 [compat]
 ConcaveHull = "1"
+Distances = "0.10"
 EllipseSampling = "0.2.0"
+StaticArrays = "1"
 julia = "1.6"
 
 [extras]
