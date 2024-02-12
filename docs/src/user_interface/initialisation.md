@@ -44,6 +44,31 @@ transformbounds
 transformbounds_NLopt
 ```
 
+### Example Usage
+
+For example, if we want to log transform the parameterisation given a defined log-likelihood function and lower and upper bounds we:
+
+Calculate the new, log-transformed bounds using the forward transformation `log.(θ)`. This is easy enough to be done without [`transformbounds_NLopt`](@ref), but other more complex transformations may not be.
+
+```julia
+lb, ub = ..., ...
+
+f(x) = log.(x)
+lb_log, ub_log = transformbounds_NLopt(f, lb, ub)
+```
+
+Define a new log-likelihood function which uses the backward transformation `exp.(θ)` from the transformed parameter space to the original space.
+
+```julia
+function loglike(θ, data)
+    ...
+end
+
+function loglike_log(Θ, data)
+    return loglike(exp.(Θ), data)
+end
+```
+
 ## Optimization Settings
 
 We can set our default optimisation settings using a [`OptimizationSettings`](@ref) struct. This will be contained within the [`CoreLikelihoodModel`](@ref) field of a [`LikelihoodModel`](@ref) and can be passed as an option to [`initialise_LikelihoodModel`](@ref). Unless different ones are passed to functions for computing profiles, they will also be used for that purpose. It may be useful to compute the MLE using conservative settings for accuracy, and then use less conservative settings for the optimisation of nuisance parameters along parameter profiles.
