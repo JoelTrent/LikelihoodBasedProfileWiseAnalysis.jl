@@ -1,4 +1,4 @@
-# Initialisation
+# Initialisation Internal
 
 ```@index
 Pages = ["initialisation.md"]
