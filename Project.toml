@@ -44,6 +44,7 @@ TravelingSalesmanHeuristics = "8c8f4381-2cdd-507c-846c-be2bcff6f45f"
 UnivariateUnimodalHighestDensityRegion = "accfcff7-0a28-4262-8a91-e6d956268142"
 
 [compat]
+Distributions = "0.25"
 DataFrames = "1"
 Accessors = "0.1"
 Combinatorics = "1"
