@@ -17,6 +17,22 @@ function get_uni_confidence_interval(model::LikelihoodModel, uni_row_number::Int
 end
 
 """
+    get_uni_confidence_intervals(model::LikelihoodModel, uni_row_numbers::AbstractVector{<:Int})
+
+Returns the confidence intervals corresponding to the profile in rows `uni_row_numbers` of `model.uni_profiles_df` as a DataFrame. If an entry has value `NaN`, that side of the confidence interval is outside the corresponding bound on the interest parameter.
+"""
+function get_uni_confidence_intervals(model::LikelihoodModel, uni_row_numbers::AbstractVector{<:Int})
+
+    uni_interval_df = filter(:row_ind => ind -> ind ∈ uni_row_numbers, model.uni_profiles_df; view=false)
+    select!(uni_interval_df, :row_ind, :θindex, :conf_level, :dof, :profile_type)
+
+    uni_interval_df.conf_interval = [model.uni_profiles_dict[i].confidence_interval for i in uni_row_numbers]
+
+    return uni_interval_df
+end
+
+
+"""
     get_interval_brackets(model::LikelihoodModel, 
         θi::Int, 
         confidence_level::Float64, 
@@ -353,7 +369,7 @@ end
         θs_to_profile::Vector{<:Int64}=collect(1:model.core.num_pars); 
         <keyword arguments>)
 
-Computes likelihood-based confidence interval profiles for the provided `θs_to_profile` interest parameters, where `θs_to_profile` is a vector of `Int` corresponding to the parameter indexes in `model.core.θnames`. Saves these profiles by modifying `model` in place.
+Computes likelihood-based confidence interval profiles for the provided `θs_to_profile` interest parameters, where `θs_to_profile` is a vector of `Int` corresponding to the parameter indexes in `model.core.θnames`. Saves these profiles by modifying `model` in place. Returns the evaluated confidence intervals in a DataFrame using [`get_uni_confidence_intervals`](@ref).
 
 # Arguments
 - `model`: a [`LikelihoodModel`](@ref) containing model information, saved profiles and predictions.
@@ -557,8 +573,9 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
             put!(channel, false)
         end
     end
-    
-    return nothing
+
+    return get_uni_confidence_intervals(model, 
+        [model.uni_profile_row_exists[(θi, dof, profile_type)][confidence_level] for θi in θs_to_profile])
 end
 
 """
@@ -566,7 +583,7 @@ end
         θs_to_profile::Vector{<:Symbol}; 
         <keyword arguments>)
 
-Profiles only the provided `θs_to_profile` interest parameters, where `θs_to_profile` is a vector of `Symbol` corresponding to the parameter symbols in `model.core.θnames`.
+Profiles only the provided `θs_to_profile` interest parameters, where `θs_to_profile` is a vector of `Symbol` corresponding to the parameter symbols in `model.core.θnames`. Returns the evaluated confidence intervals in a DataFrame using [`get_uni_confidence_intervals`](@ref).
 """
 function univariate_confidenceintervals!(model::LikelihoodModel, 
                                         θs_to_profile::Vector{<:Symbol}; 
@@ -587,7 +604,7 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
                                         use_threads::Bool=true)
 
     indices_to_profile = convertθnames_toindices(model, θs_to_profile)
-    univariate_confidenceintervals!(model, indices_to_profile, confidence_level=confidence_level,
+    return univariate_confidenceintervals!(model, indices_to_profile, confidence_level=confidence_level,
                                 dof=dof,
                                 profile_type=profile_type,
                                 θlb_nuisance=θlb_nuisance,
@@ -602,7 +619,6 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
                                 show_progress=show_progress,
                                 use_distributed=use_distributed,
                                 use_threads=use_threads)
-    return nothing
 end
 
 """
@@ -610,7 +626,7 @@ end
         profile_m_random_combinations::Int; 
         <keyword arguments>)
 
-Profiles m random interest parameters (sampling without replacement), where `0 < m ≤ model.core.num_pars`.
+Profiles m random interest parameters (sampling without replacement), where `0 < m ≤ model.core.num_pars`. Returns the evaluated confidence intervals in a DataFrame using [`get_uni_confidence_intervals`](@ref).
 """
 function univariate_confidenceintervals!(model::LikelihoodModel, 
                                         profile_m_random_parameters::Int; 
@@ -635,7 +651,7 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
 
     indices_to_profile = sample(1:model.core.num_pars, profile_m_random_parameters, replace=false)
 
-    univariate_confidenceintervals!(model, indices_to_profile, confidence_level=confidence_level,
+    return univariate_confidenceintervals!(model, indices_to_profile, confidence_level=confidence_level,
                                 dof=dof,
                                 profile_type=profile_type,
                                 θlb_nuisance=θlb_nuisance,
@@ -650,5 +666,4 @@ function univariate_confidenceintervals!(model::LikelihoodModel,
                                 show_progress=show_progress,
                                 use_distributed=use_distributed,
                                 use_threads=use_threads)
-    return nothing
 end

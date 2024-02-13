@@ -5,6 +5,7 @@ The key function for evaluating univariate profiles (the parameter confidence in
 ```@docs
 univariate_confidenceintervals!
 get_points_in_intervals!
+get_uni_confidence_intervals
 get_uni_confidence_interval
 get_uni_confidence_interval_points
 ```
