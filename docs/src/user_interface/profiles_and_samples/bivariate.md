@@ -4,6 +4,7 @@ The key function for evaluating bivariate profile boundaries is [`bivariate_conf
 
 ```@docs
 bivariate_confidenceprofiles!
+get_bivariate_confidence_set
 ```
 
 ## Methods For Finding Boundaries

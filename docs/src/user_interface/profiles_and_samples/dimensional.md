@@ -29,6 +29,7 @@ Note: dimensional likelihood samples can be 'full' likelihood samples as well. T
 
 ```@docs
 dimensional_likelihood_samples!
+get_dimensional_confidence_set
 ```
 
 ## Index

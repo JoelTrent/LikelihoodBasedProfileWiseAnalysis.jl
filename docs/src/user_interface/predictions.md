@@ -41,6 +41,14 @@ generate_predictions_bivariate!
 generate_predictions_dim_samples!
 ```
 
+To extract predictions give the relevant profile we can use:
+
+```@docs
+get_univariate_prediction_set
+get_bivariate_prediction_set
+get_dimensional_prediction_set
+```
+
 ## Structs
 
 Predictions are stored in a [`PredictionStruct`](@ref) which will also contain a [`PredictionRealisationsStruct`](@ref) if the corresponding reference tolerance intervals have been evaluated.

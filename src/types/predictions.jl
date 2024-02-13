@@ -14,7 +14,7 @@ abstract type AbstractPredictionStruct end
 """
     PredictionRealisationsStruct(lq::Array{<:Real}, uq::Array{<:Real}, extrema::Array{<:Real})
 
-Struct for containing evaluated lower and upper confidence quartiles of prediction realisations corresponding to confidence profiles.
+Struct for containing evaluated lower and upper confidence quartiles of the reference tolerance sets for prediction realisations corresponding to confidence profiles.
 
 # Fields
 - `lq`: array of the lower confidence quartile of the error model evaluated at each prediction point in a corresponding [`PredictionStruct`](@ref).
@@ -45,7 +45,7 @@ Struct for containing evaluated predictions corresponding to confidence profiles
 # Fields
 - `predictions`: array of model predictions evaluated at the parameters given by a particular confidence profile parameter set. If a model has multiple response variables, it assumes that `model.core.predictfunction` stores the prediction for each variable in its columns. Values for each response variable are stored in the 3rd dimension (row=dim1, col=dim2, page/sheet=dim3). Each column corresponds to a column of the confidence profile parameter set. 
 - `extrema`: extrema of the predictions array.
-- `realisations`: a [`PredictionRealisationsStruct`](@ref) struct 
+- `realisations`: a [`PredictionRealisationsStruct`](@ref) struct.
 
 # Supertype Hiearachy
 

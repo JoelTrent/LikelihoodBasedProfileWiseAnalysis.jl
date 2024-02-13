@@ -1,4 +1,13 @@
 """
+    get_dimensional_confidence_set(model::LikelihoodModel, dim_row_number::Int)
+
+Returns the [`SampledConfidenceStruct`](@ref) corresponding to the profile in row `dim_row_number` of `model.dim_samples_df`
+"""
+function get_dimensional_confidence_set(model, dim_row_number::Int)
+    return model.dim_samples_dict[dim_row_number]
+end
+
+"""
     dimensional_optimiser!(θs_opt::Union{Vector, SubArray}, 
         q::NamedTuple, 
         options::OptimizationSettings, 

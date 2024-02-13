@@ -1,4 +1,13 @@
 """
+    get_bivariate_confidence_set(model::LikelihoodModel, biv_row_number::Int)
+
+Returns the [`BivariateConfidenceStruct`](@ref) corresponding to the profile in row `biv_row_number` of `model.biv_profiles_df`
+"""
+function get_bivariate_confidence_set(model::LikelihoodModel, biv_row_number::Int)
+    return model.biv_profiles_dict[biv_row_number]
+end
+
+"""
     add_biv_profiles_rows!(model::LikelihoodModel, num_rows_to_add::Int)
 
 Adds `num_rows_to_add` rows to `model.biv_profiles_df`. 

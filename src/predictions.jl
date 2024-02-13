@@ -1,4 +1,32 @@
 """
+    get_uni_prediction_set(model::LikelihoodModel, uni_row_number::Int)
+
+Returns the [`PredictionStruct`](@ref) struct corresponding to the profile in row `uni_row_number` of `model.uni_profiles_df`. 
+"""
+function get_univariate_prediction_set(model::LikelihoodModel, uni_row_number::Int)
+    return model.uni_predictions_dict[uni_row_number]
+end
+
+"""
+    get_bivariate_prediction_set(model::LikelihoodModel, biv_row_number::Int)
+
+Returns the [`PredictionStruct`](@ref) struct corresponding to the profile in row `biv_row_number` of `model.biv_profiles_df`. 
+"""
+function get_bivariate_prediction_set(model::LikelihoodModel, biv_row_number::Int)
+    return model.biv_predictions_dict[biv_row_number]
+end
+
+"""
+    get_dim_prediction_set(model::LikelihoodModel, dim_row_number::Int)
+
+Returns the [`PredictionStruct`](@ref) struct corresponding to the profile in row `dim_row_number` of `model.dim_samples_df`. 
+"""
+function get_dimensional_prediction_set(model::LikelihoodModel, dim_row_number::Int)
+    return model.dim_predictions_dict[dim_row_number]
+end
+
+
+"""
     add_prediction_function!(model::LikelihoodModel, predictfunction::Function)
 
 Adds a prediction function, `predictfunction`, to `model` and evaluates the predicted response variable(s) at the data points using the maximum likelihood estimate for model parameters. Modifies `model` in place.

@@ -62,15 +62,18 @@ export initialise_LikelihoodModel,
     check_univariate_parameter_coverage,
 
     bivariate_confidenceprofiles!, sample_bivariate_internal_points!,
-    combine_bivariate_boundaries!,
+    combine_bivariate_boundaries!, get_bivariate_confidence_set,
     check_bivariate_parameter_coverage, check_bivariate_boundary_coverage,
     
     dimensional_likelihood_samples!, full_likelihood_sample!,
+    get_dimensional_confidence_set,
 
     add_prediction_function!, check_prediction_function_exists,
     add_error_function!,
     generate_predictions_univariate!, generate_predictions_bivariate!,
     generate_predictions_dim_samples!,
+    get_univariate_prediction_set, get_bivariate_prediction_set,
+    get_dimensional_prediction_set,
 
     normal_error_σ_known, normal_error_σ_estimated,
     lognormal_error_σ_known, lognormal_error_σ_estimated,
