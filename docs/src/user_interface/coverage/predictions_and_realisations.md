@@ -1,3 +1,6 @@
+```@meta
+CollapsedDocStrings = true
+```
 # Predictions and Realisations
 
 ```@index

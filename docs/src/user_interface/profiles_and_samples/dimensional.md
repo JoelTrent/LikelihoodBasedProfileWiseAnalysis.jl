@@ -1,3 +1,6 @@
+```@meta
+CollapsedDocStrings = true
+```
 # Dimensional Samples
 
 We can generate samples within the log-likelihood boundary at any dimension of model interest parameters. Nuisance parameters will be set to the values that maximise the log-likelihood function, found using an optimisation scheme. Samples are only implemented for the true log-likelihood function (the [`LogLikelihood`](@ref) profile type).

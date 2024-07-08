@@ -1,3 +1,6 @@
+```@meta
+CollapsedDocStrings = true
+```
 # Predictions
 
 ## Adding a Prediction Function
