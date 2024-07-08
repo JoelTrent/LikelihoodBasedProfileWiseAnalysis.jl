@@ -1,3 +1,6 @@
+```@meta
+CollapsedDocStrings = true
+```
 # Bivariate Profiles
 
 The key function for evaluating bivariate profile boundaries is [`bivariate_confidenceprofiles!`](@ref). The evaluated bivariate profile(s) will be contained within a [`BivariateConfidenceStruct`](@ref) that is stored in the [`LikelihoodModel`](@ref).

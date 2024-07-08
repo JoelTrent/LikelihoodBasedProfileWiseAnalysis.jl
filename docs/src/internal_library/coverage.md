@@ -1,3 +1,6 @@
+```@meta
+CollapsedDocStrings = true
+```
 # Coverage Functions
 
 ```@index

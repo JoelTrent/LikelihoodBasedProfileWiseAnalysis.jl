@@ -1,3 +1,6 @@
+```@meta
+CollapsedDocStrings = true
+```
 # Univariate Functions
 
 ```@index

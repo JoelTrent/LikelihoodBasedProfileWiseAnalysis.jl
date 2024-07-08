@@ -1,3 +1,6 @@
+```@meta
+CollapsedDocStrings = true
+```
 # Bivariate Parameter Confidence Boundaries
 
 ```@index

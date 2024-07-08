@@ -1,3 +1,6 @@
+```@meta
+CollapsedDocStrings = true
+```
 # Structs and Profile Types
 
 ## Structs
