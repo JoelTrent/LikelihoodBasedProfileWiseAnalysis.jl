@@ -1,7 +1,7 @@
 """
     trim_model_dfs!(model::LikelihoodModel)
 
-Removes any unitialised rows of `model.uni_profiles_df`, model.biv_profiles_df and model.dim_samples_df in place, which contain undefined references and will prevent saving using [BSON.jl](https://github.com/JuliaIO/BSON.jl/tree/master).
+Removes any unitialised rows of `model.uni_profiles_df`, `model.biv_profiles_df` and `model.dim_samples_df` in place, which contain undefined references and will prevent saving using [BSON.jl](https://github.com/JuliaIO/BSON.jl/tree/master).
 """
 function trim_model_dfs!(model::LikelihoodModel)
     if nrow(model.uni_profiles_df) > model.num_uni_profiles
