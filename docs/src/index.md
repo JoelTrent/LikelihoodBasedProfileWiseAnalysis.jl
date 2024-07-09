@@ -24,7 +24,7 @@ Additionally, to assist with evaluating the frequentist coverage properties of i
 - Profile-wise confidence trajectory sets.
 - Profile-wise reference tolerance sets.
 
-To understand the background of the workflow and how it can be used see [Background](@ref). For implementation examples see the examples section, such as on a [Logistic Model](@ref). To better understand how to interact with the user interface and in particular the [`LikelihoodModel`](@ref), which holds all the information on computed profiles and predictions, check out the user interface starting with [Initialisation](@ref).
+To understand the background of the workflow and how it can be used see [Motivation](@ref). For implementation examples see the examples section, such as on a [Logistic Model](@ref). To better understand how to interact with the user interface and in particular the [`LikelihoodModel`](@ref), which holds all the information on computed profiles and predictions, check out the user interface starting with [Initialisation](@ref).
 
 The API is largely stable, but shouldn't be regarded as fixed until the first version is released; the package will be kept as v1.0.0-DEV until then. The main work remaining is in completing documentation. However, one of the bivariate boundary methods may be removed.
 

@@ -1,6 +1,4 @@
-# Background
-
-Here we cover the background / general idea of the PWA workflow as seen in [simpsonprofilewise2023](@cite). We also introduce the idea of reference tolerance sets for predictions of realisations/observations within the workflow as formally introduced in my [Masters thesis](https://github.com/JoelTrent/UoA_MastersWorking).
+# Formulation
 
 This is a discussion of the workflow formulation from my [Masters thesis](https://github.com/JoelTrent/UoA_MastersWorking). Discussions which formed the basis of this section, minus reference tolerance intervals are in [simpsonprofilewise2023](@cite) and [murphyimplementing2023](@cite). It is a little notation heavy, but hopefully it helps explain the sets and intervals available in the PWA workflow.
 
