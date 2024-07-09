@@ -21,7 +21,9 @@ makedocs(;
     ),
     pages=[
         "Home" => "index.md",
-        "Background" => "workflow_background.md",
+        "Background" => 
+            ["Motivation" => "workflow_motivation.md", 
+            "Formulation" => "workflow_formulation.md"],
         "User Interface" => 
             ["Initialisation" => "user_interface/initialisation.md",
             "Parameter Profiles and Samples" => 
