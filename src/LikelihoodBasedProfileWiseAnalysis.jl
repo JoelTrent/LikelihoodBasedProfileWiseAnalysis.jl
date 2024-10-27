@@ -38,7 +38,7 @@ export EllipseMLEApprox, OptimizationSettings, CoreLikelihoodModel, BaseLikeliho
     
     AbstractBivariateMethod, AbstractBivariateVectorMethod, bivariate_methods,
     CombinedBivariateMethod, IterativeBoundaryMethod, RadialMLEMethod, RadialRandomMethod, 
-    SimultaneousMethod, Fix1AxisMethod, AnalyticalEllipseMethod, ContinuationMethod,
+    SimultaneousMethod, Fix1AxisMethod, AnalyticalEllipseMethod,
 
     AbstractBivariateHullMethod, bivariate_hull_methods, ConvexHullMethod, ConcaveHullMethod, MPPHullMethod,
     
