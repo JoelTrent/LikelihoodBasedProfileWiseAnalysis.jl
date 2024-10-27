@@ -25,12 +25,10 @@ LogExpFunctions = "2ab3a3ac-af41-5b50-aa03-7779005ae688"
 Meshes = "eacbb407-ea5a-433e-ab97-5258b1ca43fa"
 Optimization = "7f7a1694-90dd-40f0-9382-eb1efda571ba"
 OptimizationNLopt = "4e6fcdb7-1186-4e1f-a706-475e75c168bb"
-Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 PolygonInbounds = "e4521ec6-8c1d-418e-9da2-b3bc4ae105d6"
 ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
-Requires = "ae029012-a4dd-5104-9daa-d747884805df"
 Roots = "f2b01f46-fcfa-551c-844a-d8ac1e96c665"
 SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
 SharedArrays = "1a1011a3-84de-559e-8e89-a11a2f7dc383"
@@ -41,6 +39,12 @@ TimerOutputs = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
 TrackingHeaps = "d94bfb22-46ad-56c3-87d0-f6c298cb800e"
 TravelingSalesmanHeuristics = "8c8f4381-2cdd-507c-846c-be2bcff6f45f"
 UnivariateUnimodalHighestDensityRegion = "accfcff7-0a28-4262-8a91-e6d956268142"
+
+[weakdeps]
+Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
+
+[extensions]
+PlotsExt = "Plots"
 
 [compat]
 ADTypes = "0.2"
@@ -66,7 +70,6 @@ Plots = "1"
 PolygonInbounds = "0.2"
 ProgressMeter = "1"
 Reexport = "1"
-Requires = "1"
 Roots = "2"
 SnoopPrecompile = "1"
 StaticArrays = "1"

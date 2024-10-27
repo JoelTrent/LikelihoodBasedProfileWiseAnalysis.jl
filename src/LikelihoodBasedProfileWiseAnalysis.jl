@@ -18,8 +18,6 @@ using AngleBetweenVectors
 using Distributed, SharedArrays
 using FLoops
 
-using Requires
-
 import HypothesisTests
 
 using ProgressMeter
@@ -159,14 +157,6 @@ export plot_univariate_profiles, plot_univariate_profiles_comparison,
     plot_bivariate_profiles_iterativeboundary_gif,
     plot_predictions_individual, plot_predictions_union,
     plot_realisations_individual, plot_realisations_union
-
-function __init__()
-    @require Plots="91a5bcdd-55d7-5caf-9e0b-520d859cae80" begin 
-        using Plots
-        using LaTeXStrings
-        include("plotting_functions.jl") 
-    end
-end
 
 import SnoopPrecompile
 

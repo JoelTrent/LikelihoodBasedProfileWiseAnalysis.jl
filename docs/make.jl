@@ -10,7 +10,8 @@ bib = CitationBibliography(
 )
 
 makedocs(;
-    modules=[LikelihoodBasedProfileWiseAnalysis],
+    modules=[LikelihoodBasedProfileWiseAnalysis,
+            Base.get_extension(LikelihoodBasedProfileWiseAnalysis, :PlotsExt)],
     authors="JoelTrent <79883375+JoelTrent@users.noreply.github.com> and contributors",
     sitename="LikelihoodBasedProfileWiseAnalysis.jl",
     format=Documenter.HTML(;
@@ -53,7 +54,7 @@ makedocs(;
             "Bivariate Functions" => "internal_library/bivariate.md",
             "Dimensional Functions" => "internal_library/dimensional.md",
             "Prediction Functions" => "internal_library/predictions.md",
-            "Plotting Functions" => "internal_library/plots.md",
+            # "Plotting Functions" => "internal_library/plots.md",
             "Coverage Functions" => "internal_library/coverage.md"],
         "References" => "references.md"
     ],
