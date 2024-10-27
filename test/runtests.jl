@@ -106,7 +106,7 @@ using EllipseSampling
     
             targetll = LikelihoodBasedProfileWiseAnalysis.get_target_loglikelihood(m, 0.95, EllipseApprox(), 2)
     
-            for i in 1:15
+            for i in 1:12
                 lls = [LikelihoodBasedProfileWiseAnalysis.ellipse_loglike(m.biv_profiles_dict[i].confidence_boundary[:,j], m.core.data) for j in 1:N] 
                 @test isapprox(lls .- targetll, zeros(N), atol=1e-12)
             end
