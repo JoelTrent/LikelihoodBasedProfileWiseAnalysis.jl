@@ -39,7 +39,7 @@ Example observations, the true model trajectory and the 95% population reference
 
 ## Initial Setup
 
-Here we add 10 worker processes, given a PC with 12 CPU threads and 32GB RAM. For coverage testing we recommend setting this number as discussed in [Import Package and Set Up Distributed Environment](@ref). We also use [LogExpFunctions](https://juliastats.org/LogExpFunctions.jl/stable/) to define the `logit` function.
+Here we add 10 worker processes, given a PC with 12 CPU threads and 32GB RAM. For coverage testing we recommend setting this number as discussed in [Distributed Environment Setup](@ref). We also use [LogExpFunctions](https://juliastats.org/LogExpFunctions.jl/stable/) to define the `logit` function.
 
 ```julia
 using Distributed

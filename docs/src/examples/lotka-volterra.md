@@ -22,7 +22,7 @@ The true parameter values are ``\theta^M =(0.9, 1.1, 0.8, 0.3)``. The correspond
 
 ## Initial Setup
 
-Here we add six worker processes, which matches the number of bivariate profiles. For coverage testing we recommend setting this number as discussed in [Import Package and Set Up Distributed Environment](@ref). We're also using [StaticArrays](https://juliaarrays.github.io/StaticArrays.jl/stable/) to slightly speed up the differential equation solver.
+Here we add six worker processes, which matches the number of bivariate profiles. For coverage testing we recommend setting this number as discussed in [Distributed Environment Setup](@ref). We're also using [StaticArrays](https://juliaarrays.github.io/StaticArrays.jl/stable/) to slightly speed up the differential equation solver.
 
 ```julia
 using Distributed

@@ -39,7 +39,7 @@ makedocs(;
                 ["Parameter Confidence Intervals" => "user_interface/coverage/univariate_intervals.md",
                 "Bivariate Parameter Confidence Boundaries" => "user_interface/coverage/bivariate_boundaries.md",
                 "Predictions and Realisations" => "user_interface/coverage/predictions_and_realisations.md"]],
-        "Examples" => ["Initial Setup" => "examples/index.md",
+        "Examples" => ["Distributed Environment Setup" => "examples/index.md",
                         "Logistic Model" => "examples/logistic.md",
                         "Lotka-Volterra Model" => "examples/lotka-volterra.md",
                         "Two-Species Logistic Model"=> "examples/two-species_logistic.md",

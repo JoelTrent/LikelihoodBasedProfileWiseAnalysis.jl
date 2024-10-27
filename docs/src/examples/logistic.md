@@ -16,9 +16,9 @@ The true parameter values are ``\theta^M =(0.01, 100, 10)``. The corresponding l
 
 ![](../assets/figures/logistic/logistic_example.png)
 
-## Initial Setup
+## Logistic Initial Setup
 
-Here we add three worker processes, which matches the number of univariate and bivariate profiles. For coverage testing we recommend setting this number as discussed in [Import Package and Set Up Distributed Environment](@ref). 
+Here we add three worker processes, which matches the number of univariate and bivariate profiles. For coverage testing we recommend setting this number as discussed in [Distributed Environment Setup](@ref). 
 
 ```julia
 using Distributed
@@ -324,7 +324,7 @@ testing_gen_args = (y_true=solvedmodel(t_pred, θ_true), t=t_pred, dist=Normal(0
 
 #### Parameter Confidence Intervals
 
-Here we check the coverage of the 95% confidence interval for each of the three parameters in this model across 1000 simulated iterations using [`check_univariate_parameter_coverage`](@ref). For a sufficiently regular likelihood, we would expect coverage to be approximately 0.95; a (default 95%) confidence interval using [HypothesisTests.jl](https://juliastats.org/HypothesisTests.jl/stable/) is provided to quantify the uncertainty in the simulated estimate. This is a scenario where using a larger number of worker processes than the three we started in [Initial Setup](@ref) would be useful, as we can distribute each simulation iteration across these workers. 
+Here we check the coverage of the 95% confidence interval for each of the three parameters in this model across 1000 simulated iterations using [`check_univariate_parameter_coverage`](@ref). For a sufficiently regular likelihood, we would expect coverage to be approximately 0.95; a (default 95%) confidence interval using [HypothesisTests.jl](https://juliastats.org/HypothesisTests.jl/stable/) is provided to quantify the uncertainty in the simulated estimate. This is a scenario where using a larger number of worker processes than the three we started in [Logistic Initial Setup](@ref) would be useful, as we can distribute each simulation iteration across these workers. 
 
 ```julia
 opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))

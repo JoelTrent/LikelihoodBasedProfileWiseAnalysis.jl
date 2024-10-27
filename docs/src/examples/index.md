@@ -1,10 +1,6 @@
-# Initial Setup
+# Distributed Environment Setup
 
-Here we go through a series of examples that show the use of this package on various models.
-
-## Import Package and Set Up Distributed Environment
-
-This package is designed to be run in a distributed computing environment (see [Distributed.jl](https://docs.julialang.org/en/v1/stdlib/Distributed/)), meaning that the evaluation of profiles can be evaluated in parallel. This is particularly important when running coverage simulations. Many of the methods also work using a multi-threaded approach, albeit often parallised in different locations
+This package is designed to be run in a distributed computing environment (see [Distributed.jl](https://docs.julialang.org/en/v1/stdlib/Distributed/)), meaning that the evaluation of profiles can be evaluated in parallel. This is particularly important when running coverage simulations. Many of the methods also work using a multi-threaded approach, albeit often parallelised in different locations
 
 !!! tip "Recommended number of workers"
     The number of workers to use is recommended to be one or two less than the number of local threads (typically double the number of cores on a given CPU) on your CPU. This is because 1 worker already exists as the master worker and for most efficient distributed computing we want each worker to work on a distinct CPU thread. Furthermore, if you wish to use your computer at the same time as a simulation is running, we recommend that at least two threads are left available for other tasks.
