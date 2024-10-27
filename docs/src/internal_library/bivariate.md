@@ -12,10 +12,8 @@ Pages = ["bivariate.md"]
 ```@docs
 LikelihoodBasedProfileWiseAnalysis.bivariateψ!
 LikelihoodBasedProfileWiseAnalysis.bivariateψ_vectorsearch!
-LikelihoodBasedProfileWiseAnalysis.bivariateψ_continuation!
 LikelihoodBasedProfileWiseAnalysis.bivariateψ_ellipse_analytical
 LikelihoodBasedProfileWiseAnalysis.bivariateψ_ellipse_analytical_vectorsearch
-LikelihoodBasedProfileWiseAnalysis.bivariateψ_ellipse_analytical_continuation
 LikelihoodBasedProfileWiseAnalysis.bivariateψ_ellipse_unbounded
 ```
 
@@ -80,22 +78,6 @@ For [`Fix1AxisMethod`](@ref).
 ```@docs
 LikelihoodBasedProfileWiseAnalysis.findNpointpairs_fix1axis!
 LikelihoodBasedProfileWiseAnalysis.bivariate_confidenceprofile_fix1axis
-```
-
-## Continuation Method
-
-For [`ContinuationMethod`](@ref).
-
-```@docs
-LikelihoodBasedProfileWiseAnalysis.update_targetll!
-LikelihoodBasedProfileWiseAnalysis.normal_vector_i_2d!
-LikelihoodBasedProfileWiseAnalysis.continuation_line_search!
-LikelihoodBasedProfileWiseAnalysis.continuation_inwards_radial_search!
-LikelihoodBasedProfileWiseAnalysis.initial_continuation_solution!
-LikelihoodBasedProfileWiseAnalysis.bivariate_confidenceprofile_continuation
-LikelihoodBasedProfileWiseAnalysis.star_obj
-LikelihoodBasedProfileWiseAnalysis.boundary_smoother!
-LikelihoodBasedProfileWiseAnalysis.refine_search_directions!
 ```
 
 ## Sampling Internal Points From Boundaries

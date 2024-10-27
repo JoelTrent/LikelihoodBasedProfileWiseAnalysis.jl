@@ -98,7 +98,7 @@ using EllipseSampling
             end
     
             # BIVARIATE
-            for method in [IterativeBoundaryMethod(4, 2, 2), RadialRandomMethod(3), SimultaneousMethod(), Fix1AxisMethod(), ContinuationMethod(2, 0.1, 0.0)]
+            for method in [IterativeBoundaryMethod(4, 2, 2), RadialRandomMethod(3), SimultaneousMethod(), Fix1AxisMethod()]
                 for profile_type in [LogLikelihood(), EllipseApprox(), EllipseApproxAnalytical()]
                     bivariate_confidenceprofiles!(m, N, method=method, profile_type=profile_type)
                 end
@@ -501,7 +501,7 @@ using EllipseSampling
             end
 
             # BIVARIATE
-            for method in [IterativeBoundaryMethod(4, 2, 2), RadialRandomMethod(3), RadialMLEMethod(0.0), SimultaneousMethod(), Fix1AxisMethod(), ContinuationMethod(2, 0.1, 0.0)]
+            for method in [IterativeBoundaryMethod(4, 2, 2), RadialRandomMethod(3), RadialMLEMethod(0.0), SimultaneousMethod(), Fix1AxisMethod()]
                 bivariate_confidenceprofiles!(m, N, method=method)
             end
 

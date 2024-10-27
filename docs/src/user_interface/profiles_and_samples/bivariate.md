@@ -24,7 +24,6 @@ RadialRandomMethod
 SimultaneousMethod
 Fix1AxisMethod
 AnalyticalEllipseMethod
-ContinuationMethod
 ```
 
 ## Sampling Internal Points From Boundaries

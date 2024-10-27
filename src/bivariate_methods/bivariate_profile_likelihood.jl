@@ -79,12 +79,6 @@ function get_bivariate_opt_func(profile_type::AbstractProfileType, method::Abstr
         elseif profile_type isa LogLikelihood || profile_type isa EllipseApprox
             return bivariateψ_vectorsearch!
         end
-    elseif method isa ContinuationMethod
-        if profile_type isa EllipseApproxAnalytical
-            return bivariateψ_ellipse_analytical_continuation
-        elseif profile_type isa LogLikelihood || profile_type isa EllipseApprox
-            return bivariateψ_continuation!
-        end
     end
 
     return missing
@@ -242,21 +236,6 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
                                         ellipse_confidence_level=confidence_level,
                                         ellipse_start_point_shift=method.ellipse_start_point_shift,
                                         ellipse_sqrt_distortion=method.ellipse_sqrt_distortion)
-
-            elseif method isa ContinuationMethod
-                boundary, internal = bivariate_confidenceprofile_continuation(
-                                        bivariate_optimiser, 
-                                        model, num_points, consistent, ind1, ind2, dof, 
-                                        profile_type,
-                                        θlb_nuisance, θub_nuisance, 
-                                        method.ellipse_confidence_level,
-                                        confidence_level, 
-                                        method.ellipse_start_point_shift,
-                                        method.num_level_sets,
-                                        method.level_set_spacing,
-                                        mle_targetll, save_internal_points,
-                                        find_zero_atol, optimizationsettings,
-                                        channel)
             
             elseif method isa IterativeBoundaryMethod
                 boundary, internal = bivariate_confidenceprofile_iterativeboundary(
@@ -289,9 +268,7 @@ function bivariate_confidenceprofile(bivariate_optimiser::Function,
 end
 
 function get_bivariate_method_tasknumbers(method::AbstractBivariateMethod, num_points::Int)
-    if method isa ContinuationMethod
-        return num_points * method.num_level_sets
-    elseif method isa AnalyticalEllipseMethod
+    if method isa AnalyticalEllipseMethod
         return 1
     else
         return num_points
@@ -327,7 +304,6 @@ Finds `num_points` `profile_type` boundary points at a specified `confidence_lev
 - `use_threads`: boolean variable specifying, if `use_distributed` is false, whether to use parallelised for loops across `Threads.nthreads()` threads or a non-parallel for loops to find boundary points from `methods` where boundary points are found independently. Default is `true`.
     - [`Fix1AxisMethod`](@ref) and [`RadialMLEMethod`](@ref) parallelise the finding point pair step and the finding the boundary from point pairs step.
     - [`SimultaneousMethod`](@ref) and [`RadialRandomMethod`](@ref) do not parallelise the finding point pair step but parallelise finding the boundary from point pairs.
-    - [`ContinuationMethod`](@ref) is not parallelised at all. 
     - [`IterativeBoundaryMethod`](@ref) parallelises finding the initial boundary but not the following boundary improvement steps.
     - [`AnalyticalEllipseMethod`](@ref) does not require parallelisation.
 
@@ -356,7 +332,7 @@ If [Distributed.jl](https://docs.julialang.org/en/v1/stdlib/Distributed/) is bei
 
 ## Iteration Speed Of the Progress Meter
 
-The time/it value is the time it takes for each new boundary point to be found (for all methods except for [`AnalyticalEllipseMethod`](@ref) and [`ContinuationMethod`](@ref)). For [`AnalyticalEllipseMethod`](@ref) this is the time it takes to find all points on the boundary of the ellipse of two interest parameters. For [`ContinuationMethod`](@ref) this is the time it takes to find each new point, internal or on the boundary.  
+The time/it value is the time it takes for each new boundary point to be found (for all methods except for [`AnalyticalEllipseMethod`](@ref)). For [`AnalyticalEllipseMethod`](@ref) this is the time it takes to find all points on the boundary of the ellipse of two interest parameters.
 """
 function bivariate_confidenceprofiles!(model::LikelihoodModel, 
                                         θcombinations::Vector{Vector{Int}}, 
