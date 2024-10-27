@@ -13,7 +13,7 @@ using LatinHypercubeSampling
 using Random, StatsBase, Combinatorics, Distributions
 using UnivariateUnimodalHighestDensityRegion
 using Distances, TravelingSalesmanHeuristics
-using Clustering, Meshes, ConcaveHull, PolygonInbounds
+using Meshes, ConcaveHull, PolygonInbounds
 using AngleBetweenVectors
 using Distributed, SharedArrays
 using FLoops
@@ -122,8 +122,6 @@ include("bivariate_methods/findpointon2Dbounds.jl")
 include("bivariate_methods/loglikelihood_functions.jl")
 include("bivariate_methods/fix1axis.jl")
 include("bivariate_methods/vectorsearch.jl")
-include("bivariate_methods/continuation_polygon_manipulation.jl")
-include("bivariate_methods/continuation.jl")
 include("bivariate_methods/iterativeboundary.jl")
 include("bivariate_methods/bivariate_profile_likelihood.jl")
 include("bivariate_methods/MPP_TSP.jl")
