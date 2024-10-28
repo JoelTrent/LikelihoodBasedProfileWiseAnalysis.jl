@@ -158,11 +158,7 @@ export plot_univariate_profiles, plot_univariate_profiles_comparison,
     plot_predictions_individual, plot_predictions_union,
     plot_realisations_individual, plot_realisations_union
 
-import SnoopPrecompile
-
-SnoopPrecompile.@precompile_all_calls begin
-    
-    a, b = 2.0, 1.0
+    # a, b = 2.0, 1.0
     # α = 0.2 * π
     # Cx, Cy = 2.0, 2.0
 
@@ -204,8 +200,5 @@ SnoopPrecompile.@precompile_all_calls begin
     # dimensional_likelihood_sample!(m, 2, 10, sample_type=UniformGridSamples())
     # dimensional_likelihood_sample!(m, 2, 100, sample_type=UniformRandomSamples())
     # dimensional_likelihood_sample!(m, 2, 100, sample_type=LatinHypercubeSamples())
-
-
-end
 
 end
