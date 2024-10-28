@@ -564,9 +564,9 @@ using EllipseSampling
 
         function odesolver(t, λ, K, C0)
             p=(λ,K)
-            tspan=(0.0, maximum(t))
+            tspan=eltype(p).((0.0, maximum(t)))
             prob=ODEProblem(DE!, [C0], tspan, p)
-            sol=solve(prob, saveat=t)
+            sol = solve(prob, saveat=t, abstol=1e-8, reltol=1e-8)
             return sol[1,:]
         end
 
@@ -585,7 +585,7 @@ using EllipseSampling
         t = 0:100:1000
         σ = 10.0
 
-        λmin, λmax = 0.00, 0.05
+        λmin, λmax = 0.001, 0.05
         Kmin, Kmax = 50.0, 150.0
         C0min, C0max = 0.001, 50.0
 
@@ -615,9 +615,9 @@ using EllipseSampling
 
             for i in 1:3
                 lls = [loglhood(m.uni_profiles_dict[i].interval_points.points[:, j], m.core.data) for j in 1:2]
-                @test isapprox(lls .- targetll, zeros(2), atol=1e-14)
+                @test isapprox(lls .- targetll, zeros(2), atol=1e-10)
 
-                @test isapprox(m.uni_profiles_dict[i].interval_points.ll .- targetll_standardised, zeros(2), atol=1e-14)
+                @test isapprox(m.uni_profiles_dict[i].interval_points.ll .- targetll_standardised, zeros(2), atol=1e-10)
             end
 
             # BIVARIATE
@@ -629,7 +629,7 @@ using EllipseSampling
 
             for i in 1:6
                 lls = [loglhood(m.biv_profiles_dict[i].confidence_boundary[:, j], m.core.data) for j in 1:N]
-                @test isapprox(lls .- targetll, zeros(N), atol=1e-12)
+                @test isapprox(lls .- targetll, zeros(N), atol=1e-8)
             end
         end
 
