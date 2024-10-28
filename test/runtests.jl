@@ -1,6 +1,7 @@
 using LikelihoodBasedProfileWiseAnalysis
 using Test
 using Distributions, Random
+using DifferentialEquations
 using EllipseSampling
 
 @testset "LikelihoodBasedProfileWiseAnalysis.jl" begin
@@ -595,7 +596,7 @@ using EllipseSampling
         ub = [λmax, Kmax, C0max]
         par_magnitudes = [0.005, 10, 10]
 
-        ytrue = solvedmodel(θG, t)
+        ytrue = model(θG, t)
         Random.seed!(12348)
         yobs = ytrue + σ * randn(length(t))
         data = (yobs=yobs, σ=σ, t=t, dist=Normal(0, σ))
