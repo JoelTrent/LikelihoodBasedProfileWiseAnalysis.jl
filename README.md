@@ -5,6 +5,8 @@
 [![Build Status](https://github.com/JoelTrent/LikelihoodBasedProfileWiseAnalysis.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/JoelTrent/LikelihoodBasedProfileWiseAnalysis.jl/actions/workflows/CI.yml?query=branch%3Amain)
 [![Coverage](https://codecov.io/gh/JoelTrent/LikelihoodBasedProfileWiseAnalysis.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/JoelTrent/LikelihoodBasedProfileWiseAnalysis.jl)
 
+__Warning: [ForwardDiff use on ODE problems is currently broken on this package](https://github.com/JoelTrent/LikelihoodBasedProfileWiseAnalysis.jl/issues/55). A fix will be worked on but requires spare time outside of work.__
+
 This package is an implementation and exploration of the [likelihood-based Profile-Wise Analysis (PWA) workflow](https://doi.org/10.1371/journal.pcbi.1011515) from Matthew Simpson and Oliver Maclaren. It provides methods for:
 
 - Maximum Likelihood Estimation.
