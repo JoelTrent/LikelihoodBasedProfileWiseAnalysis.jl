@@ -48,6 +48,6 @@ using LikelihoodBasedProfileWiseAnalysis
 
 If you are solely interested in parameter identifiability analysis and computing parameter confidence intervals we recommend [LikelihoodProfiler](https://insysbio.github.io/LikelihoodProfiler.jl/stable/), which is generally more stable and faster than the implementation in this package on the models we've tested.
 
-[ProfileLikelihood](https://danielvandh.github.io/ProfileLikelihood.jl/stable/) is another excellent package which implements the PWA workflow from Simpson and Maclaren - it has a different interface and its own set of heuristics for computing profiles. 
+[ProfileLikelihood](https://danielvandh.github.io/ProfileLikelihood.jl/stable/) is another excellent package which implements the PWA workflow from Simpson and Maclaren - it has a different interface and its own set of heuristics for computing profiles. Prediction of population reference sets was introduced into the PWA workflow in my [2024 Masters Thesis](https://researchspace.auckland.ac.nz/handle/2292/70080) and is not present in that package.
 
 [InformationGeometry](https://rafaelarutjunjan.github.io/InformationGeometry.jl/stable/) can compute the exact confidence regions/boundaries of models using differential geometry. It would be an interesting approach which could potentially evaluate confidence set boundaries more efficiently than the heuristics implemented in this package. Resultantly, its use within the PWA workflow may be worth investigating.
