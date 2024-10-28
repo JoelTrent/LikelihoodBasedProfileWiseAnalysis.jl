@@ -26,8 +26,6 @@ Additionally, to assist with evaluating the frequentist coverage properties of i
 
 To understand the background of the workflow and how it can be used see [Motivation](@ref). For implementation examples see the examples section, such as on a [Logistic Model](@ref). To better understand how to interact with the user interface and in particular the [`LikelihoodModel`](@ref), which holds all the information on computed profiles and predictions, check out the user interface starting with [Initialisation](@ref).
 
-The API is largely stable, but shouldn't be regarded as fixed until the first version is released; the package will be kept as v1.0.0-DEV until then. The main work remaining is in completing documentation. However, one of the bivariate boundary methods may be removed.
-
 A package developed to fulfil the requirements of a Masters of Engineering at The University of Auckland by Joel Trent between March 2023 and February 2024. 
 
 Supervised by Oliver Maclaren, Ruanui Nicholson and Matthew Simpson.
