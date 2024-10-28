@@ -2,7 +2,7 @@ module PlotsExt
 
     using LikelihoodBasedProfileWiseAnalysis
     using Plots, LaTeXStrings
-    using DataFrames
+    using DataFrames, StatsBase
 
     """
         profilecolor(profile_type::Union{AbstractProfileType, AbstractSampleType})
