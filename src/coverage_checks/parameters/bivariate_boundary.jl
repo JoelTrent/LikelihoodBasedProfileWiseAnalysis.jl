@@ -116,6 +116,8 @@ function check_bivariate_boundary_coverage(data_generator::Function,
 
         if hullmethod isa Vector
             unique!(hullmethod)
+        else
+            hullmethod = [hullmethod]
         end
 
         if θcombinations isa Vector{Tuple{Int, Int}}
@@ -186,7 +188,7 @@ function check_bivariate_boundary_coverage(data_generator::Function,
                     θindices = [θindices_tuple...]
 
                     conf_struct = m_new.biv_profiles_dict[row_ind]
-                    polygonhull = construct_polygon_hull(m_new, θindices, conf_struct, confidence_level,
+                    polygonhull = construct_polygon_hull(m_new, θindices, conf_struct, confidence_level, 2,
                         m_new.biv_profiles_df[row_ind, :boundary_not_ordered], hmethod, true)
 
                     polygonhull_num_points = size(polygonhull, 2)
@@ -195,7 +197,7 @@ function check_bivariate_boundary_coverage(data_generator::Function,
                     for j in 1:polygonhull_num_points-1; edges[j,:] .= j, j+1 end
                     edges[end,:] .= polygonhull_num_points, 1
 
-                    dim_samples_row = m_new.dim_samples_row_exists[(θindices, sample_type)][confidence_level]
+                    dim_samples_row = m_new.dim_samples_row_exists[(θindices, 2, sample_type)][confidence_level]
                     if dim_samples_row == 0; continue end
 
                     num_dim_points = m_new.dim_samples_df[dim_samples_row, :num_points]
@@ -264,7 +266,7 @@ function check_bivariate_boundary_coverage(data_generator::Function,
                             θindices = [θindices_tuple...]
 
                             conf_struct = m_new.biv_profiles_dict[row_ind]
-                            polygonhull = construct_polygon_hull(m_new, θindices, conf_struct, confidence_level,
+                            polygonhull = construct_polygon_hull(m_new, θindices, conf_struct, confidence_level, 2,
                                 m_new.biv_profiles_df[row_ind, :boundary_not_ordered], hmethod, true)
 
                             polygonhull_num_points = size(polygonhull, 2)
@@ -273,7 +275,7 @@ function check_bivariate_boundary_coverage(data_generator::Function,
                             for j in 1:polygonhull_num_points-1; edges[j,:] .= j, j+1 end
                             edges[end,:] .= polygonhull_num_points, 1
 
-                            dim_samples_row = m_new.dim_samples_row_exists[(θindices, sample_type)][confidence_level]
+                            dim_samples_row = m_new.dim_samples_row_exists[(θindices, 2, sample_type)][confidence_level]
                             if dim_samples_row == 0; continue end
 
                             num_dim_points = m_new.dim_samples_df[dim_samples_row, :num_points]

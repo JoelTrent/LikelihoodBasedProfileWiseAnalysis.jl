@@ -2,6 +2,7 @@ module PlotsExt
 
     using LikelihoodBasedProfileWiseAnalysis
     using Plots, LaTeXStrings
+    using DataFrames
 
     """
         profilecolor(profile_type::Union{AbstractProfileType, AbstractSampleType})
@@ -448,7 +449,7 @@ module PlotsExt
             sub_df = LikelihoodBasedProfileWiseAnalysis.desired_df_subset(model.dim_samples_df, model.num_dim_samples, confidence_levels, dofs, sample_types, 
                                         sample_dimension=2)
         else
-            θcombinations_to_plot =LikelihoodBasedProfileWiseAnalysis. θcombinations_to_plot_typeconversion(model, θcombinations_to_plot)
+            θcombinations_to_plot = θcombinations_to_plot_typeconversion(model, θcombinations_to_plot)
                                             
             sub_df = LikelihoodBasedProfileWiseAnalysis.desired_df_subset(model.biv_profiles_df, model.num_biv_profiles, θcombinations_to_plot, confidence_levels,
                                         dofs, profile_types, methods)

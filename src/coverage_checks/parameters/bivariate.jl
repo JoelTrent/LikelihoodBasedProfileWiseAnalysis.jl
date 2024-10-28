@@ -178,7 +178,7 @@ function check_bivariate_parameter_coverage(data_generator::Function,
 
                 # check if boundary (defined as polygon with straight edges) contains θtrue[θi]
                 conf_struct = m_new.biv_profiles_dict[row_ind]
-                boundary = construct_polygon_hull(m_new, [θindices...], conf_struct, confidence_level,
+                boundary = construct_polygon_hull(m_new, [θindices...], conf_struct, confidence_level, 2,
                     m_new.biv_profiles_df[row_ind, :boundary_not_ordered], MPPHullMethod(), true)
                 
                 nodes = permutedims(boundary)
@@ -254,7 +254,7 @@ function check_bivariate_parameter_coverage(data_generator::Function,
 
                         # check if boundary (defined as polygon with straight edges) contains θtrue[θi]
                         conf_struct = m_new.biv_profiles_dict[row_ind]
-                        boundary = construct_polygon_hull(m_new, [θindices...], conf_struct, confidence_level,
+                        boundary = construct_polygon_hull(m_new, [θindices...], conf_struct, confidence_level, 2,
                             m_new.biv_profiles_df[row_ind, :boundary_not_ordered], MPPHullMethod(), true)
                         
                         nodes = permutedims(boundary)
