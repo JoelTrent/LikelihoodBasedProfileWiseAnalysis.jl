@@ -56,6 +56,8 @@ Here, we will use the logit-normal data distribution. The Gaussian distribution 
 
 The logit-normal distribution expects a proportion and our data and model produce a percentage so we are required to divide these through by 100.
 
+In our ODE solver, we define the type of `tspan` using `eltype`. This is required to enable automatic differentiation to work correctly on the ODE; we use this for computing the Fisher Information Matrix. For more information see [Native Julia solvers compatibility with autodifferentiation](https://docs.sciml.ai/DiffEqDocs/stable/basics/faq/#Native-Julia-solvers-compatibility-with-autodifferentiation).
+
 ```julia
 @everywhere function DE!(dC, C, p, t)
     λ1, λ2, δ, KK = p
@@ -67,7 +69,7 @@ end
 @everywhere function odesolver(t, λ1, λ2, δ, KK, C01, C02)
     p=(λ1, λ2, δ, KK)
     C0=[C01, C02]
-    tspan=(0.0, maximum(t))
+    tspan=eltype(p).((0.0, maximum(t)))
     prob=ODEProblem(DE!, C0, tspan, p)
     sol=solve(prob, saveat=t)
     return sol[1,:], sol[2,:]

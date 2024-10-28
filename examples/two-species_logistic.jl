@@ -25,7 +25,7 @@ end
 @everywhere function odesolver(t, λ1, λ2, δ, KK, C01, C02)
     p=(λ1, λ2, δ, KK)
     C0=[C01, C02]
-    tspan=(0.0, maximum(t))
+    tspan=eltype(p).((0.0, maximum(t))) # need to define with eltype for A.D. to work
     prob=ODEProblem(DE!, C0, tspan, p)
     sol=solve(prob, saveat=t)
     return sol[1,:], sol[2,:]
@@ -265,7 +265,8 @@ biv_boundary_coverage_df = check_bivariate_boundary_coverage(data_generator,
 # On versions of Julia earlier than 1.10, we recommend setting the kwarg, 
 # `manual_GC_calls`, to true in each of the coverage functions. Otherwise 
 # the garbage collector may not successfully free memory every iteration 
-# leading to out of memory errors.
+# leading to out of memory errors. This may still be important in Julia 1.10 
+# onwards
 
 opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
 

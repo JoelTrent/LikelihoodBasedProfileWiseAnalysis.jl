@@ -22,7 +22,7 @@ end
 @everywhere function odesolver(t,α,β,C01,C02)
     p=SA[α,β]
     C0=SA[C01,C02]
-    tspan=(0.0,t[end])
+    tspan=eltype(p).((0.0,t[end])) # need to define with eltype for A.D. to work
     prob=ODEProblem(lotka_static,C0,tspan,p)
     sol=solve(prob, AutoTsit5(Rosenbrock23()), saveat=t);
     return sol[1,:], sol[2,:]
@@ -93,7 +93,7 @@ get_points_in_intervals!(model, 20, additional_width=0.2)
 opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
 bivariate_confidenceprofiles!(model, 30, 
     method=IterativeBoundaryMethod(20, 5, 5, 0.15, 1.0, use_ellipse=true), 
-    optimizationsettings=opt_settings)
+    optimizationsettings=opt_settings, use_distributed=false)
 
 bivariate_confidenceprofiles!(model, 30, 
     method=IterativeBoundaryMethod(20, 5, 5, 0.15, 1.0, use_ellipse=true), 
@@ -240,13 +240,15 @@ biv_boundary_coverage_df = check_bivariate_boundary_coverage(data_generator,
 # On versions of Julia earlier than 1.10, we recommend setting the kwarg, 
 # `manual_GC_calls`, to true in each of the coverage functions. Otherwise 
 # the garbage collector may not successfully free memory every iteration 
-# leading to out of memory errors.
+# leading to out of memory errors. This may still be important in Julia 1.10 
+# onwards
 
 opt_settings = create_OptimizationSettings(solve_kwargs=(maxtime=5, xtol_rel=1e-12))
 
 full_trajectory_coverage_df = check_dimensional_prediction_coverage(data_generator, 
     training_gen_args, t_pred, model, 1000, 500000, 
-    θ_true, [collect(1:model.core.num_pars)])
+    θ_true, [collect(1:model.core.num_pars)],
+    manual_GC_calls=true)
 
 uni_trajectory_coverage_df = check_univariate_prediction_coverage(data_generator, 
     training_gen_args, t_pred, model, 1000, 
@@ -280,7 +282,8 @@ biv_trajectory_coverage_df = check_bivariate_prediction_coverage(data_generator,
 ##############################################################################
 full_reference_coverage_df = check_dimensional_prediction_realisations_coverage(data_generator,
     reference_set_generator, training_gen_args, testing_gen_args, t_pred, model, 1000, 500000, 
-    θ_true, [collect(1:model.core.num_pars)])
+    θ_true, [collect(1:model.core.num_pars)],
+    manual_GC_calls=true)
 
 uni_reference_coverage_df = check_univariate_prediction_realisations_coverage(data_generator,
     reference_set_generator, training_gen_args, testing_gen_args, t_pred, model, 1000, 
